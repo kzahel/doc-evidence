@@ -1132,6 +1132,13 @@ repeatable harness was tightened; the published artifact remained valid and
 accounts for the increase from the original two private cache hits to the
 final preflight's four.
 
+Before the resolved-default defect was corrected, the diagnostic UI run also
+published one valid `eng`-only OCR artifact and recorded its exact cache reuse.
+It has a distinct settings/run identity from the configured `eng`/`deu`
+default, was never counted as satisfying default coverage, and remains in the
+derived store as inspectable history rather than being destructively removed.
+No source document was changed by that diagnostic run.
+
 ### Slice 11 — planned worker identity enforcement
 
 A final publication-boundary audit found that a worker's returned run was
