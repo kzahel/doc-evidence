@@ -233,6 +233,9 @@ and collection preflight are the second landed boundary.
 Explicit library-scoped API resources, generated/runtime operations, query
 keys, deep links, empty-home behavior, selection UI, and collection settings
 are the third landed boundary.
+The typed extractor registry, private supervised worker protocol, exact-source
+recheck, bounded process-tree execution, staged validation, and atomic
+canonical artifact publication are the fourth landed boundary.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits

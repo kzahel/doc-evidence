@@ -41,8 +41,10 @@ The delivery sequence is deliberate:
 1. **Implemented:** deterministic inventory, content-addressed extraction and
    benchmarking, plus the read-only localhost library/comparison application.
 2. **In progress:** desktop-style application home, remembered libraries, and
-   unified per-library persistence are implemented; durable extraction jobs,
-   recovery, and operational UI continue in Tactical 001.
+   unified per-library persistence are implemented. The typed extractor
+   registry, private worker protocol, supervised process trees, validated
+   staging, and atomic artifact publication are also implemented; the durable
+   queue, recovery, and operational UI continue in Tactical 001.
 3. **Following product slice:** durable human review events and portable review
    state, kept separate from regenerable extractor output.
 4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
@@ -90,7 +92,10 @@ identity, ordinary startup from the last/default registered library, and one
 schema-versioned SQLite database with atomic inventory generations. The
 localhost API, generated client, React runtime, queries, and deep links now
 carry explicit library identity, with known-library selection and collection
-settings in the shared UI.
+settings in the shared UI. Extractor capabilities and bounded settings now
+come from a server-owned registry, and extraction attempts run in supervised
+private process groups before validated output is atomically published into a
+canonical content-addressed run.
 
 Read these first:
 

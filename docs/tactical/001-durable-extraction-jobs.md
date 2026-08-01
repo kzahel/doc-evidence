@@ -910,3 +910,33 @@ Focused multi-library isolation, scoped API, authentication, empty-home,
 selection, settings, deep-link, generated-contract, TypeScript, 22 component,
 production-build, Ruff, and Pyright validation pass. Durable jobs, supervised
 workers, and operational views remain in progress.
+
+### Slice 4 — registered extractors and supervised atomic attempts
+
+Implemented the worker and publication boundary beneath the future scheduler:
+
+- one typed server-owned extractor registry for Poppler,
+  OCRmyPDF/Tesseract, raster-image Tesseract, Docling, and Marker, including
+  dependency capability probes, supported media, bounded settings schemas,
+  resource classes, deadlines, determinism, and output kinds;
+- strict rejection of client-controlled executables, filesystem paths,
+  environment injection, unsupported media, and unknown settings;
+- a private versioned worker protocol that rechecks source stat metadata and
+  SHA-256 before invoking only a registered extractor;
+- per-attempt workspaces, bounded stdout/stderr drains, heartbeat callbacks,
+  process-group cancellation, deadline enforcement, TERM-to-KILL escalation,
+  and structured worker-launch failures;
+- normalized/run/raw-artifact validation, symlink and containment rejection,
+  complete artifact manifests, fsync, and same-filesystem atomic rename into
+  the canonical content-addressed run location;
+- explicit concurrent cache-win, fresh verified-match, and nondeterministic
+  conflict outcomes without overwriting a valid canonical result; and
+- separate age/byte attempt-retention cleanup that cannot remove active
+  attempts or canonical artifacts.
+
+Focused atomic-publication, concurrent-writer, nondeterminism, malformed
+output, changed-source, real Poppler worker, process-tree cancellation,
+bounded-log, retention, registry-security, and worker-launch-failure tests
+pass. The full baseline passes with 41 Python tests, Ruff, Pyright, and package
+build. Persistent job/event rows, scheduler leasing and recovery, API/runtime
+operations, and operational views remain in progress.

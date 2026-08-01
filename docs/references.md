@@ -56,6 +56,20 @@ contracts, application services, runtime provider, and adapters. It does not
 adopt the audio-session model, family authentication, model lifecycle, or
 hosted deployment requirements.
 
+For Tactical 001's supervised-attempt implementation, revision
+`87b77e9b0679f770a5f55e69546c7a1cb72fde46` was inspected directly at
+`docs/tactical/017-python-application-core.md`,
+`docs/tactical/022-durable-capture-worker-isolation.md`,
+`docs/tactical/032-cross-platform-artifact-export.md`,
+`src/atpiano/model_worker.py`, `src/atpiano/corrected_export.py`, and
+`src/atpiano/adapters/local_storage.py`. Adopted lessons are an inward
+application boundary, spawned-worker isolation, bounded diagnostics,
+cancellation that owns descendant processes, and fsync-backed atomic
+publication. `doc-evidence` intentionally uses one discrete process group per
+document/extractor attempt and a same-filesystem content-addressed rename; it
+does not adopt streaming audio horizons, a long-lived model lane, or the
+sibling's export destination model.
+
 ## Documentation-Structure Siblings
 
 The documentation roles and tactical numbering conventions were compared with

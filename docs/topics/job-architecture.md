@@ -4,9 +4,10 @@ Topic: job-architecture
 
 **Last updated:** 2026-08-01
 
-**Status:** Tactical 001 implementation in progress. Unified persistence and
-atomic catalog membership generations are implemented; durable jobs, worker
-supervision, recovery, and operational UI remain in progress.
+**Status:** Tactical 001 implementation in progress. Unified persistence,
+atomic catalog membership generations, extractor registration, supervised
+attempt execution, and atomic artifact publication are implemented; durable
+jobs, recovery, and operational UI remain in progress.
 
 ## Purpose
 
@@ -62,6 +63,16 @@ framework-independent job application service
 Python owns scheduling and worker supervision. React consumes application
 contracts rather than worker or process details. Expensive and failure-prone
 extractors run in operating-system subprocesses rather than the API process.
+
+The implemented execution port launches a private worker protocol in a new
+process group, drains bounded logs, emits heartbeats, enforces an absolute
+deadline, and terminates the worker tree on cancellation. The worker accepts
+only registered extractor IDs and validated settings; it verifies the exact
+source size, modification time, and SHA-256 before invoking an adapter. Output
+is written beneath an attempt workspace, contract-validated, hashed and
+fsynced, then renamed on the same filesystem into the canonical run location.
+Malformed or conflicting output is retained as attempt evidence and is never
+shown as canonical success.
 
 ## One Active SQLite Database Per Library
 

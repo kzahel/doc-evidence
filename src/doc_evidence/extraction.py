@@ -102,12 +102,16 @@ def run_command(
 ) -> CommandResult:
     started = time.monotonic()
     process: subprocess.Popen[bytes] | None = None
+    isolated_process_group = (
+        cleanup_process_group
+        and os.environ.get("DOC_EVIDENCE_SUPERVISED_WORKER") != "1"
+    )
     try:
         process = subprocess.Popen(
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            start_new_session=cleanup_process_group,
+            start_new_session=isolated_process_group,
         )
         raw_stdout, raw_stderr = process.communicate(timeout=timeout_seconds)
         stdout = raw_stdout.decode("utf-8", errors="replace")
@@ -122,7 +126,7 @@ def run_command(
         stderr = (error.stderr or b"").decode("utf-8", errors="replace")
         stderr += f"\ncommand timed out after {timeout_seconds} seconds"
         if process is not None:
-            if cleanup_process_group:
+            if isolated_process_group:
                 try:
                     os.killpg(process.pid, signal.SIGTERM)
                 except ProcessLookupError:
@@ -132,7 +136,7 @@ def run_command(
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                if cleanup_process_group:
+                if isolated_process_group:
                     try:
                         os.killpg(process.pid, signal.SIGKILL)
                     except ProcessLookupError:
@@ -141,7 +145,7 @@ def run_command(
                     process.kill()
         returncode = 124
     finally:
-        if cleanup_process_group and process is not None:
+        if isolated_process_group and process is not None:
             try:
                 os.killpg(process.pid, signal.SIGTERM)
             except ProcessLookupError:
