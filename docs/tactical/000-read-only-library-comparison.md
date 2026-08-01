@@ -367,7 +367,10 @@ slices:
 3. `df94d73` — final integration and polish covering direct links,
    unsupported-file selection,
    sandboxed raw-artifact preview, zero-byte artifacts, responsive validation,
-   and documentation.
+   and documentation; and
+4. `a067754` — maintainer-review follow-up adding global typography scaling,
+   distinct comparison-side enforcement, direction swapping, cached-run
+   coverage labels, and explicit image-only/OCR limitations.
 
 ### Automated evidence
 
