@@ -1036,8 +1036,9 @@ The seventh landed slice adds and validates the baseline extractor pack:
   English/German/orientation availability, and assert that Ghostscript cannot
   be resolved.
 
-The staged runtime measures 181,746,413 bytes and contains 3,836 files and 112
-arm64 Mach-O objects. Tauri assembled a 192,070,647-byte application containing
+The current staged runtime measures 181,748,351 bytes and contains 3,836 files
+and 112 arm64 Mach-O objects. Tauri assembled a 192,072,585-byte application
+containing
 3,840 files. The copied artifact at
 `/private/tmp/doc-evidence-baseline-review.gtYJOD/Doc Evidence.app` has tree
 SHA-256 `8e4f581a55bc1a8eeaf9724a903afcb9747cd5c20e8508fa77966043a597a8d2`
@@ -1065,11 +1066,11 @@ read-only at a fresh temporary mount point, runs the full application/runtime/
 OCR audit against the mounted bytes, and detaches normally with one bounded
 force-detach fallback.
 
-After the final application license-manifest rebuild,
-`Doc-Evidence_0.4.0_aarch64-unsigned.dmg` measures 73,267,094 bytes and has
-SHA-256 `839a900868ac75de258af34d809bcbbd0e4b792c051deabf8a0152e79ef7a0b8`.
+After the `pi_heif` license-manifest rebuild,
+`Doc-Evidence_0.4.0_aarch64-unsigned.dmg` measures 73,268,724 bytes and has
+SHA-256 `f7f63a553111931929c736dc5550b70ca804ec7440e855819f40e54d4562d6cf`.
 The application tree inside it matches the current copied-out proof at
-`64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`;
+`1d9a99962f075969450dd5aa203fb7cf6d57c472ad17e14335b25304f98a6d54`;
 its final mounted smoke again passed exact pack validation and Ghostscript-free
 OCR. This is intentionally unsigned and unnotarized. The production lane still
 follows the pinned sibling signing, bounded-retry, notarization, stapling, and
@@ -1113,8 +1114,8 @@ the preflight does not silently substitute an unreviewed generic template.
 An explicit corresponding-source pass closes the top-level source-archive
 gap. It selects the conveyed Homebrew, Python, and Rust components whose
 license conclusions contain GPL/LGPL/MPL obligations, downloads through an
-ignored cache, requires the previously recorded SHA-256, and embeds 19 exact
-archives plus preserved PyPI metadata. They total 153,833,269 bytes. Apache
+ignored cache, requires the previously recorded SHA-256, and embeds 20 exact
+archives plus preserved PyPI metadata. They total 170,958,883 bytes. Apache
 and other permissive components retain exact source URLs/hashes but do not
 inflate this asset; in particular, the 638 MB all-languages tessdata source
 archive is correctly excluded. Native libraries nested inside Python wheels
@@ -1141,9 +1142,9 @@ that signing credentials are not the next immediate dependency: the component
 and source record must become release-complete before a signed public artifact
 would be acceptable.
 
-The generated preflight archive measures 152,618,960 bytes with SHA-256
-`2c3bed99eea874d9363b79ddd2d0b0af1847839b02b9207acf5b3019249380e1`.
+The generated preflight archive measures 169,756,709 bytes with SHA-256
+`d0b2d26f198939ed5fc02425c97088659aa488ecd9349087bd1e33f474381398`.
 It describes application tree
-`64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`
+`1d9a99962f075969450dd5aa203fb7cf6d57c472ad17e14335b25304f98a6d54`
 and bundle manifest
-`ffc9dcf4089fe4b74e51c1fc7c651aea00f06f612f2cc173278e9feb8dbb2d06`.
+`54d8867297e4afb3889e9467a2a9432af035fbb082cd71a8d1a8b81f6098bc17`.

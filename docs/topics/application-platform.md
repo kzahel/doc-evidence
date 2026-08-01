@@ -279,7 +279,8 @@ English/German/orientation data, and the exact small Tesseract renderer
 configurations. All copied native inputs are arm64-only, have bundle-relative
 load paths, and have ambient Homebrew defaults neutralized before nested ad-hoc
 signing. Tauri verifies the bundle/pack identity before launch and requires the
-Python ready record to report the same pack. An unsigned 192,070,647-byte
+Python ready record to report the same pack. The current unsigned
+192,072,585-byte
 copied-out `.app` containing 3,840 files and 112 Mach-O objects passed real
 Ghostscript-free synthetic OCR and packaged-sidecar smokes without the
 checkout, Homebrew on `PATH`, or a system Python. Broader Poppler non-Latin
@@ -287,8 +288,8 @@ data behavior is not yet validated; a relocatable Poppler build or measured
 PDFium replacement remains preferable before claiming that coverage.
 A deterministic local DMG path avoids Finder automation, verifies the
 compressed image, mounts it read-only, re-audits the contained application,
-and detaches it. The current 73,267,094-byte unsigned image contains the exact
-current `64baad23...` application tree and is validation evidence, not a
+and detaches it. The current 73,268,724-byte unsigned image contains the exact
+current `1d9a9996...` application tree and is validation evidence, not a
 release artifact.
 
 The first compliance preflight accounts for 70 top-level staged components,
