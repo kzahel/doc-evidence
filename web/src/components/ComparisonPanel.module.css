@@ -2,7 +2,7 @@
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: 0.9rem;
-  margin-top: 1rem;
+  margin: 0;
   overflow: hidden;
 }
 
@@ -42,6 +42,13 @@
   display: flex;
 }
 
+.headerControls {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .mode button {
   background: var(--surface);
   border-color: var(--border);
@@ -62,6 +69,69 @@
 .mode .active {
   background: var(--ink);
   color: white;
+}
+
+.rawGrid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  padding: 0.75rem;
+}
+
+.rawCard {
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.rawCard > header {
+  align-items: center;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem;
+}
+
+.rawCard > header span {
+  color: var(--accent-strong);
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rawCard > header strong {
+  font-size: 0.65rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rawCard pre {
+  font-size: 0.68rem;
+  height: clamp(16rem, calc(100vh - 24rem), 36rem);
+  line-height: 1.5;
+  margin: 0;
+  overflow: auto;
+  padding: 0.65rem;
+}
+
+.rawCard pre.reading {
+  font-family: var(--sans);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.rawCard pre.aligned {
+  font-family: var(--mono);
+  overflow-wrap: normal;
+  white-space: pre;
+  word-break: normal;
 }
 
 .selectors {
@@ -240,6 +310,10 @@
   .panel > header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .headerControls {
+    align-items: flex-start;
   }
 
   .selectors {

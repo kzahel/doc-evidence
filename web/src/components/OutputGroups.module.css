@@ -1,13 +1,23 @@
 .section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
+}
+
+.chrome {
+  flex: 0 0 auto;
+  padding-bottom: 0.65rem;
 }
 
 .intro {
   align-items: end;
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   justify-content: space-between;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.55rem;
 }
 
 .intro h2,
@@ -17,8 +27,8 @@
 
 .intro > p {
   color: var(--muted);
-  font-size: 0.72rem;
-  max-width: 26rem;
+  font-size: 0.65rem;
+  max-width: 22rem;
   text-align: right;
 }
 
@@ -38,39 +48,44 @@
   gap: 0.75rem;
 }
 
-.presentationToolbar {
+.workbenchToolbar {
   align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.55rem;
   display: flex;
-  gap: 0.8rem;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.8rem;
   padding: 0.45rem 0.55rem;
 }
 
-.presentationToolbar > div:first-child {
+.toolbarGroup {
+  align-items: center;
   display: flex;
-  flex-direction: column;
-  min-width: 0;
+  gap: 0.35rem;
 }
 
-.presentationToolbar strong {
-  font-size: 0.68rem;
-}
-
-.presentationToolbar span {
+.toolbarGroup > strong {
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.presentationOptions {
+.presentationHint {
+  color: var(--muted);
+  flex: 1 1 16rem;
+  font-size: 0.62rem;
+  min-width: 10rem;
+  text-align: right;
+}
+
+.segmented {
   display: flex;
   flex: 0 0 auto;
 }
 
-.presentationOptions button {
+.segmented button {
   background: var(--surface-raised);
   border-color: var(--border);
   border-radius: 0;
@@ -79,17 +94,87 @@
   padding: 0.32rem 0.45rem;
 }
 
-.presentationOptions button:first-child {
+.segmented button:first-child {
   border-radius: 0.35rem 0 0 0.35rem;
 }
 
-.presentationOptions button:last-child {
+.segmented button:last-child {
   border-radius: 0 0.35rem 0.35rem 0;
 }
 
-.presentationOptions .activePresentation {
+.segmented .activeOption {
   background: var(--ink);
   color: white;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.3rem;
+}
+
+.representationStrip {
+  background: var(--surface);
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0 0 0.55rem;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.representationStrip button {
+  align-items: flex-start;
+  background: var(--surface-raised);
+  border-color: var(--border);
+  color: var(--muted);
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.08rem 0.35rem;
+  grid-template-columns: auto minmax(6rem, 12rem);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.representationStrip button > strong {
+  align-items: center;
+  background: var(--surface);
+  border-radius: 999px;
+  display: flex;
+  font-size: 0.62rem;
+  grid-row: 1 / span 2;
+  height: 1.3rem;
+  justify-content: center;
+  width: 1.3rem;
+}
+
+.representationStrip button > span {
+  color: var(--ink);
+  font-size: 0.65rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.representationStrip button > small {
+  font-size: 0.56rem;
+}
+
+.representationStrip .activeRepresentation {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.focusedStack .output {
+  max-height: none;
+}
+
+.focusedStack {
+  height: calc(100% - 3.2rem);
+  min-height: 14rem;
 }
 
 .card {
@@ -98,6 +183,18 @@
   border-radius: 0.75rem;
   min-width: 0;
   overflow: hidden;
+}
+
+.focusedCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.focusedCard .output {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chosen {
@@ -392,8 +489,8 @@
     text-align: left;
   }
 
-  .presentationToolbar {
-    align-items: flex-start;
-    flex-direction: column;
+  .presentationHint {
+    flex-basis: 100%;
+    text-align: left;
   }
 }

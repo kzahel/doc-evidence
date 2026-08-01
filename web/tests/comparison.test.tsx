@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -62,12 +62,15 @@ describe("comparison workspace", () => {
       diffMode: "differences",
       numericIndex: 0,
       textPresentationMode: "auto",
+      reviewMode: "focused",
+      comparisonView: "diff",
+      activeGroupId: null,
     });
   });
 
   it("collapses exact output and labels every contributing run", () => {
     wrapper(<OutputGroups data={pageGroups} />);
-    expect(screen.getByText(/3 cached extractor runs/)).toBeInTheDocument();
+    expect(screen.getByText(/3 cached runs/)).toBeInTheDocument();
     expect(screen.getByText("Identical output from 2 runs")).toBeInTheDocument();
     expect(screen.getByText("poppler")).toBeInTheDocument();
     expect(screen.getByText("ocrmypdf-tesseract")).toBeInTheDocument();
@@ -109,7 +112,7 @@ describe("comparison workspace", () => {
       "aria-pressed",
       "true",
     );
-    expect(screen.getByText(/Auto selected reading/)).toBeInTheDocument();
+    expect(screen.getByText(/Auto chose reading/)).toBeInTheDocument();
     expect(view.container.querySelector('pre[data-presentation="reading"]')).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Aligned" }));
@@ -121,6 +124,34 @@ describe("comparison workspace", () => {
 
     await user.click(screen.getByRole("button", { name: "Reading" }));
     expect(view.container.querySelector('pre[data-presentation="reading"]')).toBeInTheDocument();
+  });
+
+  it("switches between focused, stacked, and integrated comparison modes", async () => {
+    const user = userEvent.setup();
+    const view = wrapper(<OutputGroups data={pageGroups} />);
+
+    expect(screen.getByRole("button", { name: "Focused" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(view.container.querySelector('[data-review-mode="focused"]')).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /2 docling-standard/ }));
+    expect(screen.getByRole("heading", { name: "docling-standard" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Stacked" }));
+    expect(view.container.querySelector('[data-review-mode="stacked"]')).toBeInTheDocument();
+    expect(screen.getByText("Identical output from 2 runs")).toBeInTheDocument();
+
+    await user.click(
+      within(screen.getByRole("group", { name: "Review mode" })).getByRole("button", {
+        name: "Compare",
+      }),
+    );
+    expect(await screen.findByText("2 numeric discrepancies")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Extractor comparison" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Raw two-up" }));
+    expect(screen.getByLabelText("Raw extractor outputs")).toBeInTheDocument();
+    expect(view.container.querySelectorAll("[data-presentation]")).toHaveLength(2);
   });
 
   it("switches diff density, navigates numbers, and keeps the sides distinct", async () => {

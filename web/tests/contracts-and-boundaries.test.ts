@@ -48,6 +48,8 @@ describe("contracts and component boundaries", () => {
       baselineGroupId: "group:native",
       comparisonGroupId: "group:layout",
       fontScale: 1.2,
+      reviewMode: "focused",
+      comparisonView: "diff",
     });
     useWorkspaceStore.getState().setFontScale(1.3);
     expect(useWorkspaceStore.getState().fontScale).toBe(1.3);

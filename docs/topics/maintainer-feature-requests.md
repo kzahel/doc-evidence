@@ -2,8 +2,8 @@
 
 Topic: maintainer-feature-requests
 
-**Status:** Layout requests implemented; UI-triggered extraction execution is
-the remaining open request from the first live review.
+**Status:** Focused review-workspace revision in progress; UI-triggered
+extraction execution remains the next distinct product discussion.
 
 ## Purpose
 
@@ -15,6 +15,40 @@ Requests remain here after implementation so the original need, accepted
 behavior, and implementation status remain traceable.
 
 ## Open Requests
+
+### Bounded focused, stacked, and comparison review modes
+
+**Status:** IN PROGRESS — approved as a final Tactical 000 interaction
+revision.
+
+The source page must remain useful context while reviewing several extractor
+representations. Full extraction bodies should no longer form one unbounded
+document-height feed by default.
+
+The approved interaction is:
+
+- bound the source/extraction review area to the useful viewport and give each
+  side its own overflow behavior;
+- make Focused the default, with a compact representation selector and one
+  complete extraction body;
+- retain the current all-results flow as an explicit Stacked mode inside the
+  extraction pane;
+- move pairwise comparison into the extraction pane as a Compare mode instead
+  of placing it beneath every representation;
+- offer deterministic diff and raw two-up comparison views;
+- place raw outputs side by side when space permits and stack them when it
+  does not; and
+- keep text-presentation controls effective in every mode.
+
+### Prominent source-page navigation
+
+**Status:** IN PROGRESS — approved as a final Tactical 000 interaction
+revision.
+
+Page navigation belongs directly above the rendered source page. Previous and
+next controls must use prominent visible glyphs and labels, while the current
+page remains directly typeable and clearly shows the total page count. The
+control should stay available while the source pane scrolls.
 
 ### Trigger and monitor extraction from the application
 

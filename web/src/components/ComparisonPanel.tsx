@@ -123,6 +123,35 @@ function DiffView({
   );
 }
 
+function RawView({
+  baseline,
+  comparison,
+  presentation,
+}: {
+  baseline: OutputGroup;
+  comparison: OutputGroup;
+  presentation: ResolvedTextPresentation;
+}) {
+  return (
+    <div className={styles.rawGrid} aria-label="Raw extractor outputs">
+      {[
+        { group: baseline, label: "Baseline" },
+        { group: comparison, label: "Comparison" },
+      ].map(({ group, label }) => (
+        <article className={styles.rawCard} key={`${label}:${group.group_id}`}>
+          <header>
+            <span>{label}</span>
+            <strong>{group.runs.map((run) => run.extractor_id).join(" + ")}</strong>
+          </header>
+          <pre className={styles[presentation]} data-presentation={presentation}>
+            {group.text || "(No normalized text on this page)"}
+          </pre>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 interface Props {
   documentId: string;
   page: number;
@@ -136,6 +165,8 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
   const setGroups = useWorkspaceStore((state) => state.setComparisonGroups);
   const mode = useWorkspaceStore((state) => state.diffMode);
   const setMode = useWorkspaceStore((state) => state.setDiffMode);
+  const comparisonView = useWorkspaceStore((state) => state.comparisonView);
+  const setComparisonView = useWorkspaceStore((state) => state.setComparisonView);
   const selectedPresentation = useWorkspaceStore((state) => state.textPresentationMode);
   const presentation = resolveTextPresentation(
     selectedPresentation,
@@ -160,7 +191,7 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
   const query = useQuery({
     queryKey: ["comparison", request],
     queryFn: ({ signal }) => runtime.compare(request!, signal),
-    enabled: request !== null,
+    enabled: request !== null && comparisonView === "diff",
   });
 
   useEffect(() => {
@@ -178,16 +209,46 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
       <header>
         <div>
           <p className={styles.eyebrow}>Pairwise evidence</p>
-          <h2>Word and numeric comparison</h2>
+          <h2>Extractor comparison</h2>
           <p>Deterministic token alignment · no correctness winner is inferred</p>
         </div>
-        <div className={styles.mode}>
-          <button type="button" className={mode === "differences" ? styles.active : ""} onClick={() => setMode("differences")}>
-            Differences only
-          </button>
-          <button type="button" className={mode === "full" ? styles.active : ""} onClick={() => setMode("full")}>
-            Full aligned output
-          </button>
+        <div className={styles.headerControls}>
+          <div className={styles.mode} role="group" aria-label="Comparison view">
+            <button
+              aria-pressed={comparisonView === "diff"}
+              type="button"
+              className={comparisonView === "diff" ? styles.active : ""}
+              onClick={() => setComparisonView("diff")}
+            >
+              Diff
+            </button>
+            <button
+              aria-pressed={comparisonView === "raw"}
+              type="button"
+              className={comparisonView === "raw" ? styles.active : ""}
+              onClick={() => setComparisonView("raw")}
+            >
+              Raw two-up
+            </button>
+          </div>
+          {comparisonView === "diff" && (
+            <div className={styles.mode} role="group" aria-label="Diff density">
+              <button
+                type="button"
+                className={mode === "differences" ? styles.active : ""}
+                onClick={() => setMode("differences")}
+              >
+                Differences only
+              </button>
+              <button
+                type="button"
+                className={mode === "full" ? styles.active : ""}
+                onClick={() => setMode("full")}
+              >
+                Full aligned output
+              </button>
+            </div>
+          )}
         </div>
       </header>
       {groups.length < 2 ? (
@@ -246,9 +307,22 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
               </select>
             </label>
           </div>
-          {query.isLoading && <LoadingState label="Aligning extractor outputs" />}
-          {query.error && <FailureState title="Comparison failed" error={query.error} />}
-          {query.data && <DiffView result={query.data} presentation={presentation.mode} />}
+          {comparisonView === "raw" && baseline && comparison && (
+            <RawView
+              baseline={baseline}
+              comparison={comparison}
+              presentation={presentation.mode}
+            />
+          )}
+          {comparisonView === "diff" && query.isLoading && (
+            <LoadingState label="Aligning extractor outputs" />
+          )}
+          {comparisonView === "diff" && query.error && (
+            <FailureState title="Comparison failed" error={query.error} />
+          )}
+          {comparisonView === "diff" && query.data && (
+            <DiffView result={query.data} presentation={presentation.mode} />
+          )}
         </>
       )}
     </section>

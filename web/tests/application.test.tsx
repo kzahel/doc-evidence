@@ -33,6 +33,9 @@ describe("application states", () => {
       libraryCollapsed: false,
       sourcePanePercent: DEFAULT_SOURCE_PANE_PERCENT,
       textPresentationMode: "auto",
+      reviewMode: "focused",
+      comparisonView: "diff",
+      activeGroupId: null,
     });
   });
 
@@ -114,5 +117,40 @@ describe("application states", () => {
     expect(useWorkspaceStore.getState().sourcePanePercent).toBe(
       DEFAULT_SOURCE_PANE_PERCENT,
     );
+  });
+
+  it("keeps prominent buttons and direct entry in the source-page toolbar", async () => {
+    const user = userEvent.setup();
+    const fourPageDetail = { ...detail, page_count: 4 };
+    const pageData = Object.fromEntries(
+      [1, 2, 3, 4].map((page) => [
+        `${documentId}|${page}`,
+        { ...pageGroups, page, page_count: 4 },
+      ]),
+    );
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents: {
+          ...documents,
+          items: [{ ...documents.items[0]!, page_count: 4 }],
+        },
+        details: { [documentId]: fourPageDetail },
+        groups: pageData,
+      }),
+    );
+
+    const previous = await screen.findByRole("button", { name: "Previous page" });
+    const next = screen.getByRole("button", { name: "Next page" });
+    expect(previous).toBeDisabled();
+    expect(next).toBeEnabled();
+    await user.click(next);
+    expect(useWorkspaceStore.getState().page).toBe(2);
+
+    const input = screen.getByRole("spinbutton", { name: "Current page" });
+    await user.clear(input);
+    await user.type(input, "4{Enter}");
+    expect(useWorkspaceStore.getState().page).toBe(4);
+    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
   });
 });

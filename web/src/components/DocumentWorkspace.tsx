@@ -11,7 +11,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useRuntime } from "../api/RuntimeProvider";
 import { useWorkspaceStore } from "../state/workspaceStore";
 import { EmptyState, FailureState, LoadingState } from "./AsyncState";
-import { ComparisonPanel } from "./ComparisonPanel";
 import { OutputGroups } from "./OutputGroups";
 import styles from "./DocumentWorkspace.module.css";
 
@@ -37,6 +36,8 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
   const setSourcePanePercent = useWorkspaceStore((state) => state.setSourcePanePercent);
   const resetSourcePanePercent = useWorkspaceStore((state) => state.resetSourcePanePercent);
   const inspectionRef = useRef<HTMLElement>(null);
+  const pageInputRef = useRef<HTMLInputElement>(null);
+  const [pageDraft, setPageDraft] = useState(String(page));
   const documentQuery = useQuery({
     queryKey: ["document", documentId],
     queryFn: ({ signal }) => runtime.getDocument(documentId, signal),
@@ -55,6 +56,20 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
     enabled: renderable,
   });
   const imageUrl = useBlobUrl(renderQuery.data);
+
+  useEffect(() => {
+    setPageDraft(String(page));
+  }, [page]);
+
+  function commitPageDraft(draft = pageInputRef.current?.value ?? pageDraft) {
+    const pageCount = documentQuery.data?.page_count ?? 1;
+    const requested = Number(draft);
+    if (Number.isSafeInteger(requested) && requested >= 1 && requested <= pageCount) {
+      setPage(requested);
+    } else {
+      setPageDraft(String(page));
+    }
+  }
 
   function updatePaneFromPointer(clientX: number) {
     const bounds = inspectionRef.current?.getBoundingClientRect();
@@ -112,35 +127,6 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
             <code>{document.content_sha256.slice(0, 16)}…</code>
           </span>
         </div>
-        {renderable && (
-          <nav className={styles.pageNav} aria-label="Document pages">
-            <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              ←
-            </button>
-            <label>
-              Page
-              <input
-                aria-label="Current page"
-                min={1}
-                max={document.page_count ?? 1}
-                type="number"
-                value={page}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (value >= 1 && value <= (document.page_count ?? 1)) setPage(value);
-                }}
-              />
-              of {document.page_count ?? 1}
-            </label>
-            <button
-              type="button"
-              disabled={page >= (document.page_count ?? 1)}
-              onClick={() => setPage(page + 1)}
-            >
-              →
-            </button>
-          </nav>
-        )}
       </header>
       {document.warnings.length > 0 && (
         <details className={styles.warnings}>
@@ -171,7 +157,57 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
                 <p>Representation layer 2</p>
                 <h2>Rendered source page</h2>
               </div>
-              <span>144 DPI cached PNG</span>
+              <div className={styles.sourceTools}>
+                <span>144 DPI cached PNG</span>
+                <form
+                  className={styles.pageNav}
+                  aria-label="Document pages"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    commitPageDraft();
+                  }}
+                >
+                  <button
+                    aria-label="Previous page"
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    <span aria-hidden="true">←</span>
+                    <span>Previous</span>
+                  </button>
+                  <label>
+                    Page
+                    <input
+                      aria-label="Current page"
+                      inputMode="numeric"
+                      min={1}
+                      max={document.page_count ?? 1}
+                      ref={pageInputRef}
+                      type="number"
+                      value={pageDraft}
+                      onBlur={(event) => commitPageDraft(event.currentTarget.value)}
+                      onChange={(event) => setPageDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          commitPageDraft(event.currentTarget.value);
+                        }
+                      }}
+                    />
+                    <span>of {document.page_count ?? 1}</span>
+                  </label>
+                  <button
+                    aria-label="Next page"
+                    type="button"
+                    disabled={page >= (document.page_count ?? 1)}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    <span>Next</span>
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </form>
+              </div>
             </div>
             <div className={styles.pageFrame}>
               {renderQuery.isLoading && <LoadingState label="Rendering page" />}
@@ -220,9 +256,6 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
             {groupsQuery.data && <OutputGroups data={groupsQuery.data} />}
           </section>
         </section>
-      )}
-      {groupsQuery.data && (
-        <ComparisonPanel documentId={documentId} page={page} groups={groupsQuery.data.groups} />
       )}
     </main>
   );

@@ -480,3 +480,32 @@ The implementation landed in `797ddce`. Contract drift, TypeScript typecheck,
 Playwright pass against the private catalog exercised collapse/restore,
 pointer resize, keyboard reset, both manual text modes, and the narrow stacked
 layout with zero console errors.
+
+### Third maintainer review-workspace follow-up
+
+The second live review found that stacking every full representation in the
+document flow still made later versions hard to reach and left unused space
+below the rendered page. The page-step buttons were also effectively invisible
+because transparent buttons retained the global white button text.
+
+On 2026-08-01 the maintainer approved this final read-only interaction shape:
+
+- the desktop inspection region is height-bounded, with independently
+  scrollable source and extraction panes and sticky local controls;
+- Focused is the default extraction mode and shows one selected representation
+  beneath a compact horizontally scrollable representation selector;
+- Stacked explicitly restores all representation cards inside the bounded
+  extraction scroller;
+- Compare moves the existing pairwise review into the extraction pane and
+  offers deterministic Diff and Raw two-up views;
+- raw comparison uses responsive columns, stacking when the extraction pane
+  is too narrow;
+- the source-page navigator moves immediately above the rendered page with
+  visible previous/next buttons, a typeable page field, total count, and sticky
+  placement; and
+- text-layout selection, comparison identities, cache provenance, and source
+  immutability remain unchanged.
+
+This revision remains session-local and frontend-only. It adds no API routes,
+jobs, durable state, dependencies, or source/artifact writes. Extraction
+execution remains outside Tactical 000.

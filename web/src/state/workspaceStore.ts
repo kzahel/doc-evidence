@@ -4,13 +4,18 @@ import type { TextPresentationMode } from "../presentation/textPresentation";
 
 type DiffMode = "differences" | "full";
 export type FontScale = 1 | 1.2 | 1.3;
+export type ReviewMode = "focused" | "stacked" | "compare";
+export type ComparisonView = "diff" | "raw";
 
 interface WorkspaceState {
   selectedDocumentId: string | null;
   page: number;
   baselineGroupId: string | null;
   comparisonGroupId: string | null;
+  activeGroupId: string | null;
   diffMode: DiffMode;
+  reviewMode: ReviewMode;
+  comparisonView: ComparisonView;
   numericIndex: number;
   searchQuery: string;
   searchMode: "literal" | "fts";
@@ -22,7 +27,10 @@ interface WorkspaceState {
   selectDocument: (documentId: string | null, page?: number) => void;
   setPage: (page: number) => void;
   setComparisonGroups: (baseline: string | null, comparison: string | null) => void;
+  setActiveGroupId: (groupId: string | null) => void;
   setDiffMode: (mode: DiffMode) => void;
+  setReviewMode: (mode: ReviewMode) => void;
+  setComparisonView: (view: ComparisonView) => void;
   setNumericIndex: (index: number) => void;
   setSearch: (query: string, mode: "literal" | "fts") => void;
   setDocumentOffset: (offset: number) => void;
@@ -61,7 +69,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   page: initialNavigation.page,
   baselineGroupId: null,
   comparisonGroupId: null,
+  activeGroupId: null,
   diffMode: "differences",
+  reviewMode: "focused",
+  comparisonView: "diff",
   numericIndex: 0,
   searchQuery: "",
   searchMode: "literal",
@@ -76,10 +87,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       page,
       baselineGroupId: null,
       comparisonGroupId: null,
+      activeGroupId: null,
       numericIndex: 0,
     }),
   setPage: (page) =>
-    set({ page, baselineGroupId: null, comparisonGroupId: null, numericIndex: 0 }),
+    set({
+      page,
+      baselineGroupId: null,
+      comparisonGroupId: null,
+      activeGroupId: null,
+      numericIndex: 0,
+    }),
   setComparisonGroups: (baselineGroupId, comparisonGroupId) =>
     set({
       baselineGroupId,
@@ -89,7 +107,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
           : comparisonGroupId,
       numericIndex: 0,
     }),
+  setActiveGroupId: (activeGroupId) => set({ activeGroupId }),
   setDiffMode: (diffMode) => set({ diffMode }),
+  setReviewMode: (reviewMode) => set({ reviewMode }),
+  setComparisonView: (comparisonView) => set({ comparisonView }),
   setNumericIndex: (numericIndex) => set({ numericIndex }),
   setSearch: (searchQuery, searchMode) => set({ searchQuery, searchMode }),
   setDocumentOffset: (documentOffset) => set({ documentOffset }),

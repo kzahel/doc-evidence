@@ -7,7 +7,12 @@ import {
   type ResolvedTextPresentation,
   type TextPresentationMode,
 } from "../presentation/textPresentation";
-import { useWorkspaceStore } from "../state/workspaceStore";
+import {
+  useWorkspaceStore,
+  type ReviewMode,
+} from "../state/workspaceStore";
+import { ComparisonPanel } from "./ComparisonPanel";
+import { EmptyState } from "./AsyncState";
 import styles from "./OutputGroups.module.css";
 
 const categoryLabels = {
@@ -80,18 +85,25 @@ function GroupCard({
   group,
   index,
   presentation,
+  focused = false,
 }: {
   group: OutputGroup;
   index: number;
   presentation: ResolvedTextPresentation;
+  focused?: boolean;
 }) {
   const baseline = useWorkspaceStore((state) => state.baselineGroupId);
   const comparison = useWorkspaceStore((state) => state.comparisonGroupId);
   const setGroups = useWorkspaceStore((state) => state.setComparisonGroups);
+  const setReviewMode = useWorkspaceStore((state) => state.setReviewMode);
   const isBaseline = baseline === group.group_id;
   const isComparison = comparison === group.group_id;
   return (
-    <article className={`${styles.card} ${isBaseline || isComparison ? styles.chosen : ""}`}>
+    <article
+      className={`${styles.card} ${focused ? styles.focusedCard : ""} ${
+        isBaseline || isComparison ? styles.chosen : ""
+      }`}
+    >
       <header>
         <div>
           <span className={styles.index}>Representation {index + 1}</span>
@@ -105,16 +117,20 @@ function GroupCard({
           <button
             type="button"
             className={isBaseline ? styles.active : ""}
-            onClick={() =>
-              setGroups(group.group_id, isComparison ? baseline : comparison)
-            }
+            onClick={() => {
+              setGroups(group.group_id, isComparison ? baseline : comparison);
+              setReviewMode("compare");
+            }}
           >
             Baseline
           </button>
           <button
             type="button"
             className={isComparison ? styles.active : ""}
-            onClick={() => setGroups(isBaseline ? comparison : baseline, group.group_id)}
+            onClick={() => {
+              setGroups(isBaseline ? comparison : baseline, group.group_id);
+              setReviewMode("compare");
+            }}
           >
             Compare
           </button>
@@ -174,6 +190,10 @@ function GroupCard({
 
 export function OutputGroups({ data }: { data: PageGroups }) {
   const runCount = data.groups.reduce((total, group) => total + group.runs.length, 0);
+  const reviewMode = useWorkspaceStore((state) => state.reviewMode);
+  const setReviewMode = useWorkspaceStore((state) => state.setReviewMode);
+  const activeGroupId = useWorkspaceStore((state) => state.activeGroupId);
+  const setActiveGroupId = useWorkspaceStore((state) => state.setActiveGroupId);
   const selectedPresentation = useWorkspaceStore((state) => state.textPresentationMode);
   const setSelectedPresentation = useWorkspaceStore(
     (state) => state.setTextPresentationMode,
@@ -199,70 +219,160 @@ export function OutputGroups({ data }: { data: PageGroups }) {
       title: "Preserve spacing in monospace and scroll long lines horizontally",
     },
   ];
+  const reviewOptions: { label: string; mode: ReviewMode; title: string }[] = [
+    {
+      label: "Focused",
+      mode: "focused",
+      title: "Inspect one selected representation",
+    },
+    {
+      label: "Stacked",
+      mode: "stacked",
+      title: "Review every representation in one scrollable pane",
+    },
+    {
+      label: "Compare",
+      mode: "compare",
+      title: "Compare two selected representations",
+    },
+  ];
+  const activeGroup =
+    data.groups.find((group) => group.group_id === activeGroupId) ?? data.groups[0];
+
+  useEffect(() => {
+    if (activeGroup && activeGroup.group_id !== activeGroupId) {
+      setActiveGroupId(activeGroup.group_id);
+    }
+  }, [activeGroup, activeGroupId, setActiveGroupId]);
+
   return (
     <section className={styles.section} aria-label="Extractor representations">
-      <div className={styles.intro}>
-        <div>
-          <p className={styles.eyebrow}>Representation layer 5</p>
-          <h2>Normalized extractor text</h2>
+      <div className={styles.chrome}>
+        <div className={styles.intro}>
+          <div>
+            <p className={styles.eyebrow}>Representation layer 5</p>
+            <h2>Normalized extractor text</h2>
+          </div>
+          <p>
+            {runCount} cached run{runCount === 1 ? "" : "s"} · {data.groups.length} unique
+            representation{data.groups.length === 1 ? "" : "s"}. Cached only; agreement is not
+            correctness.
+          </p>
         </div>
-        <p>
-          {runCount} cached extractor run{runCount === 1 ? "" : "s"} · {data.groups.length} unique
-          representation{data.groups.length === 1 ? "" : "s"}. This view does not launch missing
-          extractors. Exact agreement saves review time; it does not establish correctness.
-        </p>
-      </div>
-      <div className={styles.presentationToolbar}>
-        <div>
-          <strong>Text layout</strong>
-          <span>
+        <div className={styles.workbenchToolbar}>
+          <div className={styles.toolbarGroup}>
+            <strong>View</strong>
+            <div className={styles.segmented} role="group" aria-label="Review mode">
+              {reviewOptions.map((option) => (
+                <button
+                  aria-pressed={reviewMode === option.mode}
+                  className={reviewMode === option.mode ? styles.activeOption : ""}
+                  disabled={option.mode === "compare" && data.groups.length < 2}
+                  key={option.mode}
+                  title={option.title}
+                  type="button"
+                  onClick={() => setReviewMode(option.mode)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.toolbarGroup}>
+            <strong>Text</strong>
+            <div className={styles.segmented} role="group" aria-label="Extraction text layout">
+              {options.map((option) => (
+                <button
+                  aria-pressed={selectedPresentation === option.mode}
+                  className={selectedPresentation === option.mode ? styles.activeOption : ""}
+                  key={option.mode}
+                  title={option.title}
+                  type="button"
+                  onClick={() => setSelectedPresentation(option.mode)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <span className={styles.presentationHint}>
             {selectedPresentation === "auto"
-              ? `Auto selected ${presentation.mode}: ${presentation.reason}.`
+              ? `Auto chose ${presentation.mode}: ${presentation.reason}.`
               : `${presentation.reason}.`}
           </span>
         </div>
-        <div className={styles.presentationOptions} role="group" aria-label="Extraction text layout">
-          {options.map((option) => (
-            <button
-              aria-pressed={selectedPresentation === option.mode}
-              className={selectedPresentation === option.mode ? styles.activePresentation : ""}
-              key={option.mode}
-              title={option.title}
-              type="button"
-              onClick={() => setSelectedPresentation(option.mode)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
       </div>
-      <div className={styles.stack}>
-        {data.groups.map((group, index) => (
-          <GroupCard
-            key={group.group_id}
-            group={group}
-            index={index}
-            presentation={presentation.mode}
-          />
-        ))}
-      </div>
-      {data.assertions.length > 0 && (
-        <section className={styles.assertions}>
-          <h3>Manually verified spot checks</h3>
-          <p>Sparse benchmark checks are focused evidence, not full-page accuracy scores.</p>
-          <ul>
-            {data.assertions.map((assertion) => (
-              <li key={`${assertion.extractor_id}:${assertion.assertion_id}`}>
-                <span className={assertion.passed ? styles.pass : styles.fail}>
-                  {assertion.passed ? "Pass" : "Miss"}
-                </span>
-                <strong>{assertion.extractor_id}</strong> · {assertion.assertion_id} · expected{" "}
-                <code>{String(assertion.expected)}</code>
-              </li>
+      <div className={styles.content} data-review-mode={reviewMode}>
+        {reviewMode === "focused" && data.groups.length > 0 && (
+          <>
+            <nav className={styles.representationStrip} aria-label="Representations">
+              {data.groups.map((group, index) => (
+                <button
+                  aria-pressed={activeGroup?.group_id === group.group_id}
+                  className={activeGroup?.group_id === group.group_id ? styles.activeRepresentation : ""}
+                  key={group.group_id}
+                  title={group.runs.map((run) => `${run.extractor_id} ${run.version_label}`).join(" · ")}
+                  type="button"
+                  onClick={() => setActiveGroupId(group.group_id)}
+                >
+                  <strong>{index + 1}</strong>
+                  <span>{group.runs.map((run) => run.extractor_id).join(" + ")}</span>
+                  {group.runs.length > 1 && <small>{group.runs.length} identical runs</small>}
+                </button>
+              ))}
+            </nav>
+            {activeGroup && (
+              <div className={`${styles.stack} ${styles.focusedStack}`}>
+                <GroupCard
+                  focused
+                  group={activeGroup}
+                  index={data.groups.indexOf(activeGroup)}
+                  presentation={presentation.mode}
+                />
+              </div>
+            )}
+          </>
+        )}
+        {reviewMode === "stacked" && (
+          <div className={styles.stack}>
+            {data.groups.map((group, index) => (
+              <GroupCard
+                key={group.group_id}
+                group={group}
+                index={index}
+                presentation={presentation.mode}
+              />
             ))}
-          </ul>
-        </section>
-      )}
+          </div>
+        )}
+        {reviewMode === "compare" && (
+          <ComparisonPanel
+            documentId={data.document_id}
+            page={data.page}
+            groups={data.groups}
+          />
+        )}
+        {data.groups.length === 0 && (
+          <EmptyState>No successful extractor output is cached for this page.</EmptyState>
+        )}
+        {data.assertions.length > 0 && (
+          <section className={styles.assertions}>
+            <h3>Manually verified spot checks</h3>
+            <p>Sparse benchmark checks are focused evidence, not full-page accuracy scores.</p>
+            <ul>
+              {data.assertions.map((assertion) => (
+                <li key={`${assertion.extractor_id}:${assertion.assertion_id}`}>
+                  <span className={assertion.passed ? styles.pass : styles.fail}>
+                    {assertion.passed ? "Pass" : "Miss"}
+                  </span>
+                  <strong>{assertion.extractor_id}</strong> · {assertion.assertion_id} · expected{" "}
+                  <code>{String(assertion.expected)}</code>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
     </section>
   );
 }
