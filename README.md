@@ -84,7 +84,9 @@ The approved implementation plan for the next boundary is
 [Tactical 001: durable extraction jobs and operational UI](docs/tactical/001-durable-extraction-jobs.md),
 owned by the living [library management](docs/topics/library-management.md)
 and [job architecture](docs/topics/job-architecture.md) topics.
-Implementation has not started.
+Implementation is in progress. Its first boundary provides platform app-home
+resolution, an atomic known-library registry, stable adopted-library identity,
+and ordinary startup from the last/default registered library.
 
 Read these first:
 
@@ -131,11 +133,16 @@ Install and build the local application from a source checkout:
 uv sync && npm ci --prefix web && npm run build --prefix web
 ```
 
-Launch it against an external case configuration:
+Register an external case configuration once, then launch the selected
+last/default library:
 
 ```sh
-uv run doc-evidence serve --config /path/to/case.yaml
+uv run doc-evidence library-register --config /path/to/case.yaml
+uv run doc-evidence serve
 ```
+
+An explicit `serve --config /path/to/case.yaml` remains available for
+automation and compatibility and does not modify the app registry.
 
 The launch command binds an ephemeral loopback port, opens a browser with an
 in-memory credential, removes the credential from the displayed URL, and
@@ -164,7 +171,10 @@ doc-evidence config-check --config PATH
 doc-evidence inventory --config PATH [COLLECTION ...]
 doc-evidence search --config PATH QUERY [--mode literal|fts]
 doc-evidence duplicates --config PATH
-doc-evidence serve --config PATH
+doc-evidence library-register --config PATH [--name NAME]
+doc-evidence libraries
+doc-evidence library-activate LIBRARY_ID [--default]
+doc-evidence serve [--config PATH]
 doc-evidence benchmark-check --suite PATH
 doc-evidence benchmark-run --config PATH --suite PATH
 doc-evidence benchmark-score --report PATH --review PATH

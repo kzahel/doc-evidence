@@ -27,3 +27,7 @@ class NotFoundError(DocEvidenceError):
 
 class RequestError(DocEvidenceError):
     """Raised when a bounded user request is invalid."""
+
+
+class ApplicationStateError(DocEvidenceError):
+    """Raised when application-home or library registry state is invalid."""

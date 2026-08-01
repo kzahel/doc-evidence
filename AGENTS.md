@@ -70,9 +70,8 @@ Before substantive work:
    overlap behavior.
 4. Read the active tactical under `docs/tactical/` before implementing its
    scope. `docs/tactical/000-read-only-library-comparison.md` is the implemented
-   read-only execution record. The approved next implementation plan is
-   `docs/tactical/001-durable-extraction-jobs.md`; implementation has not
-   started.
+   read-only execution record. The active implementation plan is
+   `docs/tactical/001-durable-extraction-jobs.md`.
 5. Read `docs/master-plan.md`, `docs/architecture.md`, and
    `docs/data-contracts.md` for the affected core boundary.
 6. Read `docs/benchmarking.md` for extractor/evaluation work and
@@ -224,10 +223,11 @@ integration gates. Tactical 000 retains its explicit maintainer-acceptance
 record, while the maintainer has selected durable extraction execution as the
 next product priority.
 
-`docs/tactical/001-durable-extraction-jobs.md` is the approved next scope but
-has not been started. Do not begin its implementation until the maintainer
-explicitly asks to proceed. Persistent review writes and Tauri packaging
-remain outside both implemented Tactical 000 and planned Tactical 001.
+`docs/tactical/001-durable-extraction-jobs.md` is in implementation after the
+maintainer explicitly authorized end-to-end execution. Application-home
+resolution, an atomic known-library registry, legacy-config adoption, and
+ordinary launch from the last/default library are the first landed boundary.
+Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits
 

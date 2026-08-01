@@ -4,9 +4,11 @@ Topic: library-management
 
 **Last updated:** 2026-08-01
 
-**Status:** Approved desktop-first architecture; the platform-neutral
-foundation is required by
-[Tactical 001](../tactical/001-durable-extraction-jobs.md). Native Tauri folder
+**Status:** Approved desktop-first architecture; its application-home,
+known-library registry, adopted-descriptor, and CLI activation foundation is
+implemented in the first slice of
+[Tactical 001](../tactical/001-durable-extraction-jobs.md). Unified library
+persistence and UI selection remain in progress. Native Tauri folder
 selection, packaging, and store relocation remain later tacticals.
 
 ## Purpose
@@ -372,3 +374,15 @@ separation, and the initial known-library web UI needed by the job system.
 Later tacticals own native Tauri creation/open/folder-picker flows,
 security-scoped bookmarks, library/store relocation, managed-store deletion
 and recovery, portable library export/import polish, and multi-window behavior.
+
+## Implementation Evidence
+
+The first Tactical 001 slice implements the frozen resolver precedence,
+including the absolute `DOC_EVIDENCE_HOME` override and platform defaults. It
+adds a bounded, strictly parsed, atomically replaced `app-state.json`; stable
+library IDs; app-managed versioned wrapper descriptors for adopted legacy
+configs; last/default activation; source-root overlap rejection; CLI
+registration and inspection; and ordinary `serve` startup from the selected
+library. Adoption does not rewrite the external configuration or relocate its
+store. Malformed registry or descriptor identity disagreement blocks opening
+without silently replacing state.

@@ -164,6 +164,13 @@ def load_config(path: str | Path) -> AppConfig:
                 "derived store and source collection may not overlap: "
                 f"store={store}, collection={collection.id}:{collection.source}"
             )
+    for index, left in enumerate(collections):
+        for right in collections[index + 1 :]:
+            if _paths_overlap(left.source, right.source):
+                raise ConfigError(
+                    "source collections may not overlap: "
+                    f"{left.id}:{left.source}, {right.id}:{right.source}"
+                )
 
     raw_extraction = raw.get("extraction", {})
     extraction = ExtractionConfig(

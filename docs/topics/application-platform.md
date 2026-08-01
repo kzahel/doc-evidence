@@ -2,9 +2,8 @@
 
 Topic: application-platform
 
-**Status:** Tactical 000 implemented and validated. The maintainer selected
-and approved Tactical 001 as the next write-enabled plan; implementation has
-not started.
+**Status:** Tactical 000 implemented and validated. Tactical 001 implementation
+is in progress; its application-home and known-library foundation has landed.
 
 ## Scope
 
@@ -191,6 +190,14 @@ Tactical 000 now provides:
 - TanStack Query server state, narrow Zustand interaction state, and CSS
   Modules; and
 - a production-like `doc-evidence serve --config PATH` composition.
+
+Tactical 001 now additionally provides the first desktop-shaped ownership
+boundary: deterministic platform app-home resolution, an absolute
+`DOC_EVIDENCE_HOME` override, an atomic bounded `app-state.json`, app-managed
+wrapper descriptors for adopted legacy configurations, stable library IDs,
+last/default activation, and ordinary `serve` startup without a repeated
+configuration path. Explicit `--config` launch remains a registry-neutral
+compatibility path.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

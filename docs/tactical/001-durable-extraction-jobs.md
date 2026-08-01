@@ -8,7 +8,8 @@ Topic: application-platform
 
 Topic: maintainer-feature-requests
 
-**Status:** Approved implementation plan; implementation not started.
+**Status:** Implementation in progress; application-home and known-library
+foundation implemented.
 
 ## Motivation and User-Visible Outcome
 
@@ -843,4 +844,21 @@ separate decisions driven by measured need.
 
 ## Execution Record
 
-Not started.
+### Slice 1 — application home and known libraries
+
+Implemented the platform-neutral desktop ownership foundation:
+
+- deterministic app-home resolution in the frozen override/desktop/platform
+  order;
+- absolute `DOC_EVIDENCE_HOME` isolation;
+- strictly parsed, bounded, atomic `app-state.json` persistence;
+- stable library identity and app-managed wrapper descriptors for adopted
+  external configurations;
+- last/default activation and ordinary startup without repeated `--config`;
+- registry-neutral explicit `serve --config` compatibility;
+- trusted CLI registration/list/activation operations; and
+- parent/child source-root overlap rejection.
+
+Focused application-home, malformed-state, identity-disagreement, isolation,
+configuration, CLI, Ruff, and Pyright validation pass. Unified persistence,
+library-scoped UI/API, jobs, workers, and operational views remain in progress.

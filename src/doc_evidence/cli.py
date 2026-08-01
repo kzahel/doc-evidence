@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from doc_evidence import __version__
+from doc_evidence.app_home import LibraryRegistry, resolve_application_home
 from doc_evidence.benchmark import load_suite, run_benchmark, score_review
 from doc_evidence.catalog import list_duplicate_groups, search_catalog
 from doc_evidence.config import load_config
@@ -150,7 +151,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "serve",
         help="Launch the authenticated local library and comparison application.",
     )
-    serve.add_argument("--config", required=True, type=Path)
+    serve.add_argument(
+        "--config",
+        type=Path,
+        help="Explicit compatibility config; omit to open the last/default library.",
+    )
     serve.add_argument(
         "--frontend-dir",
         type=Path,
@@ -161,7 +166,104 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not open a browser (the launch token is never printed).",
     )
+
+    library_register = subparsers.add_parser(
+        "library-register",
+        help="Register an existing external configuration in the application home.",
+    )
+    library_register.add_argument("--config", required=True, type=Path)
+    library_register.add_argument("--name")
+    library_register.add_argument(
+        "--no-default",
+        action="store_true",
+        help="Register without replacing the default library selection.",
+    )
+    library_register.add_argument("--json", action="store_true")
+
+    libraries = subparsers.add_parser(
+        "libraries",
+        help="List libraries known to the resolved application home.",
+    )
+    libraries.add_argument("--json", action="store_true")
+
+    library_activate = subparsers.add_parser(
+        "library-activate",
+        help="Select a registered library for ordinary startup.",
+    )
+    library_activate.add_argument("library_id")
+    library_activate.add_argument("--default", action="store_true")
+    library_activate.add_argument("--json", action="store_true")
     return parser
+
+
+def _registry() -> LibraryRegistry:
+    return LibraryRegistry(resolve_application_home())
+
+
+def _print_library_register(
+    config_path: Path,
+    name: str | None,
+    make_default: bool,
+    as_json: bool,
+) -> int:
+    registry = _registry()
+    descriptor = registry.register_config(
+        config_path,
+        name=name,
+        make_default=make_default,
+    )
+    output = {
+        **descriptor.value(),
+        "descriptor_path": str(descriptor.descriptor_path),
+        "application_home": str(registry.home.root),
+        "application_home_source": registry.home.source,
+    }
+    if as_json:
+        print(json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Registered library {descriptor.name}: {descriptor.library_id}")
+        print(f"Descriptor: {descriptor.descriptor_path}")
+        print(f"Application home: {registry.home.root}")
+    return 0
+
+
+def _print_libraries(as_json: bool) -> int:
+    registry = _registry()
+    state = registry.load()
+    output = {
+        "application_home": str(registry.home.root),
+        "application_home_source": registry.home.source,
+        **state.value(),
+    }
+    if as_json:
+        print(json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Application home: {registry.home.root}")
+        for library in state.libraries:
+            markers = []
+            if library.library_id == state.default_library_id:
+                markers.append("default")
+            if library.library_id == state.last_library_id:
+                markers.append("last")
+            suffix = f" ({', '.join(markers)})" if markers else ""
+            print(f"{library.library_id}  {library.name}{suffix}")
+        print(f"{len(state.libraries)} library/libraries")
+    return 0
+
+
+def _print_library_activate(library_id: str, make_default: bool, as_json: bool) -> int:
+    registry = _registry()
+    state = registry.activate(library_id, make_default=make_default)
+    output = {
+        "library_id": library_id,
+        "default_library_id": state.default_library_id,
+        "last_library_id": state.last_library_id,
+    }
+    if as_json:
+        print(json.dumps(output, indent=2, sort_keys=True))
+    else:
+        print(f"Activated library: {library_id}")
+    return 0
 
 
 def _print_config(config_path: Path, as_json: bool) -> int:
@@ -361,11 +463,30 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _print_benchmark(args.config, args.suite, args.json)
         if args.command == "benchmark-score":
             return _print_score(args.report, args.review, args.json)
+        if args.command == "library-register":
+            return _print_library_register(
+                args.config,
+                args.name,
+                not args.no_default,
+                args.json,
+            )
+        if args.command == "libraries":
+            return _print_libraries(args.json)
+        if args.command == "library-activate":
+            return _print_library_activate(
+                args.library_id,
+                args.default,
+                args.json,
+            )
         if args.command == "serve":
             from doc_evidence.server import serve_local
 
+            if args.config is not None:
+                config = load_config(args.config)
+            else:
+                _known, _descriptor, config = _registry().selected()
             return serve_local(
-                load_config(args.config),
+                config,
                 frontend_dir=args.frontend_dir,
                 open_browser=not args.no_open,
             )

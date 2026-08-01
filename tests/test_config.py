@@ -89,6 +89,28 @@ surprise: true
             with self.assertRaisesRegex(ConfigError, "Additional properties"):
                 load_config(config_path)
 
+    def test_rejects_overlapping_source_collections(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            (root / "documents" / "child").mkdir(parents=True)
+            config_path = root / "case.yaml"
+            config_path.write_text(
+                """
+schema_version: 1
+collections:
+  - id: parent
+    source: documents
+  - id: child
+    source: documents/child
+store:
+  path: derived
+""".lstrip(),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ConfigError, "collections may not overlap"):
+                load_config(config_path)
+
 
 if __name__ == "__main__":
     unittest.main()
