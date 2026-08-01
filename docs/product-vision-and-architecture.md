@@ -27,6 +27,11 @@ the product boundary. The core must remain useful for financial,
 administrative, legal, research, and personal-record collections without
 embedding tax rules.
 
+Living application and comparison status is maintained in
+[Application platform](topics/application-platform.md) and
+[Comparison and review workspace](topics/comparison-review-workspace.md).
+Bounded implementation plans live under [`tactical/`](tactical/README.md).
+
 ## Product Principles
 
 ### Local first and offline capable
@@ -192,6 +197,11 @@ The exact Python web framework is intentionally not yet locked. The selected
 framework must support typed request/response models, OpenAPI generation,
 streaming job progress, test clients, and controlled process lifetime. An
 implementation spike can compare the smallest suitable ASGI options.
+
+The first bounded application tactical proposes FastAPI and Pydantic 2 after
+reviewing the directly relevant `atpiano` sibling. That choice becomes
+established implementation evidence only after the vertical slice lands and
+is reviewed. See [References](references.md).
 
 ### Shared frontend/backend types
 
@@ -567,8 +577,10 @@ desktop packaging follow this milestone.
 
 ### Open implementation decisions
 
-- The exact Python ASGI framework and persistence library.
-- The frontend build tool and server-data cache layer.
+- Validate Tactical 000's proposed FastAPI/Pydantic adapter and choose the
+  durable-workspace persistence library before the first write-enabled slice.
+- Validate Tactical 000's proposed Vite and TanStack Query frontend
+  composition through the first vertical slice.
 - Whether catalog and durable workspace state begin in separate database files
   or separate logical stores with a tested split path.
 - The first diff algorithms and alignment libraries.

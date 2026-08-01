@@ -4,6 +4,9 @@ This document describes the existing extraction and evidence core. The
 approved application direction, user experience, deployment path, and
 Python/React boundary are defined in
 [Product vision and application architecture](product-vision-and-architecture.md).
+Current implementation posture is maintained in
+[Application platform](topics/application-platform.md), and the closest
+reviewed sibling precedent is recorded in [References](references.md).
 
 ## System Boundary
 

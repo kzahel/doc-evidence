@@ -98,6 +98,8 @@ The milestone is intentionally read-oriented at first. Running arbitrary new
 pipelines, structured candidate observations, domain packs, and Tauri
 packaging follow after the library and comparison vertical slice is useful.
 See [Product vision and application architecture](product-vision-and-architecture.md).
+The bounded first implementation plan is
+[Tactical 000](tactical/000-read-only-library-comparison.md).
 
 ### Phase 3 — Candidate understanding
 
@@ -141,7 +143,8 @@ See [Product vision and application architecture](product-vision-and-architectur
 
 ## Open Implementation Decisions
 
-- The exact Python ASGI framework and persistence library.
+- Validate Tactical 000's proposed FastAPI/Pydantic adapter; choose the
+  durable-workspace persistence library before the first write-enabled slice.
 - The physical split between rebuildable catalog data and durable workspace
   state.
 - The initial versioned text, numeric, and spatial diff implementations.

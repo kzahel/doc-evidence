@@ -21,14 +21,22 @@ React/TypeScript interface for browsing the cached library, comparing
 extractor output, and preserving durable human review decisions. The same
 contracts should support future offline Tauri packaging.
 
+The first proposed implementation slice is
+[Tactical 000: read-only library and extractor comparison](docs/tactical/000-read-only-library-comparison.md).
+It deliberately stops before durable review writes, pipeline execution, and
+desktop packaging.
+
 Read these first:
 
 1. [Product vision and application architecture](docs/product-vision-and-architecture.md)
 2. [Master plan](docs/master-plan.md)
-3. [Architecture](docs/architecture.md)
-4. [Data contracts](docs/data-contracts.md)
-5. [Benchmark plan](docs/benchmarking.md)
-6. [Operations](docs/operations.md)
+3. [Living topics](docs/topics/README.md)
+4. [Implementation tacticals](docs/tactical/README.md)
+5. [Architecture](docs/architecture.md)
+6. [Data contracts](docs/data-contracts.md)
+7. [Benchmark plan](docs/benchmarking.md)
+8. [References](docs/references.md)
+9. [Operations](docs/operations.md)
 
 ## Core Principles
 
@@ -65,6 +73,9 @@ bootstrap script after their system dependencies are available:
 ```sh
 ./scripts/bootstrap-phase2-extractors.sh
 ```
+
+The first-class web application is planned but not implemented. Do not expect
+the proposed `serve` command or `web/` workspace until Tactical 000 lands.
 
 ## Commands
 
