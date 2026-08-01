@@ -184,8 +184,9 @@ record is in
 
 ## Recommended Next Work
 
-Run the maintainer live-review gate for
-[Tactical 000](../tactical/000-read-only-library-comparison.md). If the
-interaction is accepted, write a separate Tactical 001 for the durable
-workspace/review-event boundary; if not, revise the read-only interaction
-before introducing persistent state.
+Use the [maintainer feature-request backlog](maintainer-feature-requests.md) to
+complete the live-review gate for
+[Tactical 000](../tactical/000-read-only-library-comparison.md). The next
+tactical may focus on explicit extraction execution if that is now more
+valuable than durable review events; either path must define its write and
+persistence boundaries before implementation.

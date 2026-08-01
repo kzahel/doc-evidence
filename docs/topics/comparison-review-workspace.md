@@ -161,6 +161,9 @@ and OCR appears only when an OCR run has already been cached.
 
 ## Recommended Next Work
 
-Have the maintainer review the live comparison density, terminology, and
-directional-diff semantics. Only after explicit acceptance should Tactical 001
-design persistent review decisions and portable export.
+Use the [maintainer feature-request backlog](maintainer-feature-requests.md) to
+finish the live interaction review and choose the next bounded slice. Current
+open requests include collapsible navigation, resizable evidence panes,
+proportional versus alignment-preserving extraction text modes, and explicit
+extraction execution. Persistent review decisions and portable export remain
+separate write-enabled work.

@@ -25,7 +25,9 @@ Before substantive work:
 1. Read `README.md`.
 2. Read `docs/product-vision-and-architecture.md`.
 3. Read `docs/topics/application-platform.md` and
-   `docs/topics/comparison-review-workspace.md` for application work.
+   `docs/topics/comparison-review-workspace.md` for application work. Consult
+   `docs/topics/maintainer-feature-requests.md` before planning or changing
+   the live review interface.
 4. Read the active tactical under `docs/tactical/` before implementing its
    scope. The current implemented slice awaiting maintainer acceptance is
    `docs/tactical/000-read-only-library-comparison.md`.

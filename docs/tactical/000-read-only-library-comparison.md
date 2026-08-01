@@ -354,7 +354,7 @@ shape.
 
 ## Execution Record
 
-Implementation was approved and completed on 2026-08-01 in three reviewable
+Implementation was approved and completed on 2026-08-01 in five reviewable
 slices:
 
 1. `1bb234b` — framework-independent read-only application services,
@@ -370,7 +370,9 @@ slices:
    and documentation; and
 4. `a067754` — maintainer-review follow-up adding global typography scaling,
    distinct comparison-side enforcement, direction swapping, cached-run
-   coverage labels, and explicit image-only/OCR limitations.
+   coverage labels, and explicit image-only/OCR limitations; and
+5. `5c77220` — named Small, Normal, and Large typography presets with Normal
+   as the 120% default and no percentages exposed in the interface.
 
 ### Automated evidence
 

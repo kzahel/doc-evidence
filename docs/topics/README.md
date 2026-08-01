@@ -36,4 +36,6 @@ Do not create one topic per small change. A topic should normally include:
   representation labels, equivalent-output grouping, versioned diffs,
   numeric discrepancy priority, review semantics, and the path from the
   generated calibration page to the first-class product interface.
-
+- [Maintainer feature requests](maintainer-feature-requests.md) — live-review
+  requests, their status, and the accepted behavior that future tacticals must
+  preserve.
