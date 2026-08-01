@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "doc-evidence"
-version = "0.3.1"
+version = "0.4.0"
 description = "Local-first document evidence indexing and extraction pipeline"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -12,8 +12,16 @@ authors = [
   { name = "Kyle Graehl" },
 ]
 dependencies = [
+  "fastapi>=0.116,<1",
   "jsonschema>=4.23,<5",
+  "pydantic>=2.12,<3",
   "PyYAML>=6,<7",
+  "uvicorn>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
 ]
 
 [project.scripts]

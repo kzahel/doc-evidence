@@ -11,6 +11,9 @@ __pycache__/
 .mypy_cache/
 build/
 dist/
+web/node_modules/
+web/dist/
+web/coverage/
 
 # Generated document stores, databases, models, and benchmark runs.
 .doc-evidence-data/

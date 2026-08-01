@@ -19,3 +19,11 @@ class CatalogError(DocEvidenceError):
 
 class BenchmarkError(DocEvidenceError):
     """Raised when a benchmark suite or extractor run is invalid."""
+
+
+class NotFoundError(DocEvidenceError):
+    """Raised when a requested product identity is not present."""
+
+
+class RequestError(DocEvidenceError):
+    """Raised when a bounded user request is invalid."""

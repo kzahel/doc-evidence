@@ -145,6 +145,22 @@ def _build_parser() -> argparse.ArgumentParser:
     score.add_argument("--report", required=True, type=Path)
     score.add_argument("--review", required=True, type=Path)
     score.add_argument("--json", action="store_true")
+
+    serve = subparsers.add_parser(
+        "serve",
+        help="Launch the authenticated local library and comparison application.",
+    )
+    serve.add_argument("--config", required=True, type=Path)
+    serve.add_argument(
+        "--frontend-dir",
+        type=Path,
+        help="Override the built frontend directory (defaults to web/dist).",
+    )
+    serve.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Do not open a browser (the launch token is never printed).",
+    )
     return parser
 
 
@@ -345,6 +361,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _print_benchmark(args.config, args.suite, args.json)
         if args.command == "benchmark-score":
             return _print_score(args.report, args.review, args.json)
+        if args.command == "serve":
+            from doc_evidence.server import serve_local
+
+            return serve_local(
+                load_config(args.config),
+                frontend_dir=args.frontend_dir,
+                open_browser=not args.no_open,
+            )
     except DocEvidenceError as error:
         print(f"doc-evidence: {error}", file=sys.stderr)
         return 1
