@@ -940,3 +940,36 @@ bounded-log, retention, registry-security, and worker-launch-failure tests
 pass. The full baseline passes with 41 Python tests, Ruff, Pyright, and package
 build. Persistent job/event rows, scheduler leasing and recovery, API/runtime
 operations, and operational views remain in progress.
+
+### Slice 5 — durable job repository and bounded scheduler
+
+Implemented durable lifecycle ownership above supervised attempts:
+
+- database schema version 2 with library-scoped jobs, many-key idempotency
+  mappings, technical attempts, monotonically sequenced bounded events, batch
+  headers, and the existing persisted scheduler lease;
+- current-source resolution by active document identity and configured
+  collection alias, with path containment and SHA-256 verification before
+  enqueue and again before execution;
+- exact adapter descriptor/run-key preparation without launching extraction,
+  validated canonical cache fulfillment, immutable execution snapshots,
+  active-request coalescing, and payload-checked idempotency keys;
+- centrally checked claim, start, heartbeat, finish, cancellation, explicit
+  retry, interruption, recovered-publication, projection-failure, and artifact
+  integrity transitions in short SQLite transactions;
+- one advisory process lock and persisted heartbeat lease per library, plus a
+  bounded dispatcher with two light, one OCR, and one model-heavy default
+  slots and priority aging;
+- clean stop propagation through the attempt cancellation boundary and
+  process-tree termination before stale-startup reconciliation;
+- one delayed automatic retry only for an explicit transient failure class;
+  and
+- startup recovery in which a valid canonical artifact wins over a missing
+  final state update, while a successful row with a missing/invalid artifact
+  becomes an explicit integrity failure.
+
+Focused cache-hit, many-key idempotency, active coalescing, source-change,
+fresh-worker, event-history, lease release, competing-scheduler lock,
+published-artifact recovery, missing-success integrity, and bounded automatic
+retry tests pass. Application/API contracts, batch creation policy, and
+operational views remain in progress.

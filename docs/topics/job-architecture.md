@@ -6,8 +6,9 @@ Topic: job-architecture
 
 **Status:** Tactical 001 implementation in progress. Unified persistence,
 atomic catalog membership generations, extractor registration, supervised
-attempt execution, and atomic artifact publication are implemented; durable
-jobs, recovery, and operational UI remain in progress.
+attempt execution, atomic artifact publication, durable job persistence, and
+the bounded per-library scheduler are implemented; application contracts and
+operational UI remain in progress.
 
 ## Purpose
 
@@ -73,6 +74,18 @@ is written beneath an attempt workspace, contract-validated, hashed and
 fsynced, then renamed on the same filesystem into the canonical run location.
 Malformed or conflicting output is retained as attempt evidence and is never
 shown as canonical success.
+
+The implemented scheduler retains only active thread/cancellation handles in
+memory. Queue intent, immutable execution snapshots, attempts, outcomes, and
+bounded ordered events live in SQLite. An advisory store-local process lock
+and persisted lease prevent two schedulers from claiming one library. Claims
+use small `light`, `ocr`, and `model_heavy` limits, explicit document work has
+higher base priority, and hourly aging prevents batch starvation. Enqueue
+verifies a current source alias by SHA-256, resolves the exact run identity,
+reuses a validated canonical artifact, or coalesces an identical active
+request. At startup, stale process groups are terminated and active rows are
+reconciled: a valid canonical publication wins, while missing successful
+artifacts become integrity failures.
 
 ## One Active SQLite Database Per Library
 

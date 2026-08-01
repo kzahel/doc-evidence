@@ -84,3 +84,22 @@ rewrite prior run output; it creates a new run identity.
 
 The runtime configuration schema is packaged with the Python distribution and
 tested for byte equality with the documented schema under `schemas/`.
+
+## Durable Extraction Jobs
+
+Operational extraction records are schema-versioned SQLite contracts inside
+the owning library's `doc-evidence.sqlite`, not extractor artifacts. A job
+retains stable library, document/content, extractor, settings, exact run/cache
+identity, execution mode, priority/resource class, lifecycle, result, and
+bounded failure fields. Its execution JSON is an immutable server-produced
+snapshot; client requests cannot supply commands, paths, executables, or
+environment variables.
+
+Each technical attempt retains its number, scheduler and process identity,
+deadline/heartbeat, execution snapshot, attempt/log location, exit and
+publication outcome, manifest identity, and structured failure. Per-job event
+sequence numbers increase monotonically even when the oldest diagnostic rows
+are pruned. Full process logs remain bounded files. A `cache_hit` is a
+successful job outcome without a worker attempt; a technical retry adds an
+attempt to the same logical job; fresh verification is a distinct logical
+request under the same deterministic run identity.

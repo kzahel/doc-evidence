@@ -19,7 +19,7 @@ from doc_evidence.util import hash_json, isoformat_z
 if TYPE_CHECKING:
     from doc_evidence.inventory import DocumentRecord, InventoryResult
 
-DATABASE_SCHEMA_VERSION = 1
+DATABASE_SCHEMA_VERSION = 2
 BUSY_TIMEOUT_MS = 5_000
 
 
@@ -250,6 +250,149 @@ def _migration_1(connection: sqlite3.Connection) -> None:
     )
 
 
+def _migration_2(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        BEGIN IMMEDIATE;
+
+        CREATE TABLE job_batches (
+            batch_id TEXT PRIMARY KEY,
+            library_id TEXT NOT NULL,
+            selection_json TEXT NOT NULL,
+            policy_json TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (
+                status IN (
+                    'preflighting', 'queued', 'running', 'succeeded',
+                    'partially_failed', 'failed', 'cancelled'
+                )
+            ),
+            requested_count INTEGER NOT NULL CHECK (requested_count >= 0),
+            child_count INTEGER NOT NULL DEFAULT 0 CHECK (child_count >= 0),
+            cache_hit_count INTEGER NOT NULL DEFAULT 0
+                CHECK (cache_hit_count >= 0),
+            succeeded_count INTEGER NOT NULL DEFAULT 0
+                CHECK (succeeded_count >= 0),
+            failed_count INTEGER NOT NULL DEFAULT 0 CHECK (failed_count >= 0),
+            cancelled_count INTEGER NOT NULL DEFAULT 0
+                CHECK (cancelled_count >= 0),
+            created_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT
+        );
+
+        CREATE TABLE jobs (
+            job_id TEXT PRIMARY KEY,
+            library_id TEXT NOT NULL,
+            batch_id TEXT REFERENCES job_batches(batch_id) ON DELETE SET NULL,
+            idempotency_key TEXT,
+            request_kind TEXT NOT NULL CHECK (request_kind = 'extraction'),
+            document_id TEXT NOT NULL,
+            content_sha256 TEXT NOT NULL
+                REFERENCES content_objects(content_sha256),
+            extractor_id TEXT NOT NULL,
+            cache_key TEXT NOT NULL,
+            settings_json TEXT NOT NULL,
+            execution_json TEXT NOT NULL,
+            execution_mode TEXT NOT NULL CHECK (
+                execution_mode IN ('reuse_or_execute', 'fresh_verification')
+            ),
+            run_key TEXT,
+            priority INTEGER NOT NULL,
+            resource_class TEXT NOT NULL CHECK (
+                resource_class IN ('light', 'ocr', 'model_heavy')
+            ),
+            state TEXT NOT NULL CHECK (
+                state IN (
+                    'queued', 'starting', 'running', 'cancelling',
+                    'succeeded', 'failed', 'cancelled', 'interrupted'
+                )
+            ),
+            outcome TEXT,
+            queue_reason TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+            automatic_retry_count INTEGER NOT NULL DEFAULT 0
+                CHECK (automatic_retry_count BETWEEN 0 AND 1),
+            cancellation_requested INTEGER NOT NULL DEFAULT 0
+                CHECK (cancellation_requested IN (0, 1)),
+            active_attempt_id TEXT,
+            result_run_id TEXT,
+            result_artifact_path TEXT,
+            failure_class TEXT,
+            error_summary TEXT,
+            created_at TEXT NOT NULL,
+            queued_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            updated_at TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX jobs_idempotency_idx
+            ON jobs(library_id, idempotency_key)
+            WHERE idempotency_key IS NOT NULL;
+        CREATE INDEX jobs_queue_idx
+            ON jobs(state, priority DESC, queued_at, job_id);
+        CREATE INDEX jobs_content_idx
+            ON jobs(content_sha256, extractor_id, created_at DESC);
+        CREATE INDEX jobs_cache_idx
+            ON jobs(cache_key, execution_mode, created_at DESC);
+
+        CREATE TABLE job_request_keys (
+            library_id TEXT NOT NULL,
+            idempotency_key TEXT NOT NULL,
+            job_id TEXT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+            request_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (library_id, idempotency_key)
+        );
+
+        CREATE TABLE job_attempts (
+            attempt_id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+            attempt_number INTEGER NOT NULL CHECK (attempt_number >= 1),
+            state TEXT NOT NULL CHECK (
+                state IN (
+                    'starting', 'running', 'succeeded', 'failed',
+                    'cancelled', 'timeout', 'interrupted'
+                )
+            ),
+            scheduler_instance_id TEXT NOT NULL,
+            worker_pid INTEGER,
+            process_group_id INTEGER,
+            heartbeat_at TEXT,
+            deadline_at TEXT NOT NULL,
+            execution_json TEXT NOT NULL,
+            attempt_path TEXT,
+            exit_code INTEGER,
+            publication_outcome TEXT,
+            artifact_manifest_sha256 TEXT,
+            failure_class TEXT,
+            error_summary TEXT,
+            started_at TEXT NOT NULL,
+            completed_at TEXT,
+            UNIQUE(job_id, attempt_number)
+        );
+        CREATE INDEX job_attempts_active_idx
+            ON job_attempts(state, heartbeat_at);
+
+        CREATE TABLE job_events (
+            job_id TEXT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+            sequence INTEGER NOT NULL CHECK (sequence >= 1),
+            event_type TEXT NOT NULL,
+            stage TEXT NOT NULL,
+            progress_current INTEGER,
+            progress_total INTEGER,
+            detail_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (job_id, sequence)
+        );
+
+        INSERT INTO schema_migrations (version, applied_at)
+        VALUES (2, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+        PRAGMA user_version = 2;
+        COMMIT;
+        """
+    )
+
+
 def _migrate(connection: sqlite3.Connection) -> None:
     version = int(connection.execute("PRAGMA user_version").fetchone()[0])
     if version > DATABASE_SCHEMA_VERSION:
@@ -260,6 +403,14 @@ def _migrate(connection: sqlite3.Connection) -> None:
     if version == 0:
         try:
             _migration_1(connection)
+        except sqlite3.Error as error:
+            if connection.in_transaction:
+                connection.rollback()
+            raise CatalogError(f"cannot migrate library database: {error}") from error
+        version = 1
+    if version == 1:
+        try:
+            _migration_2(connection)
         except sqlite3.Error as error:
             if connection.in_transaction:
                 connection.rollback()
@@ -546,6 +697,41 @@ class LibraryDatabase:
                 "SELECT active_generation_id FROM library_metadata WHERE singleton = 1"
             ).fetchone()
             return str(row[0]) if row is not None and row[0] is not None else None
+        finally:
+            connection.close()
+
+    def register_run_sidecars(
+        self,
+        *,
+        store: Path,
+        content_sha256: str,
+        expected_run_id: str,
+    ) -> None:
+        """Project one already-published canonical run into stable tables."""
+
+        connection = self.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            _register_run_sidecars(
+                connection,
+                store=store,
+                content_sha256=content_sha256,
+            )
+            row = connection.execute(
+                """
+                SELECT status FROM extraction_runs
+                WHERE content_sha256 = ? AND run_id = ?
+                """,
+                (content_sha256, expected_run_id),
+            ).fetchone()
+            if row is None or str(row["status"]) != "ok":
+                raise CatalogError("published extraction run could not be projected")
+            connection.commit()
+        except (sqlite3.Error, CatalogError) as error:
+            connection.rollback()
+            if isinstance(error, CatalogError):
+                raise
+            raise CatalogError(f"cannot register extraction run: {error}") from error
         finally:
             connection.close()
 

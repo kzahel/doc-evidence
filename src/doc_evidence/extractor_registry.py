@@ -100,6 +100,14 @@ class ExtractorExecution:
     deterministic: bool
 
 
+@dataclass(frozen=True)
+class PreparedExtraction:
+    execution: ExtractorExecution
+    descriptor: dict[str, Any]
+    run_key: str
+    run_id: str
+
+
 _LANGUAGE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{1,15}$")
 
 
@@ -312,4 +320,56 @@ class ExtractorRegistry:
             timeout_seconds=spec.default_timeout_seconds,
             resource_class=spec.resource_class,
             deterministic=spec.deterministic,
+        )
+
+    def prepare(
+        self,
+        *,
+        extractor_id: str,
+        media_type: str,
+        settings: dict[str, Any],
+        extraction_config_hash: str,
+        default_languages: tuple[str, ...] = (),
+    ) -> PreparedExtraction:
+        """Resolve the exact canonical identity without launching extraction."""
+
+        execution = self.execution(
+            extractor_id=extractor_id,
+            media_type=media_type,
+            settings=settings,
+            default_languages=default_languages,
+        )
+        from doc_evidence.docling_adapter import DoclingExtractor
+        from doc_evidence.marker_adapter import MarkerExtractor
+        from doc_evidence.ocrmypdf_adapter import OcrMyPdfExtractor
+        from doc_evidence.poppler import PopplerExtractor
+        from doc_evidence.tesseract_raster_adapter import TesseractRasterExtractor
+
+        languages = tuple(str(item) for item in execution.settings.get("languages", []))
+        if extractor_id == "poppler":
+            adapter = PopplerExtractor(
+                extraction_config_hash,
+                timeout_seconds=execution.timeout_seconds,
+            )
+        elif extractor_id == "ocrmypdf-tesseract":
+            adapter = OcrMyPdfExtractor(
+                languages=languages,
+                timeout_seconds=execution.timeout_seconds,
+            )
+        elif extractor_id == "tesseract-raster":
+            adapter = TesseractRasterExtractor(
+                languages=languages,
+                timeout_seconds=execution.timeout_seconds,
+            )
+        elif extractor_id == "docling-standard":
+            adapter = DoclingExtractor(timeout_seconds=execution.timeout_seconds)
+        elif extractor_id == "marker-fast":
+            adapter = MarkerExtractor(timeout_seconds=execution.timeout_seconds)
+        else:  # pragma: no cover - execution() rejects unknown identifiers
+            raise RequestError(f"unknown extractor: {extractor_id}")
+        return PreparedExtraction(
+            execution=execution,
+            descriptor=dict(adapter.descriptor),
+            run_key=adapter.run_key,
+            run_id=adapter.run_id,
         )

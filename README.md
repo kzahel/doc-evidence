@@ -43,8 +43,10 @@ The delivery sequence is deliberate:
 2. **In progress:** desktop-style application home, remembered libraries, and
    unified per-library persistence are implemented. The typed extractor
    registry, private worker protocol, supervised process trees, validated
-   staging, and atomic artifact publication are also implemented; the durable
-   queue, recovery, and operational UI continue in Tactical 001.
+   staging, atomic artifact publication, durable queue, scheduler lease,
+   bounded resource dispatcher, cancellation, and restart reconciliation are
+   also implemented; API contracts and operational UI continue in Tactical
+   001.
 3. **Following product slice:** durable human review events and portable review
    state, kept separate from regenerable extractor output.
 4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
@@ -95,7 +97,11 @@ carry explicit library identity, with known-library selection and collection
 settings in the shared UI. Extractor capabilities and bounded settings now
 come from a server-owned registry, and extraction attempts run in supervised
 private process groups before validated output is atomically published into a
-canonical content-addressed run.
+canonical content-addressed run. Schema-versioned jobs, attempts, events, and
+batches now live beside the library catalog, with idempotent/coalesced enqueue,
+cache fulfillment, a process-locked per-library scheduler, priority aging,
+resource limits, cancellation, one bounded transient retry, and startup
+reconciliation.
 
 Read these first:
 

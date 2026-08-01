@@ -236,6 +236,10 @@ are the third landed boundary.
 The typed extractor registry, private supervised worker protocol, exact-source
 recheck, bounded process-tree execution, staged validation, and atomic
 canonical artifact publication are the fourth landed boundary.
+Schema-versioned jobs/attempts/events, exact cache fulfillment, idempotent and
+coalesced enqueue, process-locked scheduler leasing, priority aging, bounded
+resource dispatch, cancellation, one transient retry, and restart/integrity
+reconciliation are the fifth landed boundary.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits
