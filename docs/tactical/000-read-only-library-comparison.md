@@ -354,7 +354,7 @@ shape.
 
 ## Execution Record
 
-Implementation was approved and completed on 2026-08-01 in five reviewable
+Implementation was approved and completed on 2026-08-01 in six reviewable
 slices:
 
 1. `1bb234b` — framework-independent read-only application services,
@@ -372,7 +372,9 @@ slices:
    distinct comparison-side enforcement, direction swapping, cached-run
    coverage labels, and explicit image-only/OCR limitations; and
 5. `5c77220` — named Small, Normal, and Large typography presets with Normal
-   as the 120% default and no percentages exposed in the interface.
+   as the 120% default and no percentages exposed in the interface; and
+6. `797ddce` — collapsible library navigation, accessible source/output
+   resizing, and Auto, Reading, and Aligned extraction-text presentation.
 
 ### Automated evidence
 
@@ -382,7 +384,7 @@ slices:
   source immutability, exact grouping, and numeric replacements.
 - Pyright reports zero errors and `uv build` succeeds.
 - Checked OpenAPI and generated TypeScript/client drift checks pass.
-- TypeScript typecheck passes; 12 frontend tests pass; the Vite production
+- TypeScript typecheck passes; 18 frontend tests pass; the Vite production
   build succeeds.
 - The dependency boundary checks confirm that application/comparison modules
   do not import FastAPI and product components do not contain endpoint paths,
@@ -403,6 +405,11 @@ configuration without copying private data into this repository:
 - a representative literal query returned 14 page-level matches;
 - differences-only/full switching, numeric navigation, baseline/comparison
   swapping, and the narrow stacked layout passed in headless Playwright;
+- the final headless Playwright layout pass confirmed that collapsing the
+  library increased the evidence workspace from 1,378 to 1,742 pixels at the
+  tested viewport, pointer dragging changed the source share from 45% to 58%,
+  Home restored 45%, Aligned preserved lines with horizontal overflow,
+  Reading restored wrapping, and the narrow stacked layout hid the divider;
 - raw artifacts, including a valid zero-byte stderr artifact, opened in a
   bounded sandboxed preview with a download option; and
 - an aggregate SHA-256 digest over every configured private source file was
@@ -467,3 +474,9 @@ Tactical 000 with these frozen decisions:
 This follow-up adds no API routes, jobs, persistent state, new dependencies,
 or source/artifact mutations. Component tests and headless Playwright must
 cover the interactions at desktop and narrow widths.
+
+The implementation landed in `797ddce`. Contract drift, TypeScript typecheck,
+18 frontend tests, and the production build pass. A background/headless
+Playwright pass against the private catalog exercised collapse/restore,
+pointer resize, keyboard reset, both manual text modes, and the narrow stacked
+layout with zero console errors.

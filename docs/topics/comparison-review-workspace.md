@@ -159,11 +159,17 @@ not launch missing extractors.
 Image-only PDFs now receive a visible explanation that native text is empty
 and OCR appears only when an OCR run has already been cached.
 
+The final layout follow-up adds a collapsible library rail and an accessible
+resizable source/output split. Extraction and diff text share Auto, Reading,
+and Aligned presentation: Reading wraps in a proportional font, Aligned
+preserves whitespace without wrapping and scrolls horizontally, and Auto
+shows the result of a bounded deterministic spacing/table heuristic while
+remaining manually overridable.
+
 ## Recommended Next Work
 
 Use the [maintainer feature-request backlog](maintainer-feature-requests.md) to
-finish the live interaction review and choose the next bounded slice. Current
-open requests include collapsible navigation, resizable evidence panes,
-proportional versus alignment-preserving extraction text modes, and explicit
-extraction execution. Persistent review decisions and portable export remain
-separate write-enabled work.
+finish the live interaction review and choose the next bounded slice. The
+layout requests are implemented; explicit extraction execution is the
+remaining open maintainer request. Persistent review decisions and portable
+export remain separate write-enabled work.

@@ -171,6 +171,11 @@ presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;
 all rem-based application typography and spacing respond together.
 
+The same session-local Zustand boundary now owns library collapse, the bounded
+source/output split, and extraction-text presentation. The accessible desktop
+separator supports pointer and keyboard adjustment without adding backend or
+durable state; narrow evidence layouts remain stacked.
+
 Deep links use the SHA-256 document identity rather than a source path. The
 catalog and document-detail contract provide the reverse mapping to every
 `collection_id`/`relative_path` occurrence. This keeps links stable across

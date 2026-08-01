@@ -2,8 +2,8 @@
 
 Topic: maintainer-feature-requests
 
-**Status:** Active backlog captured from the first live review of the
-read-only document library and comparison workspace.
+**Status:** Layout requests implemented; UI-triggered extraction execution is
+the remaining open request from the first live review.
 
 ## Purpose
 
@@ -41,58 +41,34 @@ Opening a document must continue to be passive. Heavy extraction should start
 only from an explicit user action or an explicitly configured batch policy.
 Source documents remain immutable.
 
+## Implemented or Clarified Requests
+
 ### Collapsible navigation sidebar
 
-**Status:** IN PROGRESS — authorized as the final Tactical 000 layout pass.
+**Status:** IMPLEMENTED in `797ddce`.
 
-The document-library sidebar should be collapsible and expandable so the
-source page and extraction comparison can use more horizontal space. The
-collapsed state must retain a clear control for restoring the sidebar.
-
-The implementation should decide and test:
-
-- whether the preference is session-local or durable;
-- the useful collapsed representation, if any; and
-- keyboard access and focus behavior for collapse and restore.
+The expanded library collapses to a narrow labeled rail with an explicit
+restore control. The state is session-local, keyboard accessible, expanded by
+default, and becomes a compact horizontal rail at narrow widths.
 
 ### Extraction text presentation modes
 
-**Status:** IN PROGRESS — authorized as the final Tactical 000 layout pass.
+**Status:** IMPLEMENTED in `797ddce`.
 
-Extraction output should support both:
-
-1. a proportional-font reading mode for ordinary prose, with normal wrapping;
-   and
-2. a monospace alignment mode for forms, tables, statements, or output where
-   spaces and columns carry meaning.
-
-Monospace mode should offer a no-wrap presentation with a horizontal
-scrollbar instead of forcing long aligned rows onto new lines. If wrapping is
-also useful in monospace mode, wrapping should be an explicit presentation
-choice rather than an unavoidable side effect.
-
-The application may recommend a mode automatically when deterministic
-evidence suggests that column alignment matters, but automatic selection is
-advisory. The user must always be able to override it. A future tactical should
-define and test the heuristic before calling it automatic detection; possible
-signals include repeated multi-space columns, aligned numeric tokens, fixed
-line lengths, and extractor-provided table/layout metadata.
+Auto, Reading, and Aligned modes apply to normalized output and pairwise diff
+text. Reading uses a proportional font with wrapping. Aligned uses monospace,
+preserves whitespace, disables wrapping, and exposes horizontal scrolling.
+Auto uses bounded repeated-spacing and table-delimiter signals, displays its
+resolved choice and reason, and always permits a manual override.
 
 ### Resizable source and extraction panes
 
-**Status:** IN PROGRESS — authorized as the final Tactical 000 layout pass.
+**Status:** IMPLEMENTED in `797ddce`.
 
-The divider between the rendered source document and extracted/comparison
-content should be draggable so the user can allocate space according to the
-current document. The layout needs sensible minimum widths, keyboard-accessible
-adjustment, and a quick way to return to the default split.
-
-The implementation should decide whether the split is remembered for the
-session, per document, or globally. It should continue to work when the
-sidebar is collapsed and at the responsive breakpoints supported by the
-application.
-
-## Implemented or Clarified Requests
+The desktop source/output divider supports pointer dragging, arrow-key
+adjustment, a bounded 28–72% source share, and Home or double-click reset to
+45%. The split is session-local. The handle disappears when the evidence panes
+stack at narrow widths.
 
 ### Named global typography presets
 
