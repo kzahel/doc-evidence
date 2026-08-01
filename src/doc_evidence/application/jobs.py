@@ -221,6 +221,7 @@ class ExtractorCapabilityRecord:
     version_label: str | None
     resource_class: ResourceClass
     settings_schema: dict[str, Any]
+    default_settings: dict[str, Any]
     default_timeout_seconds: int
     deterministic: bool
     output_kinds: tuple[str, ...]

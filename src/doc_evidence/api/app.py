@@ -125,6 +125,7 @@ def _extractor_capability(record: ExtractorCapabilityRecord) -> ExtractorCapabil
         version_label=record.version_label,
         resource_class=record.resource_class,
         settings_schema=record.settings_schema,
+        default_settings=record.default_settings,
         default_timeout_seconds=record.default_timeout_seconds,
         deterministic=record.deterministic,
         output_kinds=list(record.output_kinds),

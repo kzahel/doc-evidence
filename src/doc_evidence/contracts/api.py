@@ -262,6 +262,7 @@ class ExtractorCapability(ContractModel):
     version_label: str | None
     resource_class: Literal["light", "ocr", "model_heavy"]
     settings_schema: dict[str, Any]
+    default_settings: dict[str, Any]
     default_timeout_seconds: int = Field(ge=1)
     deterministic: bool
     output_kinds: list[str]

@@ -24,6 +24,13 @@ function supportsLanguages(extractor: ExtractorCapability): boolean {
   return typeof properties === "object" && properties !== null && "languages" in properties;
 }
 
+function defaultLanguages(extractor: ExtractorCapability): string {
+  const value = extractor.default_settings.languages;
+  return Array.isArray(value) && value.every((item) => typeof item === "string")
+    ? value.join("+")
+    : "eng";
+}
+
 export function ExtractionPanel({
   documentId,
   onRepresentationReady,
@@ -58,7 +65,7 @@ export function ExtractionPanel({
       if (!libraryId) throw new Error("No active library");
       const languageValue = languages[extractor.extractor_id]?.trim();
       const settings = supportsLanguages(extractor)
-        ? { languages: (languageValue || "eng").split(/[+,\s]+/).filter(Boolean) }
+        ? { languages: (languageValue || defaultLanguages(extractor)).split(/[+,\s]+/).filter(Boolean) }
         : {};
       return runtime.createExtraction(
         libraryId,
@@ -160,7 +167,7 @@ export function ExtractionPanel({
                         OCR languages
                         <input
                           aria-label={`${extractor.display_name} languages`}
-                          value={languages[extractor.extractor_id] ?? "eng"}
+                          value={languages[extractor.extractor_id] ?? defaultLanguages(extractor)}
                           onChange={(event) =>
                             setLanguages((current) => ({ ...current, [extractor.extractor_id]: event.target.value }))
                           }

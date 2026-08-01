@@ -877,6 +877,11 @@
             "title": "Category",
             "type": "string"
           },
+          "default_settings": {
+            "additionalProperties": true,
+            "title": "Default Settings",
+            "type": "object"
+          },
           "default_timeout_seconds": {
             "minimum": 1.0,
             "title": "Default Timeout Seconds",
@@ -1000,6 +1005,7 @@
           "version_label",
           "resource_class",
           "settings_schema",
+          "default_settings",
           "default_timeout_seconds",
           "deterministic",
           "output_kinds",

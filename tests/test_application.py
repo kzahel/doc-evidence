@@ -311,6 +311,7 @@ class ApplicationIntegrationTest(unittest.TestCase):
         self.assertTrue(poppler["document_supported"])
         self.assertTrue(poppler["cached"])
         self.assertIsNotNone(poppler["run_key"])
+        self.assertEqual(poppler["default_settings"], {})
 
         enqueue_headers = {**self.headers, "Idempotency-Key": "api-cache-hit"}
         created = self.client.post(

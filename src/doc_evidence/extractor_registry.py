@@ -305,6 +305,40 @@ class ExtractorRegistry:
             raise RequestError(
                 f"extractor {extractor_id} does not support media type {media_type}"
             )
+        normalized = self._normalize_settings(
+            spec=spec,
+            settings=settings,
+            default_languages=default_languages,
+        )
+        return ExtractorExecution(
+            extractor_id=extractor_id,
+            settings=normalized,
+            timeout_seconds=spec.default_timeout_seconds,
+            resource_class=spec.resource_class,
+            deterministic=spec.deterministic,
+        )
+
+    def default_settings(
+        self,
+        *,
+        extractor_id: str,
+        default_languages: tuple[str, ...] = (),
+    ) -> dict[str, Any]:
+        """Resolve the settings used when a caller supplies no overrides."""
+
+        return self._normalize_settings(
+            spec=self.spec(extractor_id),
+            settings={},
+            default_languages=default_languages,
+        )
+
+    @staticmethod
+    def _normalize_settings(
+        *,
+        spec: ExtractorSpec,
+        settings: dict[str, Any],
+        default_languages: tuple[str, ...],
+    ) -> dict[str, Any]:
         allowed = set(spec.settings_schema["properties"])
         if set(settings) - allowed:
             raise RequestError("extractor settings contain unsupported fields")
@@ -324,13 +358,7 @@ class ExtractorRegistry:
             ):
                 raise RequestError("extractor languages are invalid")
             normalized["languages"] = raw_languages
-        return ExtractorExecution(
-            extractor_id=extractor_id,
-            settings=normalized,
-            timeout_seconds=spec.default_timeout_seconds,
-            resource_class=spec.resource_class,
-            deterministic=spec.deterministic,
-        )
+        return normalized
 
     def prepare(
         self,

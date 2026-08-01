@@ -275,6 +275,46 @@ describe("application states", () => {
     });
   });
 
+  it("submits the library's resolved extractor defaults", async () => {
+    const user = userEvent.setup();
+    const extractors = {
+      ...extractorCapabilities,
+      items: extractorCapabilities.items.map((item) =>
+        item.extractor_id === "ocrmypdf-tesseract"
+          ? {
+              ...item,
+              dependencies: [{ name: "ocrmypdf", available: true, version: "17.8", reason: null }],
+              available: true,
+              unavailable_reason: null,
+              run_key: "ocr-default-key",
+              run_id: "ocrmypdf-tesseract:default",
+            }
+          : item,
+      ),
+    };
+    const runtime = new FixtureRuntime({
+      workspace,
+      documents,
+      details: { [documentId]: detail },
+      groups: { [`${documentId}|1`]: pageGroups },
+      extractors,
+      jobCreation: {
+        schema_version: 1,
+        disposition: "created",
+        job: { ...runningJob, extractor_id: "ocrmypdf-tesseract" },
+      },
+    });
+    const create = vi.spyOn(runtime, "createExtraction");
+    renderApp(runtime);
+
+    expect(await screen.findByLabelText("OCRmyPDF + Tesseract languages")).toHaveValue("eng+deu");
+    await user.click(screen.getByRole("button", { name: "Run extraction" }));
+    expect(create.mock.calls[0]?.[1]).toMatchObject({
+      extractor_id: "ocrmypdf-tesseract",
+      settings: { languages: ["eng", "deu"] },
+    });
+  });
+
   it("filters activity and exposes cancellation, lease, attempts, and events", async () => {
     const user = userEvent.setup();
     const runtime = new FixtureRuntime({

@@ -740,6 +740,10 @@ class LocalExtractionJobs:
         records: list[ExtractorCapabilityRecord] = []
         for capability in self.registry.capabilities():
             spec = capability.spec
+            default_settings = self.registry.default_settings(
+                extractor_id=spec.extractor_id,
+                default_languages=self.config.languages,
+            )
             document_supported = (
                 source.media_type in spec.supported_media_types
                 if source is not None
@@ -781,6 +785,7 @@ class LocalExtractionJobs:
                     version_label=capability.version_label,
                     resource_class=spec.resource_class,
                     settings_schema=spec.settings_schema,
+                    default_settings=default_settings,
                     default_timeout_seconds=spec.default_timeout_seconds,
                     deterministic=spec.deterministic,
                     output_kinds=spec.output_kinds,

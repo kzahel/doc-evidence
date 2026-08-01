@@ -1022,6 +1022,10 @@ export interface components {
              * @enum {string}
              */
             category: "native_text" | "ocr_preprocessing" | "layout_parser" | "other";
+            /** Default Settings */
+            default_settings: {
+                [key: string]: unknown;
+            };
             /** Default Timeout Seconds */
             default_timeout_seconds: number;
             /** Dependencies */
