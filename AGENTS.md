@@ -73,9 +73,11 @@ pages, and benchmark runs remain untracked.
 
 ## Current Phase
 
-Phase 1 implements the read-only Poppler-backed inventory, content-addressed
-artifacts, duplicate detection, schema-valid manifests, rebuildable SQLite/FTS
-catalog, and search commands. It reconciled successfully against the initial
-private 2023 tax corpus on 2026-08-01 and is operationally validated. The next
-development phase is the OCR and layout-extractor benchmark; do not select a
-heavyweight default without measured results.
+Phases 1 and 2 implement the read-only Poppler-backed inventory,
+content-addressed artifacts, duplicate detection, SQLite/FTS catalog, search,
+OCRmyPDF/Tesseract, Docling and Marker adapters, private benchmark suites,
+disagreement flags, local review packs, and per-class human scorecards. Phase 1
+reconciled against the initial private 2023 tax corpus on 2026-08-01. Phase 2
+calibration is now accumulating reviewed evidence. Do not select or retire a
+heavyweight expert from agreement metrics or an under-supported aggregate
+score.

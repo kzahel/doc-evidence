@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/doc-evidence/review.schema.json",
+  "title": "doc-evidence human benchmark review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suite_id", "benchmark_run_id", "reviewer", "ratings"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "suite_id": { "type": "string" },
+    "benchmark_run_id": { "type": "string" },
+    "reviewer": { "type": "string" },
+    "created_at": { "type": ["string", "null"] },
+    "ratings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "document_id",
+          "document_class",
+          "page",
+          "extractor_id",
+          "reviewed",
+          "text_accuracy",
+          "numeric_fidelity",
+          "reading_order",
+          "contains_invented_values",
+          "notes"
+        ],
+        "properties": {
+          "document_id": { "type": "string" },
+          "document_class": { "type": "string" },
+          "page": { "type": "integer", "minimum": 1 },
+          "extractor_id": { "type": "string" },
+          "reviewed": { "type": "boolean" },
+          "text_accuracy": { "$ref": "#/$defs/nullable_rating" },
+          "numeric_fidelity": { "$ref": "#/$defs/nullable_rating" },
+          "reading_order": { "$ref": "#/$defs/nullable_rating" },
+          "table_structure": { "oneOf": [{ "$ref": "#/$defs/rating" }, { "type": "null" }] },
+          "contains_invented_values": { "type": "boolean" },
+          "notes": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "rating": { "type": "integer", "minimum": 0, "maximum": 4 },
+    "nullable_rating": { "oneOf": [{ "$ref": "#/$defs/rating" }, { "type": "null" }] }
+  }
+}

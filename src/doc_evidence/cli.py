@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from doc_evidence import __version__
+from doc_evidence.benchmark import load_suite, run_benchmark, score_review
 from doc_evidence.catalog import list_duplicate_groups, search_catalog
 from doc_evidence.config import load_config
 from doc_evidence.errors import DocEvidenceError
@@ -24,6 +25,7 @@ EXTERNAL_TOOLS = (
     "ocrmypdf",
     "tesseract",
     "qpdf",
+    "llama-server",
 )
 
 
@@ -38,6 +40,14 @@ def _doctor_report() -> dict[str, object]:
             fts5_available = True
     finally:
         connection.close()
+    tools = {name: shutil.which(name) for name in EXTERNAL_TOOLS}
+    repository_root = Path(__file__).parents[2]
+    for name, relative in (
+        ("docling", ".extractors/docling/bin/docling"),
+        ("marker_single", ".extractors/marker/bin/marker_single"),
+    ):
+        local = repository_root / relative
+        tools[name] = str(local.resolve()) if local.is_file() else shutil.which(name)
     return {
         "doc_evidence_version": __version__,
         "python": platform.python_version(),
@@ -46,7 +56,7 @@ def _doctor_report() -> dict[str, object]:
             "version": sqlite3.sqlite_version,
             "fts5_available": fts5_available,
         },
-        "tools": {name: shutil.which(name) for name in EXTERNAL_TOOLS},
+        "tools": tools,
     }
 
 
@@ -112,6 +122,29 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     duplicates.add_argument("--config", required=True, type=Path)
     duplicates.add_argument("--json", action="store_true")
+
+    suite_check = subparsers.add_parser(
+        "benchmark-check",
+        help="Validate and hash a private benchmark-suite YAML file.",
+    )
+    suite_check.add_argument("--suite", required=True, type=Path)
+    suite_check.add_argument("--json", action="store_true")
+
+    benchmark = subparsers.add_parser(
+        "benchmark-run",
+        help="Run extractors, compare outputs, and build a local review pack.",
+    )
+    benchmark.add_argument("--config", required=True, type=Path)
+    benchmark.add_argument("--suite", required=True, type=Path)
+    benchmark.add_argument("--json", action="store_true")
+
+    score = subparsers.add_parser(
+        "benchmark-score",
+        help="Score a human review by extractor and document class.",
+    )
+    score.add_argument("--report", required=True, type=Path)
+    score.add_argument("--review", required=True, type=Path)
+    score.add_argument("--json", action="store_true")
     return parser
 
 
@@ -214,6 +247,60 @@ def _print_duplicates(config_path: Path, as_json: bool) -> int:
     return 0
 
 
+def _print_benchmark_check(suite_path: Path, as_json: bool) -> int:
+    suite, suite_hash = load_suite(suite_path)
+    output = {
+        "suite_id": suite["suite_id"],
+        "suite_hash": suite_hash,
+        "documents": len(suite["documents"]),
+        "extractors": suite["extractors"],
+    }
+    if as_json:
+        print(json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Benchmark suite valid: {suite['suite_id']}")
+        print(f"Suite hash: {suite_hash}")
+        print(f"Documents: {len(suite['documents'])}")
+        print("Extractors: " + ", ".join(suite["extractors"]))
+    return 0
+
+
+def _print_benchmark(config_path: Path, suite_path: Path, as_json: bool) -> int:
+    result = run_benchmark(load_config(config_path), suite_path)
+    output = {
+        "benchmark_run_id": result.run_id,
+        "run_dir": str(result.run_dir),
+        "report": str(result.report_path),
+        "review_template": str(result.review_path),
+        "review_html": str(result.html_path),
+        "summary": result.summary,
+    }
+    if as_json:
+        print(json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Benchmark complete: {result.run_id}")
+        print(f"Report: {result.report_path}")
+        print(f"Review UI: {result.html_path}")
+        for key, value in result.summary.items():
+            print(f"  {key}: {value}")
+    return 1 if result.summary["extractor_failures"] else 0
+
+
+def _print_score(report_path: Path, review_path: Path, as_json: bool) -> int:
+    output_path, scorecard = score_review(report_path, review_path)
+    if as_json:
+        print(json.dumps(scorecard, indent=2, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Scorecard: {output_path}")
+        for item in scorecard["scorecards"]:
+            print(
+                f"  {item['document_class']} / {item['extractor_id']}: "
+                f"{item['combined_mean']:.3f} across {item['reviewed_pages']} page(s) — "
+                f"{item['recommendation']}"
+            )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     try:
@@ -252,6 +339,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         if args.command == "duplicates":
             return _print_duplicates(args.config, args.json)
+        if args.command == "benchmark-check":
+            return _print_benchmark_check(args.suite, args.json)
+        if args.command == "benchmark-run":
+            return _print_benchmark(args.config, args.suite, args.json)
+        if args.command == "benchmark-score":
+            return _print_score(args.report, args.review, args.json)
     except DocEvidenceError as error:
         print(f"doc-evidence: {error}", file=sys.stderr)
         return 1

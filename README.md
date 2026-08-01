@@ -10,10 +10,11 @@ facts do not belong in this Git repository.
 
 ## Status
 
-Phase 1 deterministic inventory is implemented. The tool validates YAML case
-configuration, inventories and hashes configured collections, extracts PDF
-metadata and embedded text through Poppler, caches content-addressed artifacts,
-detects duplicates, builds a SQLite/FTS catalog, and searches page text.
+Phases 1 and 2 are implemented. In addition to deterministic inventory,
+content-addressed Poppler extraction, duplicate detection, and SQLite/FTS
+search, the tool can run OCRmyPDF/Tesseract, Docling, and Marker as isolated
+experts; preserve each raw output; flag page- and number-level disagreements;
+and generate a local human-calibration review pack and scorecard.
 
 Read these first:
 
@@ -21,7 +22,7 @@ Read these first:
 2. [Architecture](docs/architecture.md)
 3. [Data contracts](docs/data-contracts.md)
 4. [Benchmark plan](docs/benchmarking.md)
-5. [Phase 1 operations](docs/operations.md)
+5. [Operations](docs/operations.md)
 
 ## Core Principles
 
@@ -52,9 +53,16 @@ The diagnostic command reports which external tools are currently available:
 uv run doc-evidence doctor --json
 ```
 
+Optional Docling and Marker environments can be created with the pinned local
+bootstrap script after their system dependencies are available:
+
+```sh
+./scripts/bootstrap-phase2-extractors.sh
+```
+
 ## Commands
 
-The exact CLI is still a contract under development. The intended shape is:
+Current commands:
 
 ```text
 doc-evidence doctor
@@ -62,10 +70,14 @@ doc-evidence config-check --config PATH
 doc-evidence inventory --config PATH [COLLECTION ...]
 doc-evidence search --config PATH QUERY [--mode literal|fts]
 doc-evidence duplicates --config PATH
+doc-evidence benchmark-check --suite PATH
+doc-evidence benchmark-run --config PATH --suite PATH
+doc-evidence benchmark-score --report PATH --review PATH
 ```
 
-`inventory` includes the Phase 1 Poppler extraction step. OCR, advanced layout
-parsers, benchmarking commands, and semantic observations remain later phases.
+`inventory` includes the Phase 1 Poppler extraction step. `benchmark-run`
+invokes only the experts named by a private suite. It never treats agreement
+as truth or changes a production extraction policy automatically.
 
 ## Configuration
 
@@ -101,3 +113,10 @@ The catalog is a rebuildable snapshot of the collections selected by the most
 recent inventory command. Successful extraction artifacts are reused when the
 source hash, Poppler versions, extraction configuration, and output schema are
 unchanged.
+
+Phase 2 adds extractor-specific runs below each content blob and private review
+runs below `benchmarks/<suite-id>/runs/<benchmark-run-id>/`. The generated
+`review.html` works locally in a browser and exports a JSON review overlay.
+An unchanged five-document/four-expert private benchmark reuses all 20 cached
+expert artifacts and completes in seconds; the initial model-backed pass takes
+minutes and is intended only for a small representative suite.

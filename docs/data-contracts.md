@@ -43,6 +43,22 @@ Initial states:
 Review is purpose-specific. Accepting an account balance does not necessarily
 accept document ownership, income classification, or tax treatment.
 
+## Benchmark and Calibration Contracts
+
+[`schemas/benchmark-suite.schema.json`](../schemas/benchmark-suite.schema.json)
+defines a private suite by source content hash, document class, selected pages,
+enabled experts, and sparse expected-value assertions. Every assertion says
+whether a person manually verified it and why it matters.
+
+[`schemas/review.schema.json`](../schemas/review.schema.json) records page-level
+human ratings for text accuracy, numeric fidelity, reading order, optional
+table structure, invented values, and notes. Ratings use a 0–4 scale and remain
+separate from regenerable extraction runs.
+
+Pairwise extractor agreement is stored in a benchmark report, not as a review
+decision. A scorecard may recommend a role by document class, but it cannot
+change adapter policy automatically.
+
 ## Page Coordinates
 
 User-facing page numbers are one-based. Internal regions use normalized page

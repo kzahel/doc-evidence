@@ -1,4 +1,4 @@
-# Phase 1 Operations
+# Operations
 
 ## Configure a Collection
 
@@ -117,3 +117,49 @@ Successful Poppler output is reused only when all of these match:
 
 Failures are retained under timestamped failure directories and retried on a
 later inventory. Original sources are never replaced with searchable copies.
+
+## Phase 2 Dependencies
+
+Keep heavy parser environments isolated from the core package. On macOS, the
+tested setup is:
+
+```sh
+brew install ocrmypdf tesseract-lang llama.cpp
+./scripts/bootstrap-phase2-extractors.sh
+```
+
+The `.extractors/` directory is ignored. The adapters also accept executables
+on `PATH`; exact tool versions and invocation options are recorded in run
+descriptors and cache identities.
+
+Marker 2.0 uses local Surya helper services and `llama-server` for OCR on pages
+that need it. The benchmark reuses those helpers across its selected documents
+and stops the services belonging to the isolated Marker environment when the
+run ends.
+
+## Private Benchmark Suite
+
+Keep suite YAML, rendered pages, extracted text, expected values, and reviews
+in the external case store. Validate before running:
+
+```sh
+uv run doc-evidence benchmark-check --suite /path/to/suite.yaml
+uv run doc-evidence benchmark-run \
+  --config /path/to/case.yaml \
+  --suite /path/to/suite.yaml
+```
+
+The suite chooses content hashes, document classes, review pages, extractors,
+and sparse assertions. The run writes `report.json`, page renders,
+`review-template.json`, and `review.html`. Open the HTML locally, score a small
+representative set closely, export its JSON, and then run:
+
+```sh
+uv run doc-evidence benchmark-score \
+  --report /path/to/report.json \
+  --review /path/to/exported-review.json
+```
+
+Scores are grouped by extractor and document class. Pairwise agreement only
+creates review flags; no merged result is considered authoritative and no
+extractor role changes automatically.

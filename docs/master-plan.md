@@ -1,7 +1,7 @@
 # Master Plan
 
 **Last updated:** 2026-08-01
-**Status:** Phase 1 implemented and operationally validated
+**Status:** Phase 2 implemented; private calibration started
 
 ## Objective
 
@@ -58,7 +58,7 @@ groups, and no path or extraction errors. A second run reused all 78 unique PDF
 extractions. Private filenames and extracted content remain in the external
 case workspace.
 
-### Phase 2 — OCR and parser comparison
+### Phase 2 — OCR and parser comparison — implemented
 
 - Add OCRmyPDF/Tesseract scan preprocessing.
 - Add Docling and Marker as optional layout adapters.
@@ -66,6 +66,21 @@ case workspace.
 - Benchmark accuracy, provenance, determinism, runtime, memory, and operational
   complexity.
 - Select a default/escalation policy from evidence.
+
+The implementation keeps OCRmyPDF/Tesseract, Docling, and Marker in isolated
+runtime environments and invokes them through versioned subprocess adapters.
+It retains raw and normalized output, renders selected pages, computes pairwise
+text/token/number disagreements, checks sparse manually verified assertions,
+and generates a local review UI. Human review is scored per extractor and
+document class. Agreement is a triage signal, not correctness, and scorecards
+never change or retire an extractor automatically.
+
+The first private five-document, seven-review-page run completed 20/20 expert
+runs successfully. Across ten sparse visually checked assertions per expert,
+Poppler passed 6, OCRmyPDF/Tesseract 9, Docling 8, and Marker 8. The run emitted
+52 pairwise review flags. A repeat run reused all 20 expert artifacts in under
+seven seconds. These are smoke-test results, not extractor rankings; human
+page-level calibration remains pending in the external case workspace.
 
 ### Phase 3 — Candidate understanding
 
@@ -99,13 +114,13 @@ case workspace.
 4. Poppler metadata and text extraction.
 5. SQLite catalog and exact search.
 6. Duplicate analysis.
-7. Benchmark runner.
-8. OCR and advanced parser adapters.
+7. Benchmark runner. — complete
+8. OCR and advanced parser adapters. — complete
 9. Observation and review workflows.
 
 ## Deferred Decisions
 
-- The final human-review interface.
+- Whether the generated local HTML review pack should become a persistent app.
 - The exact boundary between JSON sidecars and SQLite projections.
 - Whether a vector index ever provides enough benefit to maintain.
 - Which advanced extractor becomes the preferred table/layout parser.

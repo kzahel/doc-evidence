@@ -60,6 +60,11 @@ Human review decisions are not extractor artifacts. They belong in a durable
 review overlay that can refer to observations and source hashes while
 surviving re-extraction.
 
+Private benchmark reports and reviews live below
+`benchmarks/<suite-id>/runs/<benchmark-run-id>/` in the external artifact store.
+Extractor output remains under the content blob, so rerunning a suite reuses
+an unchanged expert run while producing a new comparison/review snapshot.
+
 ## Components
 
 ### Configuration loader
@@ -88,6 +93,19 @@ Each adapter declares:
 
 Raw adapter output is retained. Normalizers create stable internal structures
 without hiding information needed to diagnose failures.
+
+Phase 2 adapters are deliberately independent experts:
+
+- Poppler reads the existing text layer;
+- OCRmyPDF/Tesseract creates a derived searchable PDF and then normalizes it
+  through Poppler text extraction;
+- Docling contributes document layout, reading order, and tables; and
+- Marker contributes a separate block/layout/OCR pipeline.
+
+No majority-vote merge is authoritative. Pairwise differences identify pages
+for review; sparse verified assertions and human ratings establish accuracy.
+Reliability is measured by document class because a parser's table performance
+does not establish its scan or dense-form performance.
 
 ### Observation engine
 

@@ -15,3 +15,7 @@ class DependencyError(DocEvidenceError):
 
 class CatalogError(DocEvidenceError):
     """Raised when a catalog cannot be created, read, or queried."""
+
+
+class BenchmarkError(DocEvidenceError):
+    """Raised when a benchmark suite or extractor run is invalid."""
