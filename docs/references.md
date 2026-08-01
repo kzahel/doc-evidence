@@ -90,6 +90,94 @@ second Rust/Python-only credential for native folder authorization, packages a
 small document-tool pack instead of ML transcription models, and defers all
 heavy extractor packs.
 
+## Yep Anywhere: Signed macOS Release Reference
+
+Repository: [kzahel/yepanywhere](https://github.com/kzahel/yepanywhere)
+
+Normal local checkout: `~/code/yepanywhere`
+
+Revision inspected for Tactical 002:
+`2610c24ad2c5abc3b6979a6913b0d5908404e975`
+
+Yep Anywhere is the primary precedent for nested macOS signing and validation
+of the application users actually receive. Inspect these exact files before
+implementing or changing the Doc Evidence release lane:
+
+- `topics/desktop-v0.md` — durable distribution, final-app smoke, data
+  preservation, updater, and failure contracts;
+- `.github/workflows/desktop-ci.yml` — tagged-release credential gates,
+  temporary keychain and notarization setup, safe secret injection, explicit
+  nested Mach-O signing, bounded Tauri/DMG retry, finalization, and
+  `latest.json` validation;
+- `scripts/release-desktop.sh` and `scripts/set-desktop-version.sh` — clean-tree
+  version, changelog, commit, and tag convention;
+- `packages/desktop/README.md` — local unsigned build lane versus signed
+  release behavior and final signed-application runtime smoke;
+- `docs/tactical/067-v0-desktop-baseline.md` — implementation and validation
+  record for the stable distribution contract; and
+- `docs/testing/desktop-release-qa-log.md` — checks against downloaded,
+  installed, notarized releases and the real updater feed.
+
+Adopt explicit inside-out signing and immediate verification of nested native
+objects before Tauri seals the outer application, final signed-app smoke before
+upload, fail-closed tagged credential gates, phase-aware diagnostics, and
+installed-release QA. Doc Evidence must enumerate all Mach-O objects in its
+Python and OCR runtime rather than copying Yep Anywhere's `.node`-only scan or
+Bun-specific `allow-jit` entitlement.
+
+## JSTorrent: Desktop Release and Publication Reference
+
+Repository: [kzahel/jstorrent](https://github.com/kzahel/jstorrent)
+
+Normal local checkout: `~/code/jstorrent`
+
+Revision inspected for Tactical 002:
+`9895410beeed6aff554053769bd006a3fbd373ef`
+
+JSTorrent is the primary precedent for the ordinary tag-to-release mechanics:
+
+- `docs/topics/releases.md` — current release map, preflight, recovery, and
+  ownership of the Tauri release path;
+- `scripts/release-tauri-app.sh` — clean-tree version/changelog commit, push,
+  and tag entry point;
+- `.github/workflows/tauri-app-ci.yml` — signing/notarization, Tauri release
+  artifacts, updater output, `latest.json` validation, SHA-256 publication,
+  and release download-table finalization;
+- `desktop/README.md` — developer and release entry points; and
+- `desktop/tauri-app/src/updater.ts` — installed-client updater behavior.
+
+Adopt the synchronized version/tag convention, signed updater metadata,
+release finalization, checksums, and explicit recovery rules. The first Doc
+Evidence distribution is macOS arm64 only and does not copy JSTorrent's other
+platform installers, torrent sidecars, native-messaging host, or product
+update policy mechanically.
+
+## Canonical Desktop-Signing Operations Runbook
+
+Repository: `kzahel/dotfiles`
+
+Normal local checkout: `~/code/dotfiles`
+
+Revision inspected for Tactical 002:
+`80546b0420f72156bee13660c065224a7b6d3542`
+
+The canonical operational sources are:
+
+- `runbooks/desktop-code-signing.md` — shared versus per-application
+  credentials, source locations outside repositories, exact GitHub Actions
+  secret names, setup and verification sequence, expiries, runner choice, and
+  failure signatures; and
+- `runbooks/validate-signing-secrets.sh` — fail-fast local validation followed
+  by optional GitHub secret provisioning only when every credential passes.
+
+Use that runbook when setting up Doc Evidence. Override the target repository,
+desktop directory, and newly generated per-application Tauri updater key; do
+not reuse another application's updater key. Secret values, credential files,
+passwords, and private material remain outside this repository and must not be
+copied into documentation, logs, manifests, CI arguments, or execution
+evidence. If the runbook changes before implementation, inspect and pin its
+then-current revision instead of relying on this summary.
+
 ## Extractor Spatial-Output References
 
 The spatial capability inventory in

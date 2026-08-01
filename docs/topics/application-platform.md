@@ -5,8 +5,9 @@ Topic: application-platform
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
 is complete; automated, isolated-browser, and authorized private-library gates
 pass, with explicit maintainer interaction acceptance remaining. Tactical 002
-is the proposed implementation-ready macOS arm64 Tauri application proof; its
-implementation has not been authorized or started.
+is the proposed macOS arm64 Tauri distribution; its implementation has not
+been authorized or started, and its external GitHub/update targets require
+confirmation before release setup.
 
 ## Scope
 
@@ -60,7 +61,7 @@ tested through bounded tacticals.
   interfaces. The application is additive.
 - Source collections remain read-only under every composition.
 
-## Sibling Precedent: atpiano
+## Sibling Precedents
 
 The sibling repository at `~/code/atpiano` is directly relevant. It has
 already implemented and reviewed a similar product shape:
@@ -78,6 +79,21 @@ Use it as an implementation and failure-mode reference before inventing a
 parallel boundary. The exact inspected documents and pinned revision are in
 [References](../references.md).
 
+For actual distribution, use the other mature local Tauri applications rather
+than extending `atpiano`'s unsigned development boundary:
+
+- `~/code/yepanywhere` owns the proven nested macOS signing, notarization,
+  stapling, final signed-application smoke, and published-release QA sequence;
+- `~/code/jstorrent` owns the established version/tag script, signed updater
+  artifacts, `latest.json` validation, checksums, and release finalization;
+  and
+- `~/code/dotfiles/runbooks/desktop-code-signing.md` is the canonical
+  credential-validation and GitHub Actions secret-provisioning runbook.
+
+Their exact revisions and inspected files are pinned in
+[References](../references.md). Secret values and credential source material
+remain outside this repository.
+
 ### Direction to adopt
 
 - Contracts point inward; HTTP, filesystem, database, and desktop adapters
@@ -93,9 +109,14 @@ parallel boundary. The exact inspected documents and pinned revision are in
   desktop bridge as large JSON or a single duplicated in-memory payload.
 - Python packaging and heavyweight model/extractor packs are measured and
   manifested rather than assumed to fit.
-- The first desktop proof packages only Poppler, Tesseract language data, and a
-  Ghostscript-free OCRmyPDF path. Docling, Marker, downloader/plugin behavior,
-  signing, installers, and other operating systems remain later boundaries.
+- The first desktop distribution packages only Poppler, Tesseract language
+  data, and a Ghostscript-free OCRmyPDF path. Docling, Marker,
+  downloader/plugin behavior, and other operating systems remain later
+  boundaries.
+- Unsigned/ad-hoc builds are validation lanes. The release outcome follows the
+  sibling convention: fail-closed credentials, explicit nested Mach-O signing,
+  Tauri outer-bundle signing, notarization/stapling, final-app smoke, DMG,
+  signed updater metadata, checksums, and release finalization.
 - Native path selection uses a Rust-held host-control credential distinct from
   the bearer exposed to the desktop runtime. Product components request a
   behavioral library/collection operation and never submit an arbitrary path
@@ -180,11 +201,12 @@ tactical.
   stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and the small baseline extractor
   pack are planned in Tactical 002 but have not been prototyped.
-- Optional extractor-pack discovery/downloads, signed/notarized macOS
-  distribution, and Windows/Linux packaging remain unplanned implementation
-  work after the macOS proof.
+- Developer ID signing, notarization/stapling, DMG/updater artifacts, and
+  release finalization are also Tactical 002 scope, following the pinned
+  sibling conventions. Optional extractor-pack discovery/downloads and
+  Windows/Linux packaging remain later work.
 - The source checkout serves a separately built `web/dist`; self-contained
-  wheel/desktop asset packaging is deferred to a packaging tactical.
+  wheel/desktop asset packaging is deferred to Tactical 002.
 - A hosted composition is a possible future adapter, not current scope.
 
 ## Implementation Evidence
@@ -257,7 +279,7 @@ record is in
 
 Complete the explicit maintainer interaction acceptance in
 [Tactical 001](../tactical/001-durable-extraction-jobs.md). The maintainer has
-selected an Apache-2.0 macOS arm64 application proof as the next planned
+selected an Apache-2.0 macOS arm64 distribution as the next planned
 implementation boundary; review and explicitly authorize
 [Tactical 002](../tactical/002-macos-tauri-desktop-application.md) before code
 work. Durable review events remain a separate later tactical and are not

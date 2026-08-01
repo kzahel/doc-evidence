@@ -1,4 +1,4 @@
-# 002 — macOS Tauri Desktop Application Proof
+# 002 — macOS Tauri Desktop Distribution
 
 Topic: application-platform
 
@@ -6,8 +6,9 @@ Topic: library-management
 
 Topic: job-architecture
 
-**Status:** Proposed and implementation-ready; direction approved by the
-maintainer, implementation not yet authorized or started.
+**Status:** Product and distribution direction approved; implementation not
+yet authorized or started. The exact GitHub release target and updater route
+must be confirmed before external release setup.
 
 ## Motivation and User-Visible Outcome
 
@@ -22,16 +23,19 @@ render PDF pages, run the baseline Poppler and OCR/Tesseract extractors, inspect
 durable activity, close and reopen the application, and retain the same
 library, jobs, and artifacts.
 
-The proof runs fully offline and does not depend on a system Python, Homebrew,
-`uv`, the repository checkout, a development virtual environment, or an
-anonymous model cache. It packages the existing React product and Python-owned
-application services behind a thin Tauri 2 lifecycle and security shell.
+Core application use runs fully offline and does not depend on a system
+Python, Homebrew, `uv`, the repository checkout, a development virtual
+environment, or an anonymous model cache. The distribution packages the
+existing React product and Python-owned application services behind a thin
+Tauri 2 lifecycle and security shell.
 
-This tactical ends at an unsigned, non-notarized macOS arm64 development
-application suitable for explicit maintainer acceptance. Local ad-hoc signing
-of nested code is allowed where macOS requires it. Developer ID signing,
-notarization, a DMG, an updater, public download hosting, Intel macOS, Windows,
-and Linux require later approved tacticals.
+This tactical ends at a Developer ID-signed and notarized macOS arm64
+application with a stapled ticket, packaged as a direct-download DMG with
+signed Tauri updater artifacts, validated release metadata, and a tag-driven
+CI path following the established sibling applications. Unsigned and ad-hoc-
+signed builds remain local and pull-request validation lanes; they are not the
+product milestone. Intel macOS, Windows, Linux, and optional extractor-pack
+distribution require later approved tacticals.
 
 ## Dependencies and References
 
@@ -48,23 +52,61 @@ and Linux require later approved tacticals.
 - [GNU guidance on separate programs](https://www.gnu.org/licenses/gpl-faq.en.html#GPLInProprietarySystem)
 - [OCRmyPDF Ghostscript alternatives](https://ocrmypdf.readthedocs.io/en/stable/introduction.html#ghostscript-considerations)
 
-The primary implementation precedent is `~/code/atpiano` at revision
-`87b77e9b0679f770a5f55e69546c7a1cb72fde46`, especially:
+Use three sibling repositories for distinct, proven boundaries rather than
+designing a Doc Evidence-specific release system:
 
-- `docs/tactical/030-early-tauri-sidecar-boundary.md`;
-- `app/src-tauri/tauri.conf.json`;
-- `app/src-tauri/src/lib.rs`;
-- `app/src/runtime/desktop-runtime.ts`;
-- `src/atpiano/desktop.py`;
-- `src/atpiano/desktop_sidecar.py`; and
-- `scripts/build-atpiano-desktop`.
+- `~/code/atpiano` at revision
+  `87b77e9b0679f770a5f55e69546c7a1cb72fde46` owns the standalone CPython,
+  authenticated sidecar, thin-Tauri lifecycle, outside-repository launch,
+  process cleanup, Mach-O inventory, and installed-byte precedent. Inspect:
 
-Adopt its authenticated ready/handshake boundary, thin Rust ownership,
-standalone Python staging, outside-repository launch, process cleanup, Mach-O
-audit, and byte inventory. Do not copy its audio/session domain, model pack,
-workspace layout, or one-token treatment of platform-only filesystem actions.
-Doc Evidence needs a distinct host-control credential because folder choices
-must never become arbitrary browser-supplied paths.
+  - `docs/tactical/030-early-tauri-sidecar-boundary.md`;
+  - `app/src-tauri/tauri.conf.json`;
+  - `app/src-tauri/src/lib.rs`;
+  - `app/src/runtime/desktop-runtime.ts`;
+  - `src/atpiano/desktop.py`;
+  - `src/atpiano/desktop_sidecar.py`; and
+  - `scripts/build-atpiano-desktop`.
+- `~/code/yepanywhere` at revision
+  `2610c24ad2c5abc3b6979a6913b0d5908404e975` owns the strongest current
+  macOS release precedent: required credential gates, temporary signing
+  keychain, explicit nested Mach-O signing, Tauri assembly and notarization,
+  bounded DMG retry/diagnostics, final signed-application smoke, updater
+  metadata finalization, and published-release QA. Inspect:
+  - `topics/desktop-v0.md`;
+  - `.github/workflows/desktop-ci.yml`;
+  - `scripts/release-desktop.sh`;
+  - `packages/desktop/README.md`;
+  - `docs/tactical/067-v0-desktop-baseline.md`; and
+  - `docs/testing/desktop-release-qa-log.md`.
+- `~/code/jstorrent` at revision
+  `9895410beeed6aff554053769bd006a3fbd373ef` owns the mature release/tag and
+  publication precedent: synchronized version bump, changelog and tag script,
+  signed installers, Tauri updater output, `latest.json` validation, release
+  finalization, published SHA-256 checksums, and download tables. Inspect:
+  - `docs/topics/releases.md`;
+  - `scripts/release-tauri-app.sh`;
+  - `.github/workflows/tauri-app-ci.yml`;
+  - `desktop/README.md`; and
+  - `desktop/tauri-app/src/updater.ts`.
+
+The exact rationale and pinned sources are recorded in
+[References](../references.md). Use `atpiano` for Python-sidecar composition,
+Yep Anywhere for the nested macOS signing/notarization and final-app test
+sequence, and JSTorrent for release mechanics. Do not copy their audio,
+agent-session, torrent, provider, or multi-platform product models. Doc
+Evidence needs a distinct host-control credential because folder choices must
+never become arbitrary browser-supplied paths.
+
+Credential provisioning follows the canonical personal runbook at
+`~/code/dotfiles/runbooks/desktop-code-signing.md`, pinned in
+[References](../references.md). Its companion
+`runbooks/validate-signing-secrets.sh` validates source credentials locally
+and can set the GitHub Actions secrets only after every check passes. Override
+its target repository, desktop directory, and per-application Tauri updater
+key for Doc Evidence. Never copy secret values, credential source paths, or
+password-manager material into this repository, logs, manifests, or tactical
+execution evidence.
 
 ## Entry Evidence
 
@@ -92,10 +134,21 @@ must never become arbitrary browser-supplied paths.
 - The repository currently has no `LICENSE`, Tauri project, standalone runtime
   staging, desktop sidecar command, bundle manifest, SBOM, or third-party
   notices.
+- This checkout currently has no Git remote. Before generating a release tag,
+  provisioning GitHub Actions secrets, configuring the update route, or
+  publishing an artifact, confirm the exact Doc Evidence GitHub repository and
+  receive explicit authorization for those external changes. Do not infer the
+  target from the bundle identifier alone.
 - The current build host is Apple Silicon and has Xcode, Rust, Node, and the
-  existing Python toolchain. No valid Developer ID code-signing identity is
-  installed, which confirms that signing and notarization cannot be an
-  acceptance requirement for this tactical.
+  existing Python toolchain. Release signing does not depend on a persistent
+  local identity: the sibling workflows install the shared Developer ID
+  material into a temporary CI keychain and use App Store Connect API
+  credentials for notarization.
+- Yep Anywhere has shipped signed and notarized Apple Silicon DMGs and verifies
+  the final installed application. JSTorrent has a tag-driven signed release,
+  updater metadata, checksum, and finalization path. Their repeated CI fixes
+  are the release precedent; the unsigned `atpiano` application is only the
+  Python-sidecar precedent.
 
 ## Frozen Decisions
 
@@ -105,13 +158,27 @@ must never become arbitrary browser-supplied paths.
 - Use Tauri 2 under `desktop/` and the existing Vite production output under
   `web/dist`.
 - Use `Doc Evidence` as the product name and
-  `io.github.kzahel.doc-evidence` as the initial bundle identifier. A later
-  signed release must deliberately preserve or migrate that identity.
+  `io.github.kzahel.doc-evidence` as the initial bundle identifier. The first
+  signed release and every updater artifact must preserve that identity unless
+  an explicit migration is approved before publication.
 - Derive the desktop version from the Python project version and fail the
   build if Python, frontend, Rust, or bundle metadata drift.
 - The application is a direct-download desktop product, not an App Store
   sandboxed product. Security-scoped bookmarks and App Store entitlements are
-  outside this proof.
+  outside this distribution.
+- Reuse the sibling version/changelog/tag convention and a tag-driven GitHub
+  Actions release. A tagged release fails closed if Developer ID,
+  notarization, or Tauri updater credentials are absent; it never publishes an
+  unsigned or partially finalized release.
+- Configure a per-application Tauri updater key and checked public key. Release
+  finalization validates signed updater metadata before making the release
+  complete. The updater does not install extractor packs or change library
+  data.
+- Reuse the existing sibling `simple-app-update-server` convention after a Doc
+  Evidence route is deliberately allocated. Do not create another updater
+  service merely for this application. Until that endpoint and repository are
+  confirmed, keep them explicit configuration inputs rather than guessed
+  production constants.
 - The desktop shell does not replace `doc-evidence serve`, CLI commands, or
   library/artifact contracts.
 
@@ -283,8 +350,8 @@ or silently substitutes a language.
 
 Do not replace Poppler extraction with PDFium inside this tactical. Preserving
 the measured extractor and cache identity is lower risk for the first desktop
-proof. A future tactical may benchmark a permissively licensed PDFium native-
-text adapter before changing the baseline.
+distribution. A future tactical may benchmark a permissively licensed PDFium
+native-text adapter before changing the baseline.
 
 ### Pack construction and reproducibility
 
@@ -297,15 +364,37 @@ text adapter before changing the baseline.
 - Relocate non-system Mach-O dependencies into the pack, rewrite load paths to
   bundle-relative locations, and inspect the complete transitive closure after
   relocation.
-- Sign nested Mach-O files in dependency order with an ad-hoc identity where
-  required for the local proof. Record signing state without claiming
-  Developer ID or notarization.
+- Treat every executable, dynamic library, Python native extension, framework,
+  and other Mach-O object beneath the standalone runtime and extractor pack as
+  explicit signing input. File suffixes are not a sufficient inventory.
+- Local and pull-request builds may ad-hoc sign after relocation. Tagged
+  release CI signs nested Mach-O objects from the inside out with the Developer
+  ID identity and hardened runtime before Tauri signs the enclosing executable
+  and application. `codesign --deep` may be used as a final verification, not
+  as a substitute for explicit nested signing.
+- Verify each nested signature immediately, then verify the complete
+  application strictly. Do not modify, thin, relocate, rewrite, or regenerate
+  any signed byte afterward. A missing or invalid nested signature is a failed
+  release, not permission to weaken hardened-runtime or library-validation
+  settings.
+- CPython, Poppler, Tesseract, and the baseline utilities receive no JIT or
+  broad executable-memory entitlement unless an exact staged component proves
+  it is required and the maintainer approves the change. Follow the minimal
+  entitlement pattern established by Yep Anywhere, without copying Bun's
+  JavaScriptCore-specific `allow-jit` exception.
+- Generate embedded component/license manifests before signing when they are
+  inputs to the bundle. Generate the external final-byte inventory, artifact
+  hashes, notarization evidence, and distribution report after signing and
+  notarization so the recorded release bytes are the bytes users receive.
 - Generated Python runtimes, native prefixes, caches, `.app` bundles, SBOMs,
   inventories, and compliance archives remain ignored build output. Staging
   scripts, schemas, reviewed license conclusions, and compact manifests are
   tracked.
 - A build may access the network only to retrieve declared, checksum-verified
-  inputs. Running the final application may not access the network.
+  inputs and to perform the configured signing, notarization, release, and
+  updater operations. Core library use remains offline-capable. The packaged
+  product may contact only its explicit update endpoint for an update check;
+  it does not load remote product assets or download extractors/models.
 
 ### Bundle-size and startup policy
 
@@ -417,11 +506,13 @@ Add `desktop/` with:
 - packaged runtime/manifest discovery with debug-only explicit overrides;
 - bounded ready-record parsing, compatibility validation, startup timeout,
   authenticated handshake, and bootstrap response;
+- the standard Tauri updater capability bound to the checked Doc Evidence
+  public key and explicit release endpoint, with no generic network bridge;
 - unexpected-sidecar-exit monitoring and one bounded failure event;
 - graceful close followed by complete process-group termination and reaping;
   and
-- no generic filesystem, shell, arbitrary URL, environment, updater, or
-  plugin capability.
+- no generic filesystem, shell, arbitrary URL, environment, downloader, or
+  unrelated plugin capability.
 
 The content security policy may connect only to Tauri IPC/assets and the exact
 ephemeral loopback sidecar. Artifact bodies continue to stream through
@@ -440,21 +531,60 @@ Add reproducible build commands that:
 - include all required component licenses, notices, source records, and
   corresponding-source material;
 - build `web/dist`, Rust, and the `.app` in the correct order;
-- relocate and audit Mach-O files before applying local ad-hoc signatures;
+- relocate and audit every Mach-O before applying local ad-hoc signatures or
+  handing the exact staged tree to release signing;
 - generate the SPDX SBOM, human notices, bundle/pack manifests, file hashes,
-  and byte report from the final staged bytes rather than build inputs; and
+  and byte report from the applicable unsigned staging or final signed release
+  phase rather than an ambiguous mixture of both; and
 - reject a dirty or partially inventoried resource staging directory.
 
 The build command supports `stage`, `build`, `audit`, and `review` modes with
 one documented entry point. It never deletes an application home or library.
 
-### 7. Packaged acceptance harness
+### 7. Signing, notarization, and release automation
+
+Adapt the working Yep Anywhere and JSTorrent conventions rather than creating
+a separate release framework:
+
+- add a synchronized version/changelog script and one explicit macOS desktop
+  tag family;
+- configure tag-triggered GitHub Actions with a temporary keychain, Developer
+  ID Application identity, App Store Connect notarization, Tauri updater
+  signing, and release finalization;
+- require every tagged-release credential before packaging begins and refuse
+  an unsigned partial release;
+- generate a fresh per-application Tauri updater key outside the repository,
+  commit only its public key, and provision secrets only through the pinned
+  dotfiles signing runbook and validation script;
+- sign and strictly verify every nested Mach-O in the prepared Python and
+  extractor resources before Tauri signs the enclosing bundle;
+- build the application and DMG, submit for notarization, staple, and validate
+  Gatekeeper acceptance;
+- smoke the Python sidecar and baseline extraction tools from the final signed
+  and notarized `.app` before upload or release finalization;
+- emit and validate signed updater artifacts and `latest.json` with the exact
+  target, URL, and nonempty signature;
+- publish external final-byte SHA-256 checksums, SBOM, notices, source-
+  compliance material, and a download table; and
+- retain actionable phase-aware diagnostics so an inner signing failure, app
+  assembly failure, notarization rejection, DMG flake, updater-signing error,
+  or finalization error is not mislabeled as another phase.
+
+The canonical credential names, source locations, validation sequence,
+secret-upload command, expiry notes, and known failure signatures remain in
+`~/code/dotfiles/runbooks/desktop-code-signing.md`; this repository records no
+secret value. The associated `validate-signing-secrets.sh --set` operation is
+an explicit maintainer release-setup action and must target the confirmed Doc
+Evidence GitHub repository and per-app updater key.
+
+### 8. Packaged acceptance harness
 
 Add a deterministic public/synthetic review collection and harness that:
 
 - copies only public fixture inputs to a temporary collection;
-- starts the packaged application from a directory outside the repository
-  under a fresh temporary `DOC_EVIDENCE_HOME`;
+- starts both a local unsigned/ad-hoc application and the final signed
+  application from outside the repository under a fresh temporary
+  `DOC_EVIDENCE_HOME`;
 - removes repository, virtualenv, Homebrew, Python, Node, Rust, and package-
   manager assistance from the child environment;
 - verifies no non-loopback socket is opened;
@@ -530,6 +660,23 @@ Python authorization boundary must be covered without bypassing validation.
 - Poppler, Tesseract, OCRmyPDF, Leptonica, PDFium, CPython, Tauri, and every
   transitive conveyed component have the required licenses/notices. Poppler
   has exact corresponding-source/build material in the compliance output.
+- Tagged release CI refuses to build when the Developer ID, App Store Connect,
+  or Tauri updater credential set is incomplete. Pull requests never publish
+  release artifacts or gain access to release secrets.
+- Every Mach-O beneath the final app is explicitly inventoried. Nested Python
+  executables, `.dylib` files, `.so` extensions, frameworks, Poppler,
+  Tesseract, and their libraries carry valid Developer ID signatures before
+  the outer application is sealed.
+- Per-file strict signature verification passes; strict complete-application
+  verification passes; stapler validation passes on the application before
+  DMG assembly; and Gatekeeper reports a notarized Developer ID source for the
+  application installed from that DMG.
+- The final signed `.app` is smoked in place before upload. The DMG and updater
+  assets correspond to that application rather than a separately rebuilt or
+  post-signing-mutated runtime.
+- Release finalization rejects a missing or malformed `latest.json`, an empty
+  updater signature, an unexpected target or URL, missing checksums, or an
+  incomplete license/source archive.
 
 ### Packaged behavior
 
@@ -549,15 +696,24 @@ Python authorization boundary must be covered without bypassing validation.
   descendant.
 - Cold-start, extraction, memory, installed-byte, and compressed-byte evidence
   is recorded without claiming a universal performance result.
+- Installing from the stapled DMG and launching through Finder succeeds under
+  Gatekeeper without a quarantine bypass, terminal fallback, or security
+  warning.
+- A manual update check reaches only the configured updater endpoint and
+  handles current/no-update, unavailable, and invalid-signature responses
+  without affecting the library. The first live `N -> N+1` updater exercise is
+  recorded against the next signed release if no prior Doc Evidence release
+  exists to serve as `N`.
 
 ## Manual Acceptance
 
-Provide one review bundle with the `.app`, build/audit report, SBOM,
-third-party notices, compliance archive, exact commands, and commit/test map.
+Provide one release candidate with the signed/notarized `.app` and stapled
+ticket, DMG, signed updater metadata, build/audit report, SBOM, third-party
+notices, compliance archive, checksums, exact commands, and commit/test map.
 The maintainer verifies:
 
-1. The application opens from Finder with the expected warning for a
-   non-notarized development application, plus a documented terminal fallback.
+1. The DMG opens normally, the app installs and opens from Finder, and
+   Gatekeeper identifies a notarized Developer ID build without a bypass.
 2. An empty application home explains libraries and opens a native folder
    picker rather than asking for a YAML path.
 3. Creating a managed library and registering an existing descriptor both
@@ -572,9 +728,11 @@ The maintainer verifies:
    presentation or a surprise download.
 8. License and component information is readable from inside the application
    and from the review bundle.
-9. No network access, source mutation, private-path leakage, or surviving child
+9. Core library use succeeds with network access disabled; no unexpected
+   network access, source mutation, private-path leakage, or surviving child
    process is observed.
-10. The size and startup report is acceptable as the foundation for a signed
+10. The published/downloaded artifact hashes match the final report, updater
+    metadata is valid, and the size/startup result is acceptable for the first
     macOS distribution.
 
 An authorized external library may be used for an additional deliberate
@@ -604,13 +762,13 @@ implicitly authorized merely by building the application.
   environment and working directory. Do not inherit shell startup files.
 - Treat bundled PDFs and images as hostile local input. Packaging does not
   claim that Poppler, PDFium, OCRmyPDF, or Tesseract is a sandbox.
-- Load no analytics, telemetry, update service, remote font, remote image,
-  remote script, hosted API, or model download.
+- Load no analytics, telemetry, remote font, remote image, remote script,
+  hosted product API, or model download. The only release-time network surface
+  added here is the explicitly configured signed Tauri update path; core
+  startup and library operation remain functional when it is unavailable.
 
 ## Explicit Non-goals
 
-- No Developer ID signing, notarization, stapling, DMG, updater, update channel,
-  public download, release publishing, or rollback service.
 - No Mac App Store, App Sandbox, security-scoped bookmarks, iCloud container,
   login item, file association, Quick Look extension, or background daemon.
 - No Intel or universal macOS build; no Windows, Linux, iOS, or Android work.
@@ -671,22 +829,28 @@ applicable `Topic: application-platform`, `Topic: library-management`, or
    application without extractors.
 8. Stage the baseline Poppler/Tesseract/OCRmyPDF pack and license/source
    compliance output.
-9. Add final Mach-O, SBOM, byte, forbidden-dependency, offline, crash/restart,
-   and outside-repository acceptance gates.
-10. Build the review artifact, update execution evidence and living docs, and
-    stop for explicit maintainer acceptance.
+9. Adapt the sibling release workflow, generate the Doc Evidence updater key,
+   validate/provision credentials through the canonical runbook, and sign
+   nested Mach-O resources explicitly.
+10. Add notarization/stapling, DMG, updater metadata, checksum, SBOM,
+    forbidden-dependency, offline, crash/restart, and outside-repository gates.
+11. Build and verify the signed release candidate, update execution evidence
+    and living docs, and stop for explicit maintainer release acceptance.
 
 ## Falsifiable Stopping Condition
 
-Stop this tactical at explicit maintainer review when one cleanly staged
-macOS arm64 `Doc Evidence.app`, launched from outside the repository under a
-fresh application home and with network/system-development assistance absent,
-can create a library through the native authorization boundary, inventory and
-search a synthetic collection, render a PDF, execute packaged Poppler and
-Ghostscript-free English/German OCR, survive a forced sidecar exit and restart
+Stop this tactical at explicit maintainer review when tag-driven CI produces a
+Developer ID-signed and notarized macOS arm64 `Doc Evidence.app` with a stapled
+ticket, packaged in a DMG with valid signed updater metadata and release
+checksums; the exact final application, launched from outside the repository
+under a fresh application home and with network/system-development assistance
+absent, can create a library through the native authorization boundary,
+inventory and search a synthetic collection, render a PDF, execute packaged
+Poppler and Ghostscript-free English/German OCR, survive a forced sidecar exit and restart
 with valid durable state, and close without surviving descendants or source
-mutation, while every bundled byte, component, license, architecture, dynamic
-dependency, and GPL source obligation reconciles in the generated audit.
+mutation, while every bundled byte, nested Mach-O signature, component,
+license, architecture, dynamic dependency, notarization result, and GPL source
+obligation reconciles in the generated audit.
 
 If the app needs Ghostscript, a heavyweight extractor, an ambient executable,
 an unrestricted client path, a remote download, an unreviewed license, or a
@@ -695,19 +859,18 @@ maintainer instead of expanding the bundle.
 
 ## Next-Slice Boundary
 
-After explicit acceptance, the next macOS distribution tactical may add a
-stable signing identity, hardened runtime and entitlements, Developer ID
-signing of the complete nested bundle, notarization/stapling, a DMG, release
-metadata, an authenticated signed updater, install/upgrade/rollback testing,
-and public-download operations. It must repeat the final-byte SBOM, license,
-source, Mach-O, offline, and source-immutability audit against the signed
-artifact.
+After explicit acceptance, normal patch releases reuse the checked sibling-
+style version, tag, signing, notarization, updater, checksum, and finalization
+workflow. The next release should record the first live signed `N -> N+1`
+updater round trip when no older Doc Evidence release existed during Tactical
+002. Rollback-channel policy, delta-update optimization, additional release
+hosts, and App Store distribution remain separate decisions.
 
 Optional language/extractor-pack discovery and downloads require their own
 security, signature, compatibility, license-acceptance, storage, update, and
 rollback design. Docling and especially Marker remain separate decisions.
 Windows and Linux packaging follow later platform-specific tacticals; this
-macOS proof must not create assumptions that their process, filesystem,
+macOS distribution must not create assumptions that their process, filesystem,
 signing, installer, or dynamic-library models are identical.
 
 ## Execution Record

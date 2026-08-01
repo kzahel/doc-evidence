@@ -56,17 +56,17 @@ The delivery sequence is deliberate:
    extraction controls, bounded batches, and the global operational activity
    and diagnostics UI are implemented. Fault/restart, isolated-browser, and
    authorized private-integration gates pass for Tactical 001.
-3. **Proposed next slice; not yet authorized:** an Apache-2.0 macOS arm64
-   application proof with a thin Tauri shell, native folder authorization,
-   standalone Python sidecar, and a small Ghostscript-free
-   Poppler/Tesseract/OCRmyPDF baseline pack.
-4. **Later slices:** durable human review state; signed/notarized macOS
-   distribution; optional language/extractor packs; and platform-specific
-   Windows and Linux applications.
+3. **Proposed next slice; not yet authorized:** an Apache-2.0, signed and
+   notarized macOS arm64 distribution with a thin Tauri shell, native folder
+   authorization, standalone Python sidecar, small Ghostscript-free
+   Poppler/Tesseract/OCRmyPDF baseline pack, DMG, and signed updater metadata.
+4. **Later slices:** durable human review state; optional language/extractor
+   packs; additional release channels; and platform-specific Windows and Linux
+   applications.
 
 Desktop distribution is therefore an explicit destination. Its first bounded
 implementation plan is
-[Tactical 002: macOS Tauri desktop application proof](docs/tactical/002-macos-tauri-desktop-application.md),
+[Tactical 002: macOS Tauri desktop distribution](docs/tactical/002-macos-tauri-desktop-application.md),
 which is ready for review but has not been authorized or started. See
 [Product vision and application architecture](docs/product-vision-and-architecture.md),
 [Application platform](docs/topics/application-platform.md), and
@@ -131,14 +131,16 @@ actions and representation refresh; the application header provides a polling
 activity center with resource lanes, liveness/deadline detail, batch preflight,
 and cancellation.
 
-The maintainer has selected an Apache-2.0 macOS arm64 desktop proof as the next
-planned boundary. Tactical 002 freezes a thin Tauri shell, separate runtime and
-host-control credentials, preservation of the existing application home,
-native library/collection selection through Python-owned services, a
+The maintainer has selected an Apache-2.0 macOS arm64 desktop distribution as
+the next planned boundary. Tactical 002 freezes a thin Tauri shell, separate
+runtime and host-control credentials, preservation of the existing application
+home, native library/collection selection through Python-owned services, a
 standalone CPython runtime, and only the Poppler/Tesseract/OCRmyPDF baseline
 pack. It excludes Ghostscript, Docling, Marker, heavyweight model runtimes,
-downloads/plugins, signing/notarization, and Windows/Linux packaging. No
-Tactical 002 implementation has started.
+and downloads/plugins. It adapts the proven sibling conventions for nested
+Mach-O signing, Developer ID notarization, DMG and updater generation, release
+finalization, and published checksums. Windows/Linux packaging remains later.
+No Tactical 002 implementation has started.
 
 The external acceptance harness used an explicitly authorized registered
 library in the platform-default application home. It exercised a missing OCR

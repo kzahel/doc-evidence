@@ -34,8 +34,8 @@ Do not create one topic per small change. A topic should normally include:
   cases, and product claims that require stronger guarantees.
 - [Application platform](application-platform.md) — Python application/API
   boundary, generated TypeScript contracts, React runtime ownership,
-  localhost/Tauri deployment direction, and lessons from the sibling
-  `atpiano` implementation.
+  localhost/Tauri deployment direction, and the pinned `atpiano`, Yep
+  Anywhere, JSTorrent, and signing-runbook precedents.
 - [Library management](library-management.md) — desktop-first library model,
   application-home discovery and isolation, known/default-library registry,
   per-library database and artifact ownership, explicit collections, and

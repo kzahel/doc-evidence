@@ -71,8 +71,9 @@ authorization, sidecar lifecycle, and application-data path injection. React
 product components consume a platform-neutral `DocEvidenceRuntime` library
 contract and do not import Tauri APIs.
 
-The proposed first macOS proof keeps native paths out of the ordinary browser
-API by giving Rust and Python a separate per-launch host-control credential.
+The proposed first macOS distribution keeps native paths out of the ordinary
+browser API by giving Rust and Python a separate per-launch host-control
+credential.
 Rust chooses a folder or descriptor with a native dialog and submits it
 directly to a bounded Python desktop-control adapter. Python still owns path
 canonicalization, collection/store overlap policy, stable IDs, descriptors,

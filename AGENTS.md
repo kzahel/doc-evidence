@@ -43,15 +43,16 @@ implementation decisions:
   persistence, durable execution, recovery, and operational UI. Its automated
   and private-integration gates pass; explicit maintainer interaction
   acceptance remains. Durable human review state follows separately.
-- Tactical 002 is the proposed, implementation-ready macOS arm64 application
-  proof. It freezes Apache-2.0 project licensing, a thin Tauri shell, separate
-  runtime and host-control credentials, native folder authorization through
-  Python-owned services, standalone CPython, and a small Ghostscript-free
-  Poppler/Tesseract/OCRmyPDF baseline pack. It has not been authorized or
-  started.
-- Optional heavyweight-extractor packs, download/plugin management, signing,
-  notarization, installers, updating, and Windows/Linux distribution require
-  later approved tacticals.
+- Tactical 002 is the proposed macOS arm64 desktop distribution. It freezes
+  Apache-2.0 project licensing, a thin Tauri shell,
+  separate runtime and host-control credentials, native folder authorization
+  through Python-owned services, standalone CPython, and a small Ghostscript-
+  free Poppler/Tesseract/OCRmyPDF baseline pack. It adapts the signed/notarized
+  release, updater, checksum, and finalization conventions from the existing
+  sibling Tauri applications. It has not been authorized or started.
+- Optional heavyweight-extractor packs, download/plugin management,
+  alternative release channels, and Windows/Linux distribution require later
+  approved tacticals.
 
 Do not let a short-term localhost or CLI implementation create a competing
 ownership model, embed platform APIs in product components, or make later
@@ -213,10 +214,16 @@ scope decision outside the tactical.
 
 ## Sibling Reference Discipline
 
-`~/code/atpiano` is the primary application-architecture sibling. Before
+`~/code/atpiano` is the primary application-architecture and Python-sidecar
+sibling. `~/code/yepanywhere` is the primary nested macOS signing,
+notarization, and final-application validation sibling. `~/code/jstorrent` is
+the primary release/tag, updater-metadata, checksum, and publication sibling.
+The canonical credential-provisioning instructions live in
+`~/code/dotfiles/runbooks/desktop-code-signing.md`. Before
 implementing generated Python/TypeScript contracts, the React runtime boundary,
-framework-independent Python services, local hosting, artifact export, or
-Tauri sidecar packaging, read the exact pinned documents in
+framework-independent Python services, local hosting, artifact export, Tauri
+sidecar packaging, desktop signing, or release automation, read the exact
+pinned documents in
 `docs/references.md` and inspect the current sibling source where relevant.
 
 Adopt proven boundaries and failure lessons, not its audio/session domain. Do
@@ -282,10 +289,11 @@ stayed at preflight, and source and registry integrity checks remained
 unchanged. Only explicit maintainer interaction acceptance remains.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 `docs/tactical/002-macos-tauri-desktop-application.md` is the proposed next
-implementation boundary. It plans a self-contained, unsigned macOS arm64 app
-and baseline extractor pack, but no implementation has started. Signing,
-notarization, DMG/updater work, heavy extractor packs, Windows, and Linux
-remain outside it.
+implementation boundary. It plans a self-contained, Developer ID-signed and
+notarized macOS arm64 application with a stapled ticket, distributed in a DMG
+with signed updater metadata, release finalization, and the baseline extractor
+pack, but no implementation has started. Heavy extractor packs, alternative
+release channels, Windows, and Linux remain outside it.
 The maintainer has also selected bidirectional text/page highlighting and
 bounded regional OCR as an accepted product direction. The researched
 extractor capabilities, coordinate-space contract, proposed UI, job identity,

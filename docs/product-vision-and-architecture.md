@@ -638,12 +638,14 @@ It is complete when a user can:
 10. Continue using the CLI against the same workspace.
 
 Durable extraction jobs landed before durable review, and the maintainer has
-now selected a bounded macOS arm64 Tauri proof as the next planned slice. That
-implementation order does not mark this product milestone complete or weaken
-the separation between review state and extractor output. Durable review is
-still required for the milestone; candidate semantic fields, domain packs,
-signed public distribution, optional extractor packs, Windows, and Linux
-remain later boundaries.
+now selected a bounded signed macOS arm64 Tauri distribution as the next
+planned slice. That implementation order does not mark this product milestone
+complete or weaken the separation between review state and extractor output.
+Durable review is still required for the milestone; candidate semantic fields,
+domain packs, optional extractor packs, alternative release channels, Windows,
+and Linux remain later boundaries. The distribution implementation reuses the
+pinned `atpiano`, Yep Anywhere, JSTorrent, and signing-runbook precedents in
+[References](references.md).
 
 ## Decisions
 

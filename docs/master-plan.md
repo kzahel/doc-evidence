@@ -3,7 +3,7 @@
 **Last updated:** 2026-08-01
 **Status:** Phase 2, read-only application, desktop library foundation, and
 durable extraction jobs implemented; Tactical 001 maintainer acceptance
-pending; macOS Tauri proof proposed in Tactical 002
+pending; macOS Tauri distribution proposed in Tactical 002
 
 ## Objective
 
@@ -116,12 +116,15 @@ implementation plan is
 machine-verifiable gates are complete; explicit maintainer interaction
 acceptance remains.
 
-The maintainer next selected a bounded Apache-2.0 macOS arm64 desktop proof.
+The maintainer next selected a bounded Apache-2.0 macOS arm64 desktop
+distribution.
 [Tactical 002](tactical/002-macos-tauri-desktop-application.md) proposes the
 same React/Python application inside a thin Tauri 2 shell with native folder
 authorization, a standalone Python runtime, and only a Ghostscript-free
-Poppler/Tesseract/OCRmyPDF baseline pack. Heavy extractors, downloads/plugins,
-signing/notarization, installers, Windows, and Linux remain later scope.
+Poppler/Tesseract/OCRmyPDF baseline pack. It reuses sibling conventions for
+nested signing, notarization, a DMG, signed updater metadata, release
+finalization, and checksums. Heavy extractors, downloads/plugins, alternative
+release channels, Windows, and Linux remain later scope.
 Tactical 002 implementation has not been authorized or started.
 
 ### Phase 3 — Candidate understanding
@@ -173,8 +176,8 @@ Tactical 002 implementation has not been authorized or started.
     durable review pending
 11. Desktop library foundation, durable extraction jobs, and operational UI.
     — implemented; explicit maintainer acceptance pending
-12. macOS arm64 Tauri application proof. — proposed; implementation not
-    authorized or started
+12. Signed/notarized macOS arm64 Tauri distribution. — proposed;
+    implementation not authorized or started
 13. Observation and downstream-promotion workflows.
 
 ## Open Implementation Decisions

@@ -414,8 +414,8 @@ tested operational procedures.
 
 ## Product Priorities Suggested by the Landscape
 
-1. Preserve the proposed macOS desktop proof as a distribution boundary, not a
-   change in product ownership.
+1. Preserve the proposed macOS desktop distribution as a product-composition
+   boundary rather than a change in product ownership.
 2. Implement durable review with actor, purpose, source region, correction,
    and portable export semantics.
 3. Implement typed candidate observations and review queues that direct human
