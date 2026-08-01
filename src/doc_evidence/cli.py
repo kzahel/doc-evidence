@@ -6,6 +6,7 @@ import argparse
 import json
 import platform
 import shutil
+import sqlite3
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -27,10 +28,24 @@ EXTERNAL_TOOLS = (
 
 
 def _doctor_report() -> dict[str, object]:
+    connection = sqlite3.connect(":memory:")
+    try:
+        try:
+            connection.execute("CREATE VIRTUAL TABLE fts_probe USING fts5(text)")
+        except sqlite3.Error:
+            fts5_available = False
+        else:
+            fts5_available = True
+    finally:
+        connection.close()
     return {
         "doc_evidence_version": __version__,
         "python": platform.python_version(),
         "platform": platform.platform(),
+        "sqlite": {
+            "version": sqlite3.sqlite_version,
+            "fts5_available": fts5_available,
+        },
         "tools": {name: shutil.which(name) for name in EXTERNAL_TOOLS},
     }
 
@@ -210,6 +225,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(f"doc-evidence {report['doc_evidence_version']}")
                 print(f"Python: {report['python']}")
                 print(f"Platform: {report['platform']}")
+                sqlite_report = report["sqlite"]
+                assert isinstance(sqlite_report, dict)
+                print(
+                    "SQLite: "
+                    f"{sqlite_report['version']} "
+                    f"(FTS5: {sqlite_report['fts5_available']})"
+                )
                 print("External tools:")
                 tools = report["tools"]
                 assert isinstance(tools, dict)

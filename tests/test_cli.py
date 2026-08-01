@@ -19,6 +19,8 @@ class DoctorCommandTest(unittest.TestCase):
         self.assertIn("doc_evidence_version", report)
         self.assertIn("python", report)
         self.assertIn("platform", report)
+        self.assertIn("sqlite", report)
+        self.assertTrue(report["sqlite"]["fts5_available"])
         self.assertIn("tools", report)
         self.assertIn("pdftotext", report["tools"])
 

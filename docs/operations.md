@@ -90,6 +90,10 @@ uv run doc-evidence search --config /path/to/case.yaml Evidence --mode fts
 Results identify the content hash, one-based page number, and all collection
 paths associated with the document.
 
+Use the `doc-evidence` command for FTS queries. A system `sqlite3` shell may be
+linked against a different SQLite build that cannot load the FTS5 table even
+when the Python runtime reported by `doc-evidence doctor` supports it.
+
 ## Duplicates
 
 ```sh

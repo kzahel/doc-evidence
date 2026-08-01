@@ -1,7 +1,7 @@
 # Master Plan
 
 **Last updated:** 2026-08-01
-**Status:** Phase 1 implemented; first private-corpus validation pending
+**Status:** Phase 1 implemented and operationally validated
 
 ## Objective
 
@@ -48,9 +48,15 @@ core.
 The implementation is covered by generated-PDF integration tests for source
 immutability, exact duplicates, normalized-text duplicates, image-only
 classification, artifact-cache reuse, schema-valid manifests, literal search,
-and SQLite FTS5 search. It still requires reconciliation against the initial
-private 2023 corpus baseline before the phase is considered operationally
-validated.
+and SQLite FTS5 search.
+
+On 2026-08-01, the first private-corpus run reconciled exactly to its independent
+file/page baseline: 81 source files, 79 PDF paths, and 421 PDF source pages. It
+produced 80 unique content hashes, 78 unique PDFs, 10 unique image-only PDFs,
+one exact-byte duplicate group, two distinct-byte normalized-text duplicate
+groups, and no path or extraction errors. A second run reused all 78 unique PDF
+extractions. Private filenames and extracted content remain in the external
+case workspace.
 
 ### Phase 2 — OCR and parser comparison
 
