@@ -1074,3 +1074,39 @@ OCR. This is intentionally unsigned and unnotarized. The production lane still
 follows the pinned sibling signing, bounded-retry, notarization, stapling, and
 post-signing verification conventions rather than treating the local image as
 a releasable artifact.
+
+The ninth landed slice makes compliance incompleteness machine-visible. The
+`compliance-preflight` command first re-audits the exact application, then
+emits a preliminary SPDX 2.3 component document, every mapped runtime license,
+human notices, bundle/runtime/pack manifests, exact build recipes and locks,
+all five wheel-embedded SBOMs, and the exact Homebrew SPDX source/bottle record
+for each of the 24 conveyed formula components. It packages those records as
+an ignored tarball and never returns `release_ready: true` while an obligation
+is unresolved.
+
+The current preflight reconciles 70 top-level staged components and all 3,835
+runtime-manifest files. It closes the easy missing-license and Homebrew package-
+revision gaps, then reports five substantive release blockers:
+
+- pypdfium2's aggregate license metadata still needs a reviewed SPDX
+  conclusion rather than `NOASSERTION`;
+- 77 Mach-O objects owned by Python wheels need their embedded third-party
+  components, versions, licenses, and source offers flattened and reconciled;
+- locked Rust and Node production dependencies need to enter the shipped
+  notices and aggregate SBOM;
+- exact Homebrew formula recipe revisions must accompany the already preserved
+  upstream-source and bottle records; and
+- required GPL/LGPL/MPL source archives and source-form offers are not yet
+  embedded in the compliance output.
+
+This is a deliberately blocked preflight, not legal clearance. It confirms
+that signing credentials are not the next immediate dependency: the component
+and source record must become release-complete before a signed public artifact
+would be acceptable.
+
+The generated preflight archive measures 679,727 bytes with SHA-256
+`aca24bb41896be932b4a1ce4e018ea7311952010612739bcb404ad4b7910e8d9`.
+It describes application tree
+`64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`
+and bundle manifest
+`ffc9dcf4089fe4b74e51c1fc7c651aea00f06f612f2cc173278e9feb8dbb2d06`.

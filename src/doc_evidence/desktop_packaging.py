@@ -21,6 +21,7 @@ import urllib.parse
 import urllib.request
 from collections import deque
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,12 @@ HOMEBREW_BUILD_PREFIX = b"/opt/homebrew"
 NEUTRAL_BUILD_PREFIX = b"/__doc_evid__"
 MAX_READY_BYTES = 64 * 1024
 _LICENSE_NAMES = ("license", "copying", "notice")
+_SPDX_LICENSE_NORMALIZATION = {
+    "Apache License 2.0": "Apache-2.0",
+    "OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)": ("LGPL-3.0-only"),
+    "OSI Approved :: MIT License": "MIT",
+    "PSFL": "PSF-2.0",
+}
 
 
 def repository_root() -> Path:
@@ -82,6 +89,10 @@ def application_bundle_path(root: Path | None = None) -> Path:
 
 def unsigned_dmg_path(root: Path | None = None) -> Path:
     return distribution_root(root) / f"Doc-Evidence_{__version__}_aarch64-unsigned.dmg"
+
+
+def compliance_root(root: Path | None = None) -> Path:
+    return distribution_root(root) / f"Doc-Evidence_{__version__}_compliance-preflight"
 
 
 def _run(
@@ -815,6 +826,9 @@ def _stage_baseline_pack(
             }
         )
     language_paths = [f"baseline-pack/{item['path']}" for item in language_data]
+    tesseract_component = next(
+        item for item in components if item["component_id"] == "homebrew-tesseract"
+    )
     components.append(
         {
             "component_id": "tesseract-language-data",
@@ -822,6 +836,7 @@ def _stage_baseline_pack(
             "version": "4.1.0/5.5.3",
             "license_concluded": "Apache-2.0",
             "source_url": ("https://github.com/tesseract-ocr/tessdata/tree/4.1.0"),
+            "license_files": list(tesseract_component["license_files"]),
             "bundled_paths": language_paths,
         }
     )
@@ -846,9 +861,6 @@ def _stage_baseline_pack(
                 "component_id": "homebrew-tesseract",
             }
         )
-    tesseract_component = next(
-        item for item in components if item["component_id"] == "homebrew-tesseract"
-    )
     tesseract_component["bundled_paths"] = sorted(
         [*tesseract_component["bundled_paths"], *support_paths]
     )
@@ -903,6 +915,12 @@ def _stage_baseline_pack(
             "version": str(baseline["version"]),
             "license_concluded": "Apache-2.0",
             "source_url": "https://github.com/kzahel/doc-evidence",
+            "license_files": [
+                (
+                    "python/lib/python3.12/site-packages/"
+                    "doc_evidence-0.4.0.dist-info/licenses/LICENSE"
+                )
+            ],
             "bundled_paths": metadata_paths,
         }
     )
@@ -1922,6 +1940,389 @@ def create_unsigned_dmg(
         partial.unlink(missing_ok=True)
 
 
+def _spdx_id(value: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9.-]+", "-", value).strip("-.")
+    if not normalized:
+        raise RuntimeError("SPDX component identifier is empty")
+    return f"SPDXRef-{normalized}"
+
+
+def _spdx_license(value: str) -> tuple[str, bool]:
+    normalized = _SPDX_LICENSE_NORMALIZATION.get(value, value)
+    unresolved = "," in normalized or "dependency licenses" in normalized.casefold()
+    return ("NOASSERTION" if unresolved else normalized, unresolved)
+
+
+def _copy_compliance_file(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+
+
+def _homebrew_component_provenance(
+    components: Sequence[Mapping[str, Any]],
+    destination: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    records = []
+    blockers = []
+    cellar = Path(
+        _run(["brew", "--cellar"], capture_output=True).stdout.strip()
+    ).resolve()
+    for component in components:
+        component_id = str(component["component_id"])
+        if not component_id.startswith("homebrew-"):
+            continue
+        name = str(component["name"])
+        version = str(component["version"])
+        source = cellar / name / version / "sbom.spdx.json"
+        if not source.is_file():
+            blockers.append(
+                {
+                    "code": "missing-homebrew-sbom",
+                    "detail": f"Homebrew provenance is missing for {name} {version}",
+                }
+            )
+            continue
+        document = json.loads(source.read_text(encoding="utf-8"))
+        if document.get("spdxVersion") != "SPDX-2.3":
+            blockers.append(
+                {
+                    "code": "incompatible-homebrew-sbom",
+                    "detail": f"Homebrew provenance is incompatible for {name} {version}",
+                }
+            )
+            continue
+        packages = document.get("packages")
+        if not isinstance(packages, list):
+            raise TypeError(f"Homebrew SBOM has no package list: {name}")
+        source_package = next(
+            (
+                item
+                for item in packages
+                if item.get("name") == name
+                and str(item.get("SPDXID", "")).startswith("SPDXRef-Archive-")
+            ),
+            None,
+        )
+        bottle_package = next(
+            (
+                item
+                for item in reversed(packages)
+                if item.get("name") == name
+                and (
+                    item.get("versionInfo") == version
+                    or version.startswith(f"{item.get('versionInfo')}_")
+                )
+                and str(item.get("downloadLocation", "")).startswith("https://ghcr.io/")
+            ),
+            None,
+        )
+        source_version = (
+            str(source_package.get("versionInfo")) if source_package is not None else ""
+        )
+        if source_package is None or not (
+            version == source_version or version.startswith(f"{source_version}_")
+        ):
+            blockers.append(
+                {
+                    "code": "missing-homebrew-source-record",
+                    "detail": f"Exact upstream source is missing for {name} {version}",
+                }
+            )
+            continue
+        copied = destination / f"{name}-{version}.spdx.json"
+        _copy_compliance_file(source, copied)
+        source_checksums = source_package.get("checksums") or []
+        bottle_checksums = (bottle_package or {}).get("checksums") or []
+        records.append(
+            {
+                "component_id": component_id,
+                "name": name,
+                "version": version,
+                "license_concluded": source_package.get("licenseConcluded"),
+                "source_url": source_package.get("downloadLocation"),
+                "source_sha256": next(
+                    (
+                        item.get("checksumValue")
+                        for item in source_checksums
+                        if item.get("algorithm") == "SHA256"
+                    ),
+                    None,
+                ),
+                "bottle_url": (bottle_package or {}).get("downloadLocation"),
+                "bottle_sha256": next(
+                    (
+                        item.get("checksumValue")
+                        for item in bottle_checksums
+                        if item.get("algorithm") == "SHA256"
+                    ),
+                    None,
+                ),
+                "homebrew_sbom": copied.relative_to(destination.parent).as_posix(),
+                "homebrew_sbom_sha256": sha256_file(copied),
+            }
+        )
+    return records, blockers
+
+
+def generate_compliance_preflight(
+    app: Path,
+    destination: Path,
+    *,
+    repository: Path | None = None,
+    replace: bool = False,
+) -> dict[str, Any]:
+    _require_host()
+    bundle = app.resolve()
+    repo = (repository or repository_root()).resolve()
+    output = destination.resolve()
+    archive = output.with_name(f"{output.name}.tar.gz")
+    if (output.exists() or archive.exists()) and not replace:
+        raise RuntimeError(f"desktop compliance output already exists: {output}")
+    app_audit = audit_application(bundle, repository=repo, smoke=True)
+    runtime = bundle / "Contents" / "Resources" / "desktop-runtime"
+    manifest_path = runtime / "bundle-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    components = manifest["components"]
+    blockers: list[dict[str, str]] = []
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    previous = output.with_name(f"{output.name}.previous")
+    if previous.exists():
+        raise RuntimeError(f"stale compliance rollback directory exists: {previous}")
+    if output.exists():
+        os.replace(output, previous)
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="doc-evidence-compliance-", dir=output.parent
+        ) as raw:
+            staged = Path(raw) / output.name
+            staged.mkdir(parents=True)
+            manifests = staged / "manifests"
+            manifests.mkdir()
+            for source in (
+                manifest_path,
+                runtime / "runtime-manifest.json",
+                runtime / "baseline-pack" / "pack-manifest.json",
+            ):
+                _copy_compliance_file(source, manifests / source.name)
+            _copy_compliance_file(
+                runtime / "THIRD_PARTY_NOTICES.txt",
+                staged / "THIRD_PARTY_NOTICES.txt",
+            )
+            _copy_compliance_file(repo / "LICENSE", staged / "LICENSE")
+
+            copied_licenses: set[str] = set()
+            spdx_packages = [
+                {
+                    "SPDXID": "SPDXRef-Package-Doc-Evidence",
+                    "name": PRODUCT_NAME,
+                    "versionInfo": __version__,
+                    "downloadLocation": "https://github.com/kzahel/doc-evidence",
+                    "filesAnalyzed": False,
+                    "licenseConcluded": "Apache-2.0",
+                    "licenseDeclared": "Apache-2.0",
+                    "copyrightText": "NOASSERTION",
+                }
+            ]
+            relationships = []
+            for component in components:
+                component_id = str(component["component_id"])
+                license_value, unresolved = _spdx_license(
+                    str(component["license_concluded"])
+                )
+                if unresolved:
+                    blockers.append(
+                        {
+                            "code": "unresolved-license-expression",
+                            "detail": (
+                                f"{component_id} lacks a reviewed SPDX expression"
+                            ),
+                        }
+                    )
+                license_files = component.get("license_files") or []
+                if not license_files:
+                    blockers.append(
+                        {
+                            "code": "missing-component-license-file",
+                            "detail": f"{component_id} has no mapped license file",
+                        }
+                    )
+                for relative_value in license_files:
+                    relative = str(relative_value)
+                    source = runtime / relative
+                    resolved = source.resolve()
+                    if (
+                        not source.is_file()
+                        or resolved == runtime.resolve()
+                        or runtime.resolve() not in resolved.parents
+                    ):
+                        raise RuntimeError(
+                            f"component license escapes the runtime: {relative}"
+                        )
+                    if relative in copied_licenses:
+                        continue
+                    copied_licenses.add(relative)
+                    _copy_compliance_file(
+                        source,
+                        staged / "licenses" / "runtime" / relative,
+                    )
+                spdx_component_id = _spdx_id(f"Package-{component_id}")
+                package = {
+                    "SPDXID": spdx_component_id,
+                    "name": str(component["name"]),
+                    "versionInfo": str(component["version"]),
+                    "downloadLocation": str(
+                        component.get("source_url") or "NOASSERTION"
+                    ),
+                    "filesAnalyzed": False,
+                    "licenseConcluded": license_value,
+                    "licenseDeclared": license_value,
+                    "copyrightText": "NOASSERTION",
+                }
+                if unresolved:
+                    package["comment"] = "Original staged conclusion: " + str(
+                        component["license_concluded"]
+                    )
+                spdx_packages.append(package)
+                relationships.append(
+                    {
+                        "spdxElementId": "SPDXRef-Package-Doc-Evidence",
+                        "relationshipType": "CONTAINS",
+                        "relatedSpdxElement": spdx_component_id,
+                    }
+                )
+
+            homebrew_records, homebrew_blockers = _homebrew_component_provenance(
+                components,
+                staged / "embedded-sboms" / "homebrew",
+            )
+            blockers.extend(homebrew_blockers)
+            _write_json(staged / "homebrew-source-records.json", homebrew_records)
+
+            embedded_python_sboms = []
+            site_packages = runtime / "python" / "lib" / "python3.12" / "site-packages"
+            for source in sorted(site_packages.glob("*.dist-info/sboms/*")):
+                if not source.is_file():
+                    continue
+                relative = source.relative_to(site_packages)
+                copied = staged / "embedded-sboms" / "python" / relative
+                _copy_compliance_file(source, copied)
+                embedded_python_sboms.append(
+                    {
+                        "path": copied.relative_to(staged).as_posix(),
+                        "sha256": sha256_file(copied),
+                    }
+                )
+            _write_json(staged / "python-embedded-sboms.json", embedded_python_sboms)
+
+            recipe_paths = (
+                "scripts/build-macos-desktop",
+                "desktop/packaging/macos-arm64.json",
+                "desktop/packaging/baseline-requirements.in",
+                "desktop/packaging/baseline-requirements.txt",
+                "desktop/src-tauri/Cargo.lock",
+                "desktop/package-lock.json",
+                "web/package-lock.json",
+                "pyproject.toml",
+                "uv.lock",
+                "src/doc_evidence/desktop_packaging.py",
+            )
+            for relative in recipe_paths:
+                _copy_compliance_file(
+                    repo / relative,
+                    staged / "build-recipes" / relative,
+                )
+
+            bundle_manifest_sha = sha256_file(manifest_path)
+            spdx = {
+                "spdxVersion": "SPDX-2.3",
+                "dataLicense": "CC0-1.0",
+                "SPDXID": "SPDXRef-DOCUMENT",
+                "name": f"Doc-Evidence-{__version__}-macos-arm64-preflight",
+                "documentNamespace": (
+                    "https://doc-evidence.local/spdx/"
+                    f"{__version__}/{bundle_manifest_sha}"
+                ),
+                "creationInfo": {
+                    "created": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "creators": [f"Tool: doc-evidence-desktop-packaging-{__version__}"],
+                },
+                "documentDescribes": ["SPDXRef-Package-Doc-Evidence"],
+                "packages": spdx_packages,
+                "relationships": relationships,
+            }
+            _write_json(staged / "doc-evidence.spdx.json", spdx)
+
+            python_native = [
+                item["path"]
+                for item in app_audit["runtime"]["native_files"]
+                if str(item["path"]).startswith("python/")
+            ]
+            blockers.extend(
+                [
+                    {
+                        "code": "unflattened-python-wheel-native-components",
+                        "detail": (
+                            f"{len(python_native)} Python-wheel Mach-O objects need "
+                            "complete nested component/source reconciliation"
+                        ),
+                    },
+                    {
+                        "code": "missing-rust-node-license-inventory",
+                        "detail": (
+                            "Rust and Node production dependencies are locked but not "
+                            "yet mapped into application notices and this SBOM"
+                        ),
+                    },
+                    {
+                        "code": "missing-exact-homebrew-formula-recipes",
+                        "detail": (
+                            "Homebrew SPDX source/bottle records are preserved, but "
+                            "the exact formula recipe revisions are not pinned"
+                        ),
+                    },
+                    {
+                        "code": "source-archives-not-embedded",
+                        "detail": (
+                            "Exact source records exist, but required copyleft/MPL "
+                            "source archives are not yet embedded in this output"
+                        ),
+                    },
+                ]
+            )
+            report = {
+                "schema_version": "doc-evidence.desktop-compliance-preflight.v1",
+                "status": "blocked",
+                "release_ready": False,
+                "application_tree_sha256": app_audit["tree_sha256"],
+                "bundle_manifest_sha256": bundle_manifest_sha,
+                "component_count": len(components),
+                "file_count": len(manifest["files"]),
+                "homebrew_source_record_count": len(homebrew_records),
+                "embedded_python_sbom_count": len(embedded_python_sboms),
+                "python_native_object_count": len(python_native),
+                "blockers": blockers,
+            }
+            _write_json(staged / "compliance-preflight.json", report)
+            os.replace(staged, output)
+    except BaseException:
+        if previous.exists() and not output.exists():
+            os.replace(previous, output)
+        raise
+    if previous.exists():
+        shutil.rmtree(previous)
+    archive.unlink(missing_ok=True)
+    with tarfile.open(archive, "w:gz") as stream:
+        stream.add(output, arcname=output.name)
+    return {
+        **json.loads((output / "compliance-preflight.json").read_text()),
+        "output": str(output),
+        "archive": str(archive),
+        "archive_bytes": archive.stat().st_size,
+        "archive_sha256": sha256_file(archive),
+    }
+
+
 def _cli(arguments: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="doc-evidence desktop-package")
     subparsers = parser.add_subparsers(dest="operation", required=True)
@@ -1938,6 +2339,10 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     dmg.add_argument("--replace", action="store_true")
     review_dmg = subparsers.add_parser("review-dmg")
     review_dmg.add_argument("--dmg", type=Path)
+    compliance = subparsers.add_parser("compliance-preflight")
+    compliance.add_argument("--app", type=Path)
+    compliance.add_argument("--output", type=Path)
+    compliance.add_argument("--replace", action="store_true")
     args = parser.parse_args(arguments)
     repository = repository_root()
     if args.operation == "stage":
@@ -1964,10 +2369,17 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
             repository=repository,
             replace=bool(args.replace),
         )
-    else:
+    elif args.operation == "review-dmg":
         result = audit_dmg(
             args.dmg or unsigned_dmg_path(repository),
             repository=repository,
+        )
+    else:
+        result = generate_compliance_preflight(
+            args.app or application_bundle_path(repository),
+            args.output or compliance_root(repository),
+            repository=repository,
+            replace=bool(args.replace),
         )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0

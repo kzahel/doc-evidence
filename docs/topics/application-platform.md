@@ -290,6 +290,14 @@ compressed image, mounts it read-only, re-audits the contained application,
 and detaches it. The resulting 73,253,627-byte unsigned image is validation
 evidence, not a release artifact.
 
+The first compliance preflight accounts for 70 top-level staged components,
+all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
+and five embedded Python-wheel SBOMs. It remains fail-closed for publication:
+pypdfium2 needs a reviewed composite SPDX conclusion; 77 Python-wheel Mach-O
+objects need flattened component/source reconciliation; Rust and Node locks
+need license/notices integration; exact Homebrew formula recipe revisions need
+pinning; and required copyleft/MPL source archives need embedding.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

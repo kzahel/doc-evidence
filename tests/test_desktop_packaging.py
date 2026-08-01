@@ -12,7 +12,10 @@ from doc_evidence.desktop_packaging import (
     _audit_symlinks,
     _files_containing,
     _load_inputs,
+    _spdx_license,
+    compliance_root,
     create_unsigned_dmg,
+    generate_compliance_preflight,
     repository_root,
     sha256_tree,
     stage_runtime,
@@ -127,6 +130,27 @@ class DesktopPackagingTest(unittest.TestCase):
             output.write_bytes(b"existing")
             with self.assertRaisesRegex(RuntimeError, "already exists"):
                 create_unsigned_dmg(root / "missing.app", output, repository=root)
+
+    def test_compliance_preflight_is_explicit_and_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            output = compliance_root(root)
+            self.assertEqual(
+                output.name,
+                "Doc-Evidence_0.4.0_compliance-preflight",
+            )
+            output.mkdir(parents=True)
+            with self.assertRaisesRegex(RuntimeError, "already exists"):
+                generate_compliance_preflight(
+                    root / "missing.app",
+                    output,
+                    repository=root,
+                )
+        self.assertEqual(_spdx_license("Apache License 2.0"), ("Apache-2.0", False))
+        self.assertEqual(
+            _spdx_license("BSD-3-Clause, dependency licenses"),
+            ("NOASSERTION", True),
+        )
 
 
 if __name__ == "__main__":
