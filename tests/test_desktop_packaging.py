@@ -14,6 +14,7 @@ from doc_evidence.desktop_packaging import (
     _files_containing,
     _installed_homebrew_bottle,
     _load_inputs,
+    _python_license_conclusion,
     _python_native_inventory,
     _requires_corresponding_source,
     _rust_license_expression,
@@ -227,6 +228,20 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertTrue(_requires_corresponding_source("LGPL-2.1-or-later"))
         self.assertTrue(_requires_corresponding_source("MPL-2.0"))
         self.assertFalse(_requires_corresponding_source("Apache-2.0 OR MIT"))
+        self.assertEqual(
+            _python_license_conclusion(
+                {"name": "pi_heif", "version": "1.4.0"},
+                {
+                    "python_license_conclusions": {
+                        "pi-heif": {
+                            "version": "1.4.0",
+                            "license_concluded": "BSD-3-Clause AND LGPL-3.0-only",
+                        }
+                    }
+                },
+            ),
+            "BSD-3-Clause AND LGPL-3.0-only",
+        )
 
     def test_python_native_inventory_distinguishes_nested_libraries(self) -> None:
         native = [

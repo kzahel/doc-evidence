@@ -1128,6 +1128,14 @@ wheel objects are the distributions' own extension modules, while 32 are
 separate libraries under wheel-owned `.dylibs` directories or PDFium. Only the
 last group remains in the nested-component blocker.
 
+That audit also found that `pi_heif` 1.4.0's PyPI metadata describes only its
+BSD wrapper while `LICENSES_bundled.txt` states that binary wheels are LGPLv3
+because they convey libheif and libde265. A version-bound packaging conclusion
+now records `BSD-3-Clause AND LGPL-3.0-only`, retains both notice files, and
+fails if the package version drifts. The rebuilt staged runtime passed its
+full manifest/native/sidecar audit at tree
+`2d2b211311e3ef961225406f72028a223d901e3adaeaa4288c5bc9f64bebcf88`.
+
 This is a deliberately blocked preflight, not legal clearance. It confirms
 that signing credentials are not the next immediate dependency: the component
 and source record must become release-complete before a signed public artifact

@@ -308,6 +308,11 @@ aggregate SPDX already includes all 253 target-resolved Rust dependencies and
 11 conservative production Node dependencies, with 426 available license
 files and exact registry source checksums.
 
+The baseline wheel audit overrides `pi_heif` 1.4.0's wrapper-only BSD package
+metadata with `BSD-3-Clause AND LGPL-3.0-only`, as required by the wheel's own
+bundled notice for libheif/libde265. The exact-version override fails closed on
+dependency drift and keeps both license files in the component manifest.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

@@ -1004,6 +1004,25 @@ def _license_conclusion(distribution: Mapping[str, Any]) -> str:
     )
 
 
+def _python_license_conclusion(
+    distribution: Mapping[str, Any], baseline: Mapping[str, Any]
+) -> str:
+    overrides = baseline.get("python_license_conclusions")
+    if not isinstance(overrides, Mapping):
+        raise TypeError("baseline Python license conclusions are invalid")
+    normalized = str(distribution["name"]).lower().replace("_", "-")
+    override = overrides.get(normalized)
+    if override is None:
+        return _license_conclusion(distribution)
+    if not isinstance(override, Mapping):
+        raise TypeError(f"Python license conclusion is invalid: {normalized}")
+    version = override.get("version")
+    conclusion = override.get("license_concluded")
+    if version != distribution.get("version") or not isinstance(conclusion, str):
+        raise RuntimeError(f"Python license conclusion drifted: {normalized}")
+    return conclusion
+
+
 def _component_id(name: str) -> str:
     normalized = "".join(
         character if character.isalnum() else "-" for character in name.lower()
@@ -1035,6 +1054,9 @@ def _write_manifests(
     package_license_files = baseline_metadata.get("package_license_files")
     if not isinstance(package_license_files, dict):
         raise TypeError("baseline Python license inventory is invalid")
+    baseline = inputs.get("baseline_pack")
+    if not isinstance(baseline, Mapping):
+        raise TypeError("baseline extractor-pack inputs are missing")
     for package in packages:
         normalized = str(package["name"]).lower().replace("_", "-")
         if normalized in forbidden:
@@ -1088,7 +1110,7 @@ def _write_manifests(
         external_licenses = [
             str(path) for path in package_license_files.get(normalized, [])
         ]
-        conclusion = _license_conclusion(package)
+        conclusion = _python_license_conclusion(package, baseline)
         notices.append(f"{package['name']} {package['version']} — {conclusion}")
         for path in package["files"]:
             file_owners[f"python/{path}"] = component_id
@@ -1122,7 +1144,7 @@ def _write_manifests(
             {
                 "name": package["name"],
                 "version": package["version"],
-                "license_concluded": _license_conclusion(package),
+                "license_concluded": _python_license_conclusion(package, baseline),
             }
             for package in packages
         ],
