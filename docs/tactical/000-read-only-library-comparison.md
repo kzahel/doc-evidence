@@ -354,7 +354,7 @@ shape.
 
 ## Execution Record
 
-Implementation was approved and completed on 2026-08-01 in six reviewable
+Implementation was approved and completed on 2026-08-01 in seven reviewable
 slices:
 
 1. `1bb234b` — framework-independent read-only application services,
@@ -374,7 +374,9 @@ slices:
 5. `5c77220` — named Small, Normal, and Large typography presets with Normal
    as the 120% default and no percentages exposed in the interface; and
 6. `797ddce` — collapsible library navigation, accessible source/output
-   resizing, and Auto, Reading, and Aligned extraction-text presentation.
+   resizing, and Auto, Reading, and Aligned extraction-text presentation; and
+7. `e5e3c04` — bounded Focused, Stacked, and Compare review modes, responsive
+   raw two-up comparison, and prominent direct source-page navigation.
 
 ### Automated evidence
 
@@ -384,7 +386,7 @@ slices:
   source immutability, exact grouping, and numeric replacements.
 - Pyright reports zero errors and `uv build` succeeds.
 - Checked OpenAPI and generated TypeScript/client drift checks pass.
-- TypeScript typecheck passes; 18 frontend tests pass; the Vite production
+- TypeScript typecheck passes; 20 frontend tests pass; the Vite production
   build succeeds.
 - The dependency boundary checks confirm that application/comparison modules
   do not import FastAPI and product components do not contain endpoint paths,
@@ -410,6 +412,13 @@ configuration without copying private data into this repository:
   tested viewport, pointer dragging changed the source share from 45% to 58%,
   Home restored 45%, Aligned preserved lines with horizontal overflow,
   Reading restored wrapping, and the narrow stacked layout hid the divider;
+- the focused-workspace Playwright pass used a real five-representation page:
+  the 827-pixel source and extraction panes stayed aligned, Focused showed one
+  card, Stacked kept five cards inside a 647-pixel scroller without changing
+  document height, and Raw rendered two-up at 1,800 pixels and stacked at
+  1,000 pixels;
+- the focused aligned output remained inside its pane with a 697 by 422-pixel
+  viewport over 759 by 1,187 pixels of independently scrollable content;
 - raw artifacts, including a valid zero-byte stderr artifact, opened in a
   bounded sandboxed preview with a download option; and
 - an aggregate SHA-256 digest over every configured private source file was
@@ -509,3 +518,9 @@ On 2026-08-01 the maintainer approved this final read-only interaction shape:
 This revision remains session-local and frontend-only. It adds no API routes,
 jobs, durable state, dependencies, or source/artifact writes. Extraction
 execution remains outside Tactical 000.
+
+The revision landed in `e5e3c04`. Contract drift, TypeScript typecheck, 20
+frontend tests, and the production build pass. Background/headless Playwright
+validated Focused, Stacked, Diff, Raw two-up, responsive stacking, pane-height
+containment, prominent page controls, independent text overflow, and zero
+console errors against a real five-representation private page.

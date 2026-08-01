@@ -176,6 +176,11 @@ source/output split, and extraction-text presentation. The accessible desktop
 separator supports pointer and keyboard adjustment without adding backend or
 durable state; narrow evidence layouts remain stacked.
 
+It also owns Focused, Stacked, and Compare review modes, the active
+representation, and Diff versus Raw comparison presentation. These remain
+transient layout choices; switching modes does not create a durable review
+event or invoke a backend job.
+
 Deep links use the SHA-256 document identity rather than a source path. The
 catalog and document-detail contract provide the reverse mapping to every
 `collection_id`/`relative_path` occurrence. This keeps links stable across

@@ -2,8 +2,8 @@
 
 Topic: maintainer-feature-requests
 
-**Status:** Focused review-workspace revision in progress; UI-triggered
-extraction execution remains the next distinct product discussion.
+**Status:** Review-workspace revisions implemented; UI-triggered extraction
+execution remains the next distinct product discussion.
 
 ## Purpose
 
@@ -15,40 +15,6 @@ Requests remain here after implementation so the original need, accepted
 behavior, and implementation status remain traceable.
 
 ## Open Requests
-
-### Bounded focused, stacked, and comparison review modes
-
-**Status:** IN PROGRESS — approved as a final Tactical 000 interaction
-revision.
-
-The source page must remain useful context while reviewing several extractor
-representations. Full extraction bodies should no longer form one unbounded
-document-height feed by default.
-
-The approved interaction is:
-
-- bound the source/extraction review area to the useful viewport and give each
-  side its own overflow behavior;
-- make Focused the default, with a compact representation selector and one
-  complete extraction body;
-- retain the current all-results flow as an explicit Stacked mode inside the
-  extraction pane;
-- move pairwise comparison into the extraction pane as a Compare mode instead
-  of placing it beneath every representation;
-- offer deterministic diff and raw two-up comparison views;
-- place raw outputs side by side when space permits and stack them when it
-  does not; and
-- keep text-presentation controls effective in every mode.
-
-### Prominent source-page navigation
-
-**Status:** IN PROGRESS — approved as a final Tactical 000 interaction
-revision.
-
-Page navigation belongs directly above the rendered source page. Previous and
-next controls must use prominent visible glyphs and labels, while the current
-page remains directly typeable and clearly shows the total page count. The
-control should stay available while the source pane scrolls.
 
 ### Trigger and monitor extraction from the application
 
@@ -76,6 +42,25 @@ only from an explicit user action or an explicitly configured batch policy.
 Source documents remain immutable.
 
 ## Implemented or Clarified Requests
+
+### Bounded focused, stacked, and comparison review modes
+
+**Status:** IMPLEMENTED in `e5e3c04`.
+
+The height-bounded source and extraction panes retain their own overflow.
+Focused is the default and displays one representation selected from a compact
+strip. Stacked keeps every card in the bounded extraction scroller. Compare
+replaces the previous below-the-feed panel and offers deterministic Diff and
+responsive Raw two-up views. Text-layout selection remains effective in every
+mode.
+
+### Prominent source-page navigation
+
+**Status:** IMPLEMENTED in `e5e3c04`.
+
+The sticky source toolbar now places visible Previous and Next buttons, a
+directly typeable page field, and the total page count immediately above the
+rendered page. Invalid direct entries revert to the current page.
 
 ### Collapsible navigation sidebar
 

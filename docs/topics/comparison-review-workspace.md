@@ -166,10 +166,17 @@ preserves whitespace without wrapping and scrolls horizontally, and Auto
 shows the result of a bounded deterministic spacing/table heuristic while
 remaining manually overridable.
 
+The subsequent focused-workspace revision bounds source and extraction height
+and makes Focused the default: one representation is selected from a compact
+strip while retaining immediate Stacked and Compare modes. Compare now lives
+inside the extraction pane and offers deterministic Diff plus responsive Raw
+two-up views. Prominent sticky page controls sit immediately above the source
+render and retain direct numeric entry.
+
 ## Recommended Next Work
 
 Use the [maintainer feature-request backlog](maintainer-feature-requests.md) to
 finish the live interaction review and choose the next bounded slice. The
-layout requests are implemented; explicit extraction execution is the
+review-layout requests are implemented; explicit extraction execution is the
 remaining open maintainer request. Persistent review decisions and portable
 export remain separate write-enabled work.
