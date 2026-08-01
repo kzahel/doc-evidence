@@ -963,3 +963,28 @@ Frontend typecheck, all 31 component/runtime/boundary tests, and the production
 Vite build pass. The production output contains one small lazy desktop-runtime
 chunk; the main product bundle remains shared. A source-boundary test rejects
 Tauri imports outside that adapter.
+
+The fifth landed slice adds the thin Tauri 2 shell itself:
+
+- Rust generates independent 256-bit runtime and host-control credentials,
+  clears the child environment, forwards only bounded product/locale/temp
+  values, injects the existing `doc-evidence` application-data root, and never
+  serializes the host credential;
+- the shell launches only the staged standalone Python module, reads a 64 KiB-
+  bounded strict ready record with a timeout, authenticates and validates the
+  originless host-control handshake, and exposes the runtime bearer only
+  through one narrow bootstrap command;
+- one single-instance plugin focuses the existing main window, app close first
+  closes sidecar stdin and waits for scheduler/worker cleanup before a bounded
+  kill, and unexpected exit emits the frontend's bounded failure event;
+- Rust-owned folder/config dialogs invoke only the three typed host operations;
+  parent-scope expansion requires a native confirmation and no selected path
+  crosses the JavaScript bridge; and
+- the bundled webview uses local assets and a restrictive CSP, with only event
+  listen/unlisten capability granted to the main window.
+
+The Rust project, locks, macOS icon source/artifacts, and version/license drift
+checks are tracked. `cargo fmt --check`, five Rust unit tests, and strict Clippy
+pass, as do the shared frontend typecheck/tests/build. The shell has not yet
+been assembled into an application because the staged standalone Python
+resource is intentionally the next commit slice.

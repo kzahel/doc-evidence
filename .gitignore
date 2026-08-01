@@ -16,6 +16,9 @@ web/dist/
 web/coverage/
 web/playwright-report/
 web/test-results/
+desktop/node_modules/
+desktop/src-tauri/icons/android/
+desktop/src-tauri/icons/icon.ico
 
 # Generated document stores, databases, models, and benchmark runs.
 .doc-evidence-data/
@@ -44,6 +47,7 @@ runs/
 *.jpg
 *.jpeg
 *.png
+!desktop/src-tauri/icons/icon.png
 *.tif
 *.tiff
 *.zip

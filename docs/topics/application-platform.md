@@ -259,8 +259,11 @@ absolute paths to React. The shared runtime now exposes matching behavioral
 native operations, and the isolated desktop adapter validates the authenticated
 handshake before composing the unchanged HTTP runtime. Empty-home and managed-
 library settings surfaces consume those operations without a path or Tauri
-import. The ordinary localhost composition remains unchanged; the Rust dialogs
-and supervisor have not landed yet.
+import. A thin Tauri 2 shell now owns dual-secret generation, app-data
+injection, strict ready/control validation, single-instance focus, Rust-owned
+folder dialogs, sidecar supervision, app-close cleanup, and bounded failure
+events. The ordinary localhost composition remains unchanged; standalone
+runtime and extractor-pack staging are the next packaging boundaries.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

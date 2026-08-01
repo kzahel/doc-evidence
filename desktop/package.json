@@ -1,0 +1,13 @@
+{
+  "name": "@doc-evidence/desktop",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build:web": "npm run build --prefix ../web",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4"
+  }
+}

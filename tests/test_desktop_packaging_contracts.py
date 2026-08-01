@@ -23,13 +23,48 @@ class DesktopPackagingContractTest(unittest.TestCase):
         lock_root = json.loads(
             (self.root / "web" / "package-lock.json").read_text(encoding="utf-8")
         )["packages"][""]
+        desktop = json.loads(
+            (self.root / "desktop" / "package.json").read_text(encoding="utf-8")
+        )
+        desktop_lock_root = json.loads(
+            (self.root / "desktop" / "package-lock.json").read_text(encoding="utf-8")
+        )["packages"][""]
+        rust = tomllib.loads(
+            (self.root / "desktop" / "src-tauri" / "Cargo.toml").read_text(
+                encoding="utf-8"
+            )
+        )
 
         self.assertEqual(project["project"]["license"], "Apache-2.0")
         self.assertEqual(frontend["license"], "Apache-2.0")
         self.assertEqual(lock_root["license"], "Apache-2.0")
+        self.assertEqual(desktop["license"], "Apache-2.0")
+        self.assertEqual(desktop_lock_root["license"], "Apache-2.0")
+        self.assertEqual(rust["package"]["license"], "Apache-2.0")
         license_text = (self.root / "LICENSE").read_text(encoding="utf-8")
         self.assertIn("Apache License", license_text)
         self.assertIn("Version 2.0, January 2004", license_text)
+
+    def test_desktop_versions_and_identity_cannot_drift(self) -> None:
+        project = tomllib.loads(
+            (self.root / "pyproject.toml").read_text(encoding="utf-8")
+        )
+        rust = tomllib.loads(
+            (self.root / "desktop" / "src-tauri" / "Cargo.toml").read_text(
+                encoding="utf-8"
+            )
+        )
+        tauri = json.loads(
+            (self.root / "desktop" / "src-tauri" / "tauri.conf.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        expected = project["project"]["version"]
+        self.assertEqual(rust["package"]["version"], expected)
+        self.assertEqual(tauri["version"], expected)
+        self.assertEqual(tauri["productName"], "Doc Evidence")
+        self.assertEqual(tauri["identifier"], "io.github.kzahel.doc-evidence")
+        self.assertEqual(tauri["bundle"]["macOS"]["minimumSystemVersion"], "13.0")
 
     def test_packaged_desktop_schemas_match_and_are_valid(self) -> None:
         for name in (

@@ -300,6 +300,11 @@ applies bounded managed collection changes without returning paths to React.
 The React runtime now exposes matching path-free native operations, with Tauri
 imports isolated to the lazy desktop adapter and bounded empty-home/settings
 controls in the shared product.
+The thin Tauri 2 shell now generates both credentials, injects the preserved
+application-data root, validates ready/control records, owns native dialogs
+and single-instance focus, supervises the Python child, and closes stdin before
+bounded termination on app exit. Standalone runtime and extractor-pack staging
+remain next.
 Continue local implementation and validation without touching signing
 credentials, GitHub release setup, notarization, updater setup, or publication
 unless the maintainer explicitly authorizes that external lane.

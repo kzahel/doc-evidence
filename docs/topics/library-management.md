@@ -432,4 +432,6 @@ The shared React empty-home and managed-library settings surfaces now consume
 path-free `DocEvidenceRuntime` operations for new, existing, and added-
 collection flows. The desktop runtime invokes narrow Rust commands; localhost
 and fixture runtimes honestly report native authorization unavailable. Native
-dialog implementation remains in the Rust shell slice.
+folder/config dialogs now live in the Rust shell, including native confirmation
+before replacing covered child roots. Selected paths travel directly from Rust
+to the originless host-control surface and never cross the JavaScript bridge.
