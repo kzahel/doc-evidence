@@ -82,21 +82,28 @@ export function App() {
         <div className={styles.topbarTools}>
           <div className={styles.typography} role="group" aria-label="Global text size">
             <button
-              aria-label="Decrease global text size"
-              disabled={fontScale <= 0.8}
+              aria-pressed={fontScale === 1}
+              className={fontScale === 1 ? styles.activeTypography : ""}
               type="button"
-              onClick={() => setFontScale(fontScale - 0.1)}
+              onClick={() => setFontScale(1)}
             >
-              A−
+              Small
             </button>
-            <output aria-label="Current global text size">{Math.round(fontScale * 100)}%</output>
             <button
-              aria-label="Increase global text size"
-              disabled={fontScale >= 1.5}
+              aria-pressed={fontScale === 1.2}
+              className={fontScale === 1.2 ? styles.activeTypography : ""}
               type="button"
-              onClick={() => setFontScale(fontScale + 0.1)}
+              onClick={() => setFontScale(1.2)}
             >
-              A+
+              Normal
+            </button>
+            <button
+              aria-pressed={fontScale === 1.3}
+              className={fontScale === 1.3 ? styles.activeTypography : ""}
+              type="button"
+              onClick={() => setFontScale(1.3)}
+            >
+              Large
             </button>
           </div>
           <div className={styles.safety}>

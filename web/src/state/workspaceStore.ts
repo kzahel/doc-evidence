@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 type DiffMode = "differences" | "full";
+export type FontScale = 1 | 1.2 | 1.3;
 
 interface WorkspaceState {
   selectedDocumentId: string | null;
@@ -12,7 +13,7 @@ interface WorkspaceState {
   searchQuery: string;
   searchMode: "literal" | "fts";
   documentOffset: number;
-  fontScale: number;
+  fontScale: FontScale;
   selectDocument: (documentId: string | null, page?: number) => void;
   setPage: (page: number) => void;
   setComparisonGroups: (baseline: string | null, comparison: string | null) => void;
@@ -20,7 +21,7 @@ interface WorkspaceState {
   setNumericIndex: (index: number) => void;
   setSearch: (query: string, mode: "literal" | "fts") => void;
   setDocumentOffset: (offset: number) => void;
-  setFontScale: (scale: number) => void;
+  setFontScale: (scale: FontScale) => void;
 }
 
 export function navigationFromSearch(search: string): {
@@ -50,7 +51,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   searchQuery: "",
   searchMode: "literal",
   documentOffset: 0,
-  fontScale: 1,
+  fontScale: 1.2,
   selectDocument: (documentId, page = 1) =>
     set({
       selectedDocumentId: documentId,
@@ -74,6 +75,5 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setNumericIndex: (numericIndex) => set({ numericIndex }),
   setSearch: (searchQuery, searchMode) => set({ searchQuery, searchMode }),
   setDocumentOffset: (documentOffset) => set({ documentOffset }),
-  setFontScale: (fontScale) =>
-    set({ fontScale: Math.min(1.5, Math.max(0.8, Math.round(fontScale * 10) / 10)) }),
+  setFontScale: (fontScale) => set({ fontScale }),
 }));

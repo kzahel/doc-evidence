@@ -425,8 +425,9 @@ read-only interaction.
 The first live maintainer pass found two interaction problems and one pipeline
 expectation gap:
 
-- global typography was too fixed, so the header now exposes an 80%–150%
-  root-scale adjustment;
+- global typography was too fixed, so the header now exposes named Small,
+  Normal, and Large presets; Normal defaults to a 120% root scale, Small
+  preserves the original 100%, and Large uses 130%;
 - baseline and comparison could select the same representation, so opposite
   selections are disabled, identical state is normalized defensively, and an
   explicit swap-direction control was added; and

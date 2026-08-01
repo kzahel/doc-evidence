@@ -26,7 +26,7 @@ describe("application states", () => {
       selectedDocumentId: null,
       page: 1,
       searchQuery: "",
-      fontScale: 1,
+      fontScale: 1.2,
     });
   });
 
@@ -47,7 +47,7 @@ describe("application states", () => {
     expect(screen.getByText("catalog unavailable")).toBeInTheDocument();
   });
 
-  it("adjusts all rem-based typography from the application header", async () => {
+  it("uses named global typography presets with Normal as the default", async () => {
     const user = userEvent.setup();
     renderApp(
       new FixtureRuntime({
@@ -57,10 +57,15 @@ describe("application states", () => {
         groups: { [`${documentId}|1`]: pageGroups },
       }),
     );
-    expect(await screen.findByLabelText("Current global text size")).toHaveTextContent("100%");
-    await user.click(screen.getByRole("button", { name: "Increase global text size" }));
-    expect(screen.getByLabelText("Current global text size")).toHaveTextContent("110%");
-    expect(document.documentElement.style.getPropertyValue("--font-scale")).toBe("1.1");
+    const normal = await screen.findByRole("button", { name: "Normal" });
+    expect(normal).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement.style.getPropertyValue("--font-scale")).toBe("1.2");
+
+    await user.click(screen.getByRole("button", { name: "Small" }));
+    expect(document.documentElement.style.getPropertyValue("--font-scale")).toBe("1");
+    await user.click(screen.getByRole("button", { name: "Large" }));
+    expect(document.documentElement.style.getPropertyValue("--font-scale")).toBe("1.3");
+    expect(screen.getByRole("button", { name: "Large" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("explains image-only PDFs without implying that opening one starts OCR", async () => {

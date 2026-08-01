@@ -39,16 +39,14 @@ describe("contracts and component boundaries", () => {
     });
   });
 
-  it("clamps typography and rejects an identical comparison pair", () => {
+  it("sets a named typography preset and rejects an identical comparison pair", () => {
     useWorkspaceStore.setState({
       baselineGroupId: "group:native",
       comparisonGroupId: "group:layout",
-      fontScale: 1,
+      fontScale: 1.2,
     });
-    useWorkspaceStore.getState().setFontScale(4);
-    expect(useWorkspaceStore.getState().fontScale).toBe(1.5);
-    useWorkspaceStore.getState().setFontScale(0.2);
-    expect(useWorkspaceStore.getState().fontScale).toBe(0.8);
+    useWorkspaceStore.getState().setFontScale(1.3);
+    expect(useWorkspaceStore.getState().fontScale).toBe(1.3);
     useWorkspaceStore.getState().setComparisonGroups("group:native", "group:native");
     expect(useWorkspaceStore.getState().comparisonGroupId).toBeNull();
   });
