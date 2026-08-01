@@ -114,6 +114,13 @@ doc-evidence benchmark-score --report PATH --review PATH
 invokes only the experts named by a private suite. It never treats agreement
 as truth or changes a production extraction policy automatically.
 
+Current routing limitation: ordinary inventory runs Poppler only for PDFs.
+The configured `ocr_when` and `layout_when` values are validated and included
+in cache/config identity, but they do not yet schedule OCR or layout jobs.
+OCRmyPDF/Tesseract, Docling, and Marker outputs appear only for documents
+explicitly processed by a benchmark suite. Standalone image files are indexed
+but are not yet rendered or extracted by the read-only application.
+
 ## Configuration
 
 Case configuration stays with the case, not this repository. See

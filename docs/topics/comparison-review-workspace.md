@@ -149,6 +149,16 @@ On the known hybrid form, native Poppler and skip-existing-text OCR collapsed
 as expected while Docling and Marker remained separately inspectable. These
 checks establish product mechanics, not extractor correctness.
 
+Maintainer review found that both selectors allowed the same representation,
+which made the pairwise control look incoherent. The UI now disables the
+opposite side's selected option, normalizes identical state defensively, and
+provides an explicit direction-swap button. Representation headers also state
+the cached run and unique-output counts and clarify that opening the view does
+not launch missing extractors.
+
+Image-only PDFs now receive a visible explanation that native text is empty
+and OCR appears only when an OCR run has already been cached.
+
 ## Recommended Next Work
 
 Have the maintainer review the live comparison density, terminology, and

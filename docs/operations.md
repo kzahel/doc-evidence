@@ -69,6 +69,15 @@ The command:
 7. writes timestamped manifests and reports; and
 8. atomically replaces the rebuildable SQLite catalog snapshot.
 
+The current inventory composition always runs the Poppler baseline for PDFs.
+`ocr_when: image_only` and `layout_when: complex` currently express intended
+routing policy and participate in configuration/cache identity; inventory does
+not yet execute those escalation jobs. Run the named experts through an
+explicit benchmark suite. An image-only PDF is therefore classified
+correctly but has no OCR text until an OCR run has separately been cached.
+Standalone JPEG/PNG files are inventoried but not yet page-rendered or
+extracted.
+
 Exit status is zero when the run completes without path or PDF-extraction
 errors. A nonzero status does not imply that all derived output was discarded;
 inspect `errors.jsonl` and `summary.json` in the reported manifest directory.

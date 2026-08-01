@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import payloads from "../../contracts/representative-payloads.json";
 import type { ComparisonResult, WorkspaceSummary } from "../src/api/runtime";
-import { navigationFromSearch } from "../src/state/workspaceStore";
+import { navigationFromSearch, useWorkspaceStore } from "../src/state/workspaceStore";
 
 describe("contracts and component boundaries", () => {
   it("validates shared representative payload shapes in TypeScript", () => {
@@ -37,5 +37,19 @@ describe("contracts and component boundaries", () => {
       documentId: null,
       page: 1,
     });
+  });
+
+  it("clamps typography and rejects an identical comparison pair", () => {
+    useWorkspaceStore.setState({
+      baselineGroupId: "group:native",
+      comparisonGroupId: "group:layout",
+      fontScale: 1,
+    });
+    useWorkspaceStore.getState().setFontScale(4);
+    expect(useWorkspaceStore.getState().fontScale).toBe(1.5);
+    useWorkspaceStore.getState().setFontScale(0.2);
+    expect(useWorkspaceStore.getState().fontScale).toBe(0.8);
+    useWorkspaceStore.getState().setComparisonGroups("group:native", "group:native");
+    expect(useWorkspaceStore.getState().comparisonGroupId).toBeNull();
   });
 });

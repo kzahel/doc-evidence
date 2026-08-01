@@ -89,6 +89,14 @@
   padding: 0.4rem;
 }
 
+.swap {
+  background: var(--surface-raised);
+  border-color: var(--border-strong);
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.55rem;
+}
+
 .diff {
   padding: 0.8rem;
 }
@@ -222,8 +230,8 @@
     grid-template-columns: 1fr;
   }
 
-  .selectors > span {
-    display: none;
+  .swap {
+    justify-self: start;
   }
 
   .segment {

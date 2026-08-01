@@ -154,6 +154,11 @@ The bounded first implementation plan is
   state.
 - Whether the directional v1 token diff should gain a symmetric summary, plus
   the initial spatial diff contract.
+- Turn the declarative `ocr_when` and `layout_when` policy into explicit,
+  resumable catalog-wide routing. Today only Poppler runs during inventory and
+  heavy experts run only for explicitly selected benchmark documents.
+- Add first-class extraction/rendering for standalone image documents rather
+  than merely inventorying them.
 - Python and heavyweight-extractor packaging under a future Tauri shell.
 - Whether a vector index ever provides enough benefit to maintain.
 - Which advanced extractor becomes the preferred table/layout parser.

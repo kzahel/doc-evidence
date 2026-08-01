@@ -377,7 +377,7 @@ slices:
   source immutability, exact grouping, and numeric replacements.
 - Pyright reports zero errors and `uv build` succeeds.
 - Checked OpenAPI and generated TypeScript/client drift checks pass.
-- TypeScript typecheck passes; 8 frontend tests pass; the Vite production
+- TypeScript typecheck passes; 12 frontend tests pass; the Vite production
   build succeeds.
 - The dependency boundary checks confirm that application/comparison modules
   do not import FastAPI and product components do not contain endpoint paths,
@@ -416,3 +416,23 @@ for the maintainer's explicit live acceptance of the information hierarchy,
 terminology, diff density, and page/output split. That review determines
 whether the next tactical should add durable review events or first revise the
 read-only interaction.
+
+### Maintainer review follow-up
+
+The first live maintainer pass found two interaction problems and one pipeline
+expectation gap:
+
+- global typography was too fixed, so the header now exposes an 80%–150%
+  root-scale adjustment;
+- baseline and comparison could select the same representation, so opposite
+  selections are disabled, identical state is normalized defensively, and an
+  explicit swap-direction control was added; and
+- the UI did not explain why most documents show only one extraction. It now
+  displays cached run/representation counts, says that the view does not
+  launch missing extractors, and explains image-only PDFs.
+
+The underlying gap is recorded rather than hidden: inventory currently runs
+Poppler for PDFs only. The four-expert outputs exist for the five-document
+private benchmark suite, not the full catalog, and standalone images are only
+inventoried. Turning the declared OCR/layout policy into resumable broad
+execution remains outside Tactical 000's read-only UI scope.

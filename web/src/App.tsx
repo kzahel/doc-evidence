@@ -16,6 +16,8 @@ export function App() {
   const offset = useWorkspaceStore((state) => state.documentOffset);
   const searchQuery = useWorkspaceStore((state) => state.searchQuery);
   const searchMode = useWorkspaceStore((state) => state.searchMode);
+  const fontScale = useWorkspaceStore((state) => state.fontScale);
+  const setFontScale = useWorkspaceStore((state) => state.setFontScale);
   const workspace = useQuery({
     queryKey: ["workspace"],
     queryFn: ({ signal }) => runtime.getWorkspace(signal),
@@ -56,6 +58,13 @@ export function App() {
     window.history.replaceState(null, "", `${url.pathname}${url.search}`);
   }, [page, selectedDocumentId]);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty("--font-scale", String(fontScale));
+    return () => {
+      document.documentElement.style.removeProperty("--font-scale");
+    };
+  }, [fontScale]);
+
   if (workspace.isLoading || documents.isLoading) return <LoadingState />;
   if (workspace.error) return <FailureState title="Workspace unavailable" error={workspace.error} />;
   if (documents.error) return <FailureState title="Document catalog unavailable" error={documents.error} />;
@@ -70,10 +79,31 @@ export function App() {
           <strong>doc-evidence</strong>
           <span>local evidence workbench</span>
         </div>
-        <div className={styles.safety}>
-          <span className={styles.localDot} aria-hidden="true" />
-          Local · authenticated · source read-only
-          {failingChecks.length > 0 && <span className={styles.diagnostic}>{failingChecks.length} diagnostic warning(s)</span>}
+        <div className={styles.topbarTools}>
+          <div className={styles.typography} role="group" aria-label="Global text size">
+            <button
+              aria-label="Decrease global text size"
+              disabled={fontScale <= 0.8}
+              type="button"
+              onClick={() => setFontScale(fontScale - 0.1)}
+            >
+              A−
+            </button>
+            <output aria-label="Current global text size">{Math.round(fontScale * 100)}%</output>
+            <button
+              aria-label="Increase global text size"
+              disabled={fontScale >= 1.5}
+              type="button"
+              onClick={() => setFontScale(fontScale + 0.1)}
+            >
+              A+
+            </button>
+          </div>
+          <div className={styles.safety}>
+            <span className={styles.localDot} aria-hidden="true" />
+            Local · authenticated · source read-only
+            {failingChecks.length > 0 && <span className={styles.diagnostic}>{failingChecks.length} diagnostic warning(s)</span>}
+          </div>
         </div>
       </header>
       <div className={styles.body}>

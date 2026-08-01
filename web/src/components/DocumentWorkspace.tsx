@@ -59,6 +59,7 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
           <h1>{filename}</h1>
           <span>
             {document.media_type} · {(document.size_bytes / 1024).toFixed(1)} KB ·{" "}
+            {document.extraction_status.replaceAll("_", " ")} ·{" "}
             <code>{document.content_sha256.slice(0, 16)}…</code>
           </span>
         </div>
@@ -97,6 +98,12 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
           <summary>{document.warnings.length} source or extraction warnings</summary>
           <ul>{document.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
         </details>
+      )}
+      {document.extraction_status === "image_only" && (
+        <div className={styles.warnings}>
+          This PDF is image-only: its native text layer is empty. Text appears here only after an
+          OCR extractor has been run and cached; opening the document does not start OCR.
+        </div>
       )}
       {!renderable ? (
         <EmptyState>

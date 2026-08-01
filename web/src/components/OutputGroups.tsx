@@ -92,14 +92,16 @@ function GroupCard({ group, index }: { group: OutputGroup; index: number }) {
           <button
             type="button"
             className={isBaseline ? styles.active : ""}
-            onClick={() => setGroups(group.group_id, comparison)}
+            onClick={() =>
+              setGroups(group.group_id, isComparison ? baseline : comparison)
+            }
           >
             Baseline
           </button>
           <button
             type="button"
             className={isComparison ? styles.active : ""}
-            onClick={() => setGroups(baseline, group.group_id)}
+            onClick={() => setGroups(isBaseline ? comparison : baseline, group.group_id)}
           >
             Compare
           </button>
@@ -153,6 +155,7 @@ function GroupCard({ group, index }: { group: OutputGroup; index: number }) {
 }
 
 export function OutputGroups({ data }: { data: PageGroups }) {
+  const runCount = data.groups.reduce((total, group) => total + group.runs.length, 0);
   return (
     <section className={styles.section} aria-label="Extractor representations">
       <div className={styles.intro}>
@@ -161,8 +164,9 @@ export function OutputGroups({ data }: { data: PageGroups }) {
           <h2>Normalized extractor text</h2>
         </div>
         <p>
-          Exact text matches are collapsed. Agreement saves review time; it does not establish
-          correctness.
+          {runCount} cached extractor run{runCount === 1 ? "" : "s"} · {data.groups.length} unique
+          representation{data.groups.length === 1 ? "" : "s"}. This view does not launch missing
+          extractors. Exact agreement saves review time; it does not establish correctness.
         </p>
       </div>
       <div className={styles.stack}>

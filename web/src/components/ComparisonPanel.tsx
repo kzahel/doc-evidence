@@ -122,7 +122,11 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
   const setMode = useWorkspaceStore((state) => state.setDiffMode);
 
   const baseline = groups.find((group) => group.group_id === baselineId) ?? groups[0];
-  const comparison = groups.find((group) => group.group_id === comparisonId) ?? groups[1];
+  const requestedComparison = groups.find((group) => group.group_id === comparisonId);
+  const comparison =
+    requestedComparison && requestedComparison.group_id !== baseline?.group_id
+      ? requestedComparison
+      : groups.find((group) => group.group_id !== baseline?.group_id);
   const request =
     baseline && comparison
       ? {
@@ -139,10 +143,14 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
   });
 
   useEffect(() => {
-    if (!baselineId && groups[0]) {
-      setGroups(groups[0].group_id, groups[1]?.group_id ?? null);
+    if (
+      baseline &&
+      comparison &&
+      (baselineId !== baseline.group_id || comparisonId !== comparison.group_id)
+    ) {
+      setGroups(baseline.group_id, comparison.group_id);
     }
-  }, [baselineId, groups, setGroups]);
+  }, [baseline, baselineId, comparison, comparisonId, setGroups]);
 
   return (
     <section className={styles.panel} aria-label="Extractor comparison">
@@ -164,7 +172,9 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
       {groups.length < 2 ? (
         <EmptyState>
           {groups.length === 1
-            ? `Only one unique output remains after collapsing ${groups[0]?.runs.length ?? 0} identical run(s).`
+            ? (groups[0]?.runs.length ?? 0) === 1
+              ? "Only one cached extractor run is available for this page. This view does not launch missing extractors."
+              : `Only one unique output remains after collapsing ${groups[0]?.runs.length ?? 0} identical cached runs.`
             : "No successful extractor output is cached for this page."}
         </EmptyState>
       ) : (
@@ -177,10 +187,25 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
                 value={baseline?.group_id}
                 onChange={(event) => setGroups(event.target.value, comparison?.group_id ?? null)}
               >
-                {groups.map((group, index) => <option key={group.group_id} value={group.group_id}>{groupLabel(group, index)}</option>)}
+                {groups.map((group, index) => (
+                  <option
+                    disabled={group.group_id === comparison?.group_id}
+                    key={group.group_id}
+                    value={group.group_id}
+                  >
+                    {groupLabel(group, index)}
+                  </option>
+                ))}
               </select>
             </label>
-            <span aria-hidden="true">→</span>
+            <button
+              aria-label="Swap comparison direction"
+              className={styles.swap}
+              type="button"
+              onClick={() => setGroups(comparison?.group_id ?? null, baseline?.group_id ?? null)}
+            >
+              ⇄
+            </button>
             <label>
               Comparison
               <select
@@ -188,7 +213,15 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
                 value={comparison?.group_id}
                 onChange={(event) => setGroups(baseline?.group_id ?? null, event.target.value)}
               >
-                {groups.map((group, index) => <option key={group.group_id} value={group.group_id}>{groupLabel(group, index)}</option>)}
+                {groups.map((group, index) => (
+                  <option
+                    disabled={group.group_id === baseline?.group_id}
+                    key={group.group_id}
+                    value={group.group_id}
+                  >
+                    {groupLabel(group, index)}
+                  </option>
+                ))}
               </select>
             </label>
           </div>

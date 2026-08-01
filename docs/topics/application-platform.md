@@ -166,6 +166,16 @@ Tactical 000 now provides:
   Modules; and
 - a production-like `doc-evidence serve --config PATH` composition.
 
+Maintainer review added a session-local global typography scale from 80% to
+150%. It changes the root font scale so all rem-based application typography
+and spacing respond together.
+
+Deep links use the SHA-256 document identity rather than a source path. The
+catalog and document-detail contract provide the reverse mapping to every
+`collection_id`/`relative_path` occurrence. This keeps links stable across
+renames and correctly represents one content identity observed at multiple
+paths.
+
 The external private integration opened all seven calibration pages while an
 aggregate source digest remained unchanged. The complete command and test
 record is in

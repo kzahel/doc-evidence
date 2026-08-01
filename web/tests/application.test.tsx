@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { App } from "../src/App";
 import { FixtureRuntime } from "../src/api/fixtureRuntime";
 import { RuntimeProvider } from "../src/api/RuntimeProvider";
 import { useWorkspaceStore } from "../src/state/workspaceStore";
-import { documents, workspace } from "./fixtures";
+import { detail, documentId, documents, pageGroups, workspace } from "./fixtures";
 
 function renderApp(runtime: FixtureRuntime) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -21,7 +22,12 @@ function renderApp(runtime: FixtureRuntime) {
 
 describe("application states", () => {
   beforeEach(() => {
-    useWorkspaceStore.setState({ selectedDocumentId: null, page: 1, searchQuery: "" });
+    useWorkspaceStore.setState({
+      selectedDocumentId: null,
+      page: 1,
+      searchQuery: "",
+      fontScale: 1,
+    });
   });
 
   it("shows an actionable empty catalog state", async () => {
@@ -39,5 +45,34 @@ describe("application states", () => {
     renderApp(new FixtureRuntime({ workspace, documents, error: new Error("catalog unavailable") }));
     expect(await screen.findByText("Workspace unavailable")).toBeInTheDocument();
     expect(screen.getByText("catalog unavailable")).toBeInTheDocument();
+  });
+
+  it("adjusts all rem-based typography from the application header", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents,
+        details: { [documentId]: detail },
+        groups: { [`${documentId}|1`]: pageGroups },
+      }),
+    );
+    expect(await screen.findByLabelText("Current global text size")).toHaveTextContent("100%");
+    await user.click(screen.getByRole("button", { name: "Increase global text size" }));
+    expect(screen.getByLabelText("Current global text size")).toHaveTextContent("110%");
+    expect(document.documentElement.style.getPropertyValue("--font-scale")).toBe("1.1");
+  });
+
+  it("explains image-only PDFs without implying that opening one starts OCR", async () => {
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents,
+        details: { [documentId]: { ...detail, extraction_status: "image_only" } },
+        groups: { [`${documentId}|1`]: pageGroups },
+      }),
+    );
+    expect(await screen.findByText(/This PDF is image-only/)).toBeInTheDocument();
+    expect(screen.getByText(/opening the document does not start OCR/)).toBeInTheDocument();
   });
 });

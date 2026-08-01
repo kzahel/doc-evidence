@@ -13,7 +13,6 @@ import {
   detail,
   documentId,
   documents,
-  equivalentComparison,
   groups,
   pageGroups,
   workspace,
@@ -36,8 +35,12 @@ function runtime() {
         document_id: documentId,
         page: 1,
         left_run_ref: "run:layout",
-        right_run_ref: "run:layout",
-      })]: equivalentComparison,
+        right_run_ref: "run:native",
+      })]: {
+        ...comparison,
+        left_run_ref: "run:layout",
+        right_run_ref: "run:native",
+      },
     },
   });
 }
@@ -63,9 +66,17 @@ describe("comparison workspace", () => {
 
   it("collapses exact output and labels every contributing run", () => {
     wrapper(<OutputGroups data={pageGroups} />);
+    expect(screen.getByText(/3 cached extractor runs/)).toBeInTheDocument();
     expect(screen.getByText("Identical output from 2 runs")).toBeInTheDocument();
     expect(screen.getByText("poppler")).toBeInTheDocument();
     expect(screen.getByText("ocrmypdf-tesseract")).toBeInTheDocument();
+  });
+
+  it("explains when only one cached extractor run exists", () => {
+    const single = { ...groups[0]!, runs: [groups[0]!.runs[0]!] };
+    wrapper(<ComparisonPanel documentId={documentId} page={1} groups={[single]} />);
+    expect(screen.getByText(/Only one cached extractor run is available/)).toBeInTheDocument();
+    expect(screen.getByText(/does not launch missing extractors/)).toBeInTheDocument();
   });
 
   it("opens raw artifacts in a bounded preview", async () => {
@@ -90,7 +101,7 @@ describe("comparison workspace", () => {
     expect(dialog).not.toBeInTheDocument();
   });
 
-  it("switches diff density, navigates numbers, and changes the baseline", async () => {
+  it("switches diff density, navigates numbers, and keeps the sides distinct", async () => {
     const user = userEvent.setup();
     wrapper(<ComparisonPanel documentId={documentId} page={1} groups={groups} />);
     expect(await screen.findByText("2 numeric discrepancies")).toBeInTheDocument();
@@ -101,7 +112,13 @@ describe("comparison workspace", () => {
     await user.click(screen.getByRole("button", { name: "Full aligned output" }));
     expect(screen.getAllByText("equal")).toHaveLength(2);
 
-    await user.selectOptions(screen.getByRole("combobox", { name: "Baseline output" }), "group:layout");
-    expect(await screen.findByText("The selected outputs are exactly identical.")).toBeInTheDocument();
+    const baseline = screen.getByRole("combobox", { name: "Baseline output" });
+    const comparisonOutput = screen.getByRole("combobox", { name: "Comparison output" });
+    expect(baseline.querySelector('option[value="group:layout"]')).toBeDisabled();
+    expect(comparisonOutput.querySelector('option[value="group:native"]')).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Swap comparison direction" }));
+    expect(baseline).toHaveValue("group:layout");
+    expect(comparisonOutput).toHaveValue("group:native");
   });
 });
