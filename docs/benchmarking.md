@@ -119,6 +119,8 @@ expected values, extracted text, renders, and report outside this repository.
 Its ten sparse assertions per expert are a smoke test for the machinery, not a
 replacement for the exported human review overlay.
 
-The generated `review.html` is local and self-contained except for its adjacent
-page renders. It stores draft ratings in browser local storage and exports a
-JSON review file for durable scoring.
+The generated `review.html` is local and fully self-contained: selected page
+renders are embedded as image data so the file also works in previews that
+cannot read neighboring files. The separate PNG renders remain in the run
+directory for inspection and provenance. The review page stores draft ratings
+in browser local storage and exports a JSON review file for durable scoring.

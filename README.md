@@ -116,7 +116,8 @@ unchanged.
 
 Phase 2 adds extractor-specific runs below each content blob and private review
 runs below `benchmarks/<suite-id>/runs/<benchmark-run-id>/`. The generated
-`review.html` works locally in a browser and exports a JSON review overlay.
+`review.html` embeds its selected page renders, works as a self-contained local
+file or constrained preview, and exports a JSON review overlay.
 An unchanged five-document/four-expert private benchmark reuses all 20 cached
 expert artifacts and completes in seconds; the initial model-backed pass takes
 minutes and is intended only for a small representative suite.

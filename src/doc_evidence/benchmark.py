@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import html
 import json
 import platform
@@ -345,9 +346,40 @@ def _review_template(suite_id: str, run_id: str) -> dict[str, Any]:
     }
 
 
-def _review_html(report: dict[str, Any], template: dict[str, Any]) -> str:
+def _embedded_render_sources(
+    report: dict[str, Any], run_dir: Path
+) -> dict[str, str | None]:
+    """Return data URIs for review renders without trusting report paths."""
+    root = run_dir.resolve()
+    sources: dict[str, str | None] = {}
+    for document in report["documents"]:
+        for page in document["pages"]:
+            render = page["render"]
+            candidate = (root / render).resolve()
+            try:
+                candidate.relative_to(root)
+            except ValueError as error:
+                raise BenchmarkError(
+                    f"review render escapes benchmark run directory: {render}"
+                ) from error
+            if not candidate.is_file():
+                sources[render] = None
+                continue
+            encoded = base64.b64encode(candidate.read_bytes()).decode("ascii")
+            sources[render] = f"data:image/png;base64,{encoded}"
+    return sources
+
+
+def _review_html(
+    report: dict[str, Any], template: dict[str, Any], run_dir: Path
+) -> str:
     payload = json.dumps(
-        {"report": report, "template": template}, ensure_ascii=False
+        {
+            "report": report,
+            "template": template,
+            "render_sources": _embedded_render_sources(report, run_dir),
+        },
+        ensure_ascii=False,
     ).replace("</", "<\\/")
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -355,7 +387,7 @@ def _review_html(report: dict[str, Any], template: dict[str, Any]) -> str:
 <style>
 :root {{ color-scheme: light dark; font: 15px system-ui,sans-serif; }} body {{ margin: 0 auto; max-width: 1600px; padding: 24px; }}
 .case {{ border-top: 3px solid #777; margin-top: 36px; padding-top: 16px; }} .grid {{ display:grid; grid-template-columns:minmax(360px,1fr) 2fr; gap:16px; align-items:start; }}
-img {{ width:100%; height:auto; border:1px solid #888; background:white; }} .outputs {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; }}
+img {{ width:100%; height:auto; border:1px solid #888; background:white; }} .render-error {{ border:1px solid #b33; padding:16px; color:#b33; }} .outputs {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; }}
 .engine {{ border:1px solid #888; border-radius:8px; padding:12px; min-width:0; }} pre {{ white-space:pre-wrap; overflow-wrap:anywhere; max-height:520px; overflow:auto; background:#8882; padding:10px; }}
 .ratings label {{ display:block; margin:7px 0; }} select,textarea,input {{ font:inherit; }} textarea {{ width:100%; min-height:54px; }} .flags {{ color:#b33; }} .toolbar {{ position:sticky; top:0; background:Canvas; padding:10px 0; z-index:2; }}
 </style></head><body><div class="toolbar"><strong>Human calibration</strong> — 0 unusable, 4 exact/useful. Agreement is not truth.
@@ -365,7 +397,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({{'&':'&amp;','<':'&lt;','>':'
 const get=(d,p,e)=>{{let r=review.ratings.find(x=>x.document_id===d&&x.page===p&&x.extractor_id===e);if(!r){{r={{document_id:d,document_class:'',page:p,extractor_id:e,reviewed:false,text_accuracy:null,numeric_fidelity:null,reading_order:null,table_structure:null,contains_invented_values:false,notes:''}};review.ratings.push(r)}}return r}};
 const save=()=>{{review.reviewer=document.querySelector('#reviewer').value;review.created_at=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(review));document.querySelector('#saved').textContent='saved locally '+new Date().toLocaleTimeString()}};
 document.querySelector('#reviewer').value=review.reviewer||''; let out='';
-for(const d of DATA.report.documents) for(const p of d.pages){{out+=`<section class="case"><h2>${{esc(d.path_hint||d.document_id)}} — page ${{p.page}} <small>${{esc(d.document_class)}}</small></h2><div class="grid"><img src="${{esc(p.render)}}"><div class="outputs">`;for(const e of p.outputs){{const r=get(d.document_id,p.page,e.extractor_id);r.document_class=d.document_class;const opts=(v,n)=>`<label>${{n}} <select data-k="${{v}}"><option value="">— not rated —</option><option value="0">0 unusable</option><option value="1">1 poor</option><option value="2">2 mixed</option><option value="3">3 good</option><option value="4">4 exact</option></select></label>`;out+=`<article class="engine" data-d="${{d.document_id}}" data-p="${{p.page}}" data-e="${{e.extractor_id}}"><h3>${{esc(e.extractor_id)}} — ${{esc(e.status)}}</h3><div class="flags">${{esc(e.flags.join(', '))}}</div><pre>${{esc(e.text)}}</pre><div class="ratings"><label><input type="checkbox" data-k="reviewed"> Review complete</label>${{opts('text_accuracy','Text accuracy')}}${{opts('numeric_fidelity','Numeric fidelity')}}${{opts('reading_order','Reading order')}}${{opts('table_structure','Table structure (leave blank if not applicable)')}}<label><input type="checkbox" data-k="contains_invented_values"> Invented/unsupported value</label><textarea data-k="notes" placeholder="Specific errors or corrections"></textarea></div></article>`}}out+='</div></div></section>'}}document.querySelector('#app').innerHTML=out;
+for(const d of DATA.report.documents) for(const p of d.pages){{const src=DATA.render_sources[p.render];const visual=src?`<img src="${{src}}" alt="Rendered source page ${{p.page}}">`:`<div class="render-error">Page render unavailable: ${{esc(p.render_error||p.render)}}</div>`;out+=`<section class="case"><h2>${{esc(d.path_hint||d.document_id)}} — page ${{p.page}} <small>${{esc(d.document_class)}}</small></h2><div class="grid">${{visual}}<div class="outputs">`;for(const e of p.outputs){{const r=get(d.document_id,p.page,e.extractor_id);r.document_class=d.document_class;const opts=(v,n)=>`<label>${{n}} <select data-k="${{v}}"><option value="">— not rated —</option><option value="0">0 unusable</option><option value="1">1 poor</option><option value="2">2 mixed</option><option value="3">3 good</option><option value="4">4 exact</option></select></label>`;out+=`<article class="engine" data-d="${{d.document_id}}" data-p="${{p.page}}" data-e="${{e.extractor_id}}"><h3>${{esc(e.extractor_id)}} — ${{esc(e.status)}}</h3><div class="flags">${{esc(e.flags.join(', '))}}</div><pre>${{esc(e.text)}}</pre><div class="ratings"><label><input type="checkbox" data-k="reviewed"> Review complete</label>${{opts('text_accuracy','Text accuracy')}}${{opts('numeric_fidelity','Numeric fidelity')}}${{opts('reading_order','Reading order')}}${{opts('table_structure','Table structure (leave blank if not applicable)')}}<label><input type="checkbox" data-k="contains_invented_values"> Invented/unsupported value</label><textarea data-k="notes" placeholder="Specific errors or corrections"></textarea></div></article>`}}out+='</div></div></section>'}}document.querySelector('#app').innerHTML=out;
 for(const a of document.querySelectorAll('article')){{const r=get(a.dataset.d,+a.dataset.p,a.dataset.e);for(const el of a.querySelectorAll('[data-k]')){{const k=el.dataset.k;if(el.type==='checkbox')el.checked=!!r[k];else el.value=r[k]??'';el.addEventListener('change',()=>{{r[k]=el.type==='checkbox'?el.checked:(el.tagName==='TEXTAREA'?el.value:(el.value===''?null:+el.value));save()}})}}}}document.querySelector('#reviewer').addEventListener('change',save);
 document.querySelector('#export').onclick=()=>{{save();const blob=new Blob([JSON.stringify(review,null,2)+'\\n'],{{type:'application/json'}});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=DATA.report.suite_id+'-'+DATA.report.benchmark_run_id+'-review.json';a.click();URL.revokeObjectURL(a.href)}};</script></body></html>"""
 
@@ -548,7 +580,7 @@ def run_benchmark(config: AppConfig, suite_path: Path) -> BenchmarkResult:
     template = _review_template(suite["suite_id"], run_id)
     atomic_write_json(run_dir / "report.json", report)
     atomic_write_json(run_dir / "review-template.json", template)
-    atomic_write_text(run_dir / "review.html", _review_html(report, template))
+    atomic_write_text(run_dir / "review.html", _review_html(report, template, run_dir))
     pointer_dir = config.store / "benchmarks" / suite["suite_id"]
     atomic_write_json(
         pointer_dir / "latest-run.json",

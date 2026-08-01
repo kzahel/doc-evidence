@@ -151,8 +151,9 @@ uv run doc-evidence benchmark-run \
 
 The suite chooses content hashes, document classes, review pages, extractors,
 and sparse assertions. The run writes `report.json`, page renders,
-`review-template.json`, and `review.html`. Open the HTML locally, score a small
-representative set closely, export its JSON, and then run:
+`review-template.json`, and a self-contained `review.html` with those selected
+page renders embedded. Open the HTML locally, score a small representative set
+closely, export its JSON, and then run:
 
 ```sh
 uv run doc-evidence benchmark-score \
