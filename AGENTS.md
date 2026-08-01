@@ -303,17 +303,18 @@ controls in the shared product.
 The thin Tauri 2 shell now generates both credentials, injects the preserved
 application-data root, validates ready/control records, owns native dialogs
 and single-instance focus, supervises the Python child, and closes stdin before
-bounded termination on app exit. Standalone runtime and extractor-pack staging
-remain next.
+bounded termination on app exit. A hash-pinned CPython 3.12.12 standalone
+runtime, frozen production dependencies, license/file manifests, staged/native
+audits, and copied-out unsigned `.app` smoke now pass. The baseline extractor
+pack remains next.
 Continue local implementation and validation without touching signing
 credentials, GitHub release setup, notarization, updater setup, or publication
 unless the maintainer explicitly authorizes that external lane.
-`docs/tactical/002-macos-tauri-desktop-application.md` is the proposed next
-implementation boundary. It plans a self-contained, Developer ID-signed and
-notarized macOS arm64 application with a stapled ticket, distributed in a DMG
-with signed updater metadata, release finalization, and the baseline extractor
-pack, but no implementation has started. Heavy extractor packs, alternative
-release channels, Windows, and Linux remain outside it.
+`docs/tactical/002-macos-tauri-desktop-application.md` owns the active
+implementation boundary. Its later external lane plans a Developer ID-signed
+and notarized macOS arm64 application with a stapled ticket, DMG, signed updater
+metadata, and release finalization. Heavy extractor packs, alternative release
+channels, Windows, and Linux remain outside it.
 The maintainer has also selected bidirectional text/page highlighting and
 bounded regional OCR as an accepted product direction. The researched
 extractor capabilities, coordinate-space contract, proposed UI, job identity,

@@ -265,6 +265,16 @@ folder dialogs, sidecar supervision, app-close cleanup, and bounded failure
 events. The ordinary localhost composition remains unchanged; standalone
 runtime and extractor-pack staging are the next packaging boundaries.
 
+The standalone-runtime boundary is now landed locally. One tracked entry point
+pins the upstream macOS arm64 CPython 3.12.12 `install_only_stripped` archive by
+URL and SHA-256, exports only frozen production dependencies, removes installer
+and build-only material, records component licenses and every staged file, and
+audits architecture, load paths, symlinks, build-host paths, authentication,
+and parent-EOF shutdown. Tauri assembled those exact resources into an
+unsigned `.app`; a copy under `/private/tmp` passed the same packaged-sidecar
+smoke without using the checkout Python. The baseline extractor pack remains
+the next packaging boundary.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

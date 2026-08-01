@@ -1,0 +1,22 @@
+{
+  "schema_version": "doc-evidence.desktop-build-inputs.v1",
+  "platform": "macos",
+  "architecture": "arm64",
+  "python": {
+    "implementation": "cpython",
+    "version": "3.12.12",
+    "build": "20260114",
+    "distribution": "python-build-standalone install_only_stripped",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.12.12%2B20260114-aarch64-apple-darwin-install_only_stripped.tar.gz",
+    "sha256": "ed1f300bd3b45aa481d887b2dd8e12f989b583f67755c219a6092756a09b609f",
+    "license_concluded": "PSF-2.0"
+  },
+  "forbidden_python_distributions": [
+    "hypothesis",
+    "mypy",
+    "playwright",
+    "pytest",
+    "pyright",
+    "ruff"
+  ]
+}

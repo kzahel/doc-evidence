@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repository=$(cd "$(dirname "$0")/.." && pwd)
+cd "$repository"
+exec uv run python -m doc_evidence.desktop_packaging "$@"

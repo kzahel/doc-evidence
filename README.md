@@ -17,7 +17,7 @@ the same product services rather than the final ownership or distribution
 model.
 
 ```text
-Tauri desktop shell (implementation in progress, thin)
+Tauri desktop shell (thin; local unsigned arm64 proof assembled)
   native lifecycle, folder authorization, sidecar supervision, distribution
                               |
                               v
@@ -31,10 +31,11 @@ Named local libraries
 
 Python remains the owner of library management, SQLite, durable jobs,
 extractors, comparison, review, and provenance. React consumes those behaviors
-through a platform-neutral runtime. A future Tauri shell will provide native
+through a platform-neutral runtime. The thin Tauri shell provides native
 application-data paths, folder grants, process lifecycle, and desktop
-distribution without introducing a second document model or moving product
-logic into Rust.
+composition without introducing a second document model or moving product
+logic into Rust. The standalone core runtime is now packaged; the baseline
+extractor pack and release-signing lane remain in progress.
 
 The intended workflow is agent-assisted and human-accountable. Machines and
 agents extract, validate, reconcile, and assemble provisional values and
@@ -142,9 +143,11 @@ pack. It excludes Ghostscript, Docling, Marker, heavyweight model runtimes,
 and downloads/plugins. It adapts the proven sibling conventions for nested
 Mach-O signing, Developer ID notarization, DMG and updater generation, release
 finalization, and published checksums. Windows/Linux packaging remains later.
-Tactical 002 implementation has started with the project license and checked
-bundle/pack manifest contracts. No signing credential, GitHub release, updater,
-notarization, or publication action has been performed.
+Tactical 002 now has the thin shell, native authorization, authenticated
+standalone sidecar, pinned CPython staging/audit entry point, and a copied-out
+unsigned arm64 `.app` proof. The baseline extractor pack remains the next local
+slice. No signing credential, GitHub release, updater, notarization, or
+publication action has been performed.
 
 The external acceptance harness used an explicitly authorized registered
 library in the platform-default application home. It exercised a missing OCR
@@ -198,6 +201,23 @@ Install and build the local application from a source checkout:
 ```sh
 uv sync && npm ci --prefix web && npm run build --prefix web
 ```
+
+On macOS arm64, the current intermediate unsigned desktop proof is built with
+one entry point. `stage` downloads only the exact hash-pinned standalone
+CPython input; repeat staging requires the explicit `--replace` flag.
+
+```sh
+npm ci --prefix desktop
+./scripts/build-macos-desktop stage
+./scripts/build-macos-desktop build
+./scripts/build-macos-desktop review
+```
+
+The resulting application is
+`desktop/src-tauri/target/release/bundle/macos/Doc Evidence.app`. `review`
+audits its final bytes and runs the packaged sidecar from the application
+resources. This intermediate artifact intentionally has no Developer ID
+signature, notarization, DMG/updater metadata, or baseline extractor pack yet.
 
 Register an external case configuration once, then launch the selected
 last/default library:

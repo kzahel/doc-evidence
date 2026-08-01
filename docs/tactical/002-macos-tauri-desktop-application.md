@@ -988,3 +988,31 @@ checks are tracked. `cargo fmt --check`, five Rust unit tests, and strict Clippy
 pass, as do the shared frontend typecheck/tests/build. The shell has not yet
 been assembled into an application because the staged standalone Python
 resource is intentionally the next commit slice.
+
+The sixth landed slice stages and assembles the standalone core runtime:
+
+- `desktop/packaging/macos-arm64.json` pins the official macOS arm64 CPython
+  3.12.12 `install_only_stripped` artifact at build `20260114` by exact URL and
+  SHA-256;
+- one `scripts/build-macos-desktop` entry point implements `stage`, `build`,
+  `audit`, and `review`, with explicit audited replacement and rollback for a
+  repeated stage;
+- frozen `uv.lock` production dependencies and the application wheel are
+  installed into that interpreter without a venv, pip, test/build tools,
+  bytecode caches, checkout references, or redundant interpreter symlinks;
+- the staged tree records 20 Python distributions, 22 licensed components,
+  the input archive identity, human notices, and a hash/size/owner record for
+  every non-self-referential manifest byte;
+- native and application audits reject non-arm64 objects, escaping load paths
+  or symlinks, host/Homebrew path leakage, frontend/runtime-manifest drift,
+  untracked file changes, or unexpected strict signing; and
+- the packaged sidecar proves unauthenticated rejection, authenticated
+  handshake, and parent-EOF shutdown from application resources.
+
+The staged runtime measures 52,297,338 installed bytes. Tauri assembled an
+unsigned 62,657,076-byte `.app` containing 1,731 files and 16 arm64 Mach-O
+objects. A copy at `/private/tmp/doc-evidence-review.QVVDJF/Doc Evidence.app`
+passed the final-byte application audit and packaged-sidecar smoke; strict
+codesign verification failed with the expected unsigned-local-proof status.
+This is an intermediate core application: the baseline extractor pack, DMG,
+signing, notarization, updater, and publication are still absent.
