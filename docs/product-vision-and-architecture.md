@@ -20,6 +20,8 @@ The product should help a person answer:
 - What did each extraction method actually recover?
 - Where do methods agree, disagree, omit content, or invent content?
 - Which output or correction did a reviewer accept, and for what purpose?
+- Which values are unreviewed machine output, mechanically validated,
+  agent-assessed, or explicitly human-confirmed?
 - What structured observations are supported by which page and region?
 - What remains missing, conflicting, or unreviewed?
 - Can every derived artifact and decision be reproduced or audited later?
@@ -34,6 +36,9 @@ Living application and comparison status is maintained in
 [Comparison and review workspace](topics/comparison-review-workspace.md).
 Desktop library ownership is maintained in
 [Desktop library management](topics/library-management.md).
+Product position, adjacent software, intended uses, and the agent/human
+operator model are maintained in
+[Product landscape and use cases](topics/product-landscape-and-use-cases.md).
 Bounded implementation plans live under [`tactical/`](tactical/README.md).
 
 ## Product Principles
@@ -85,6 +90,21 @@ The core provides documents, pages, regions, extraction runs, candidates,
 reviews, and provenance. Domain packs can add document classes, schemas,
 recognizers, validators, and exports without placing domain conclusions in the
 generic core.
+
+### Agents assemble; people confirm by risk and purpose
+
+The expected user is not a manual transcription operator. Extractors, rules,
+models, and agents may propose values, run validations, identify conflicts,
+and assemble provisional ledgers, calculations, and form mappings. The
+application should direct human attention to consequential, conflicting, or
+sampled values and show each candidate beside its exact source region.
+
+An agent assessment, deterministic validation, confidence score, or agreement
+between extractors is not a human confirmation. Review records must identify
+their actor and purpose. Accepting a transcription does not silently accept
+its domain classification, calculation, or filing. Provisional downstream
+work must preserve unresolved inputs and summarize its human-confirmed,
+agent-assessed, mechanically validated, and unreviewed evidence coverage.
 
 ## What a Document Contains
 
@@ -610,8 +630,13 @@ It is complete when a user can:
 9. Use the application with network access disabled.
 10. Continue using the CLI against the same workspace.
 
-Running new extraction jobs, candidate semantic fields, domain packs, and
-desktop packaging follow this milestone.
+Durable extraction jobs landed before durable review, and the maintainer has
+now selected a bounded macOS arm64 Tauri proof as the next planned slice. That
+implementation order does not mark this product milestone complete or weaken
+the separation between review state and extractor output. Durable review is
+still required for the milestone; candidate semantic fields, domain packs,
+signed public distribution, optional extractor packs, Windows, and Linux
+remain later boundaries.
 
 ## Decisions
 

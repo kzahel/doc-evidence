@@ -2,7 +2,8 @@
 
 **Last updated:** 2026-08-01
 **Status:** Phase 2, read-only application, desktop library foundation, and
-durable extraction jobs implemented; Tactical 001 maintainer acceptance pending
+durable extraction jobs implemented; Tactical 001 maintainer acceptance
+pending; macOS Tauri proof proposed in Tactical 002
 
 ## Objective
 
@@ -93,11 +94,10 @@ external case workspace.
 - Persist human tags and review decisions separately from extractor output.
 - Generate frontend API types from Python-owned contracts. — implemented
 
-The read-only vertical slice passes automated and private integration gates;
-explicit maintainer interaction acceptance remains before durable review
-writes begin. Running arbitrary new pipelines, structured candidate
-observations, domain packs, and Tauri packaging follow only after that
-decision.
+The read-only vertical slice passes automated and private integration gates.
+Durable extraction execution has since landed; explicit maintainer interaction
+acceptance remains. Durable review writes, structured candidate observations,
+domain packs, and desktop packaging remain separately authorized boundaries.
 See [Product vision and application architecture](product-vision-and-architecture.md).
 The bounded first implementation plan is
 [Tactical 000](tactical/000-read-only-library-comparison.md).
@@ -114,6 +114,14 @@ implementation plan is
 machine-verifiable gates are complete; explicit maintainer interaction
 acceptance remains.
 
+The maintainer next selected a bounded Apache-2.0 macOS arm64 desktop proof.
+[Tactical 002](tactical/002-macos-tauri-desktop-application.md) proposes the
+same React/Python application inside a thin Tauri 2 shell with native folder
+authorization, a standalone Python runtime, and only a Ghostscript-free
+Poppler/Tesseract/OCRmyPDF baseline pack. Heavy extractors, downloads/plugins,
+signing/notarization, installers, Windows, and Linux remain later scope.
+Tactical 002 implementation has not been authorized or started.
+
 ### Phase 3 — Candidate understanding
 
 - Add versioned document-type and observation schemas.
@@ -128,6 +136,12 @@ acceptance remains.
 - Define promotion APIs for accepted observations.
 - Support domain adapters without importing domain rules into the core.
 - Preserve raw, normalized, accepted, and superseded values.
+- Distinguish human confirmation from agent assessment, deterministic
+  validation, extractor confidence, and agreement.
+- Support provisional computations that retain input review coverage and
+  unresolved conflicts.
+- Version jurisdiction/year/form mappings and preserve reverse provenance from
+  every mapped output through its calculation to source pages and regions.
 - Produce reproducibility and unresolved-conflict reports.
 
 ### Phase 5 — Operational maturity
@@ -155,7 +169,9 @@ acceptance remains.
     durable review pending
 11. Desktop library foundation, durable extraction jobs, and operational UI.
     — implemented; explicit maintainer acceptance pending
-12. Observation and downstream-promotion workflows.
+12. macOS arm64 Tauri application proof. — proposed; implementation not
+    authorized or started
+13. Observation and downstream-promotion workflows.
 
 ## Open Implementation Decisions
 
@@ -169,7 +185,9 @@ acceptance remains.
   batch, or benchmark selection.
 - Add first-class extraction/rendering for standalone image documents rather
   than merely inventorying them.
-- Python and heavyweight-extractor packaging under a future Tauri shell.
+- Measure the proposed standalone Python and small baseline extractor bundle
+  through Tactical 002; heavyweight-extractor packaging remains a separate
+  future decision.
 - Whether a vector index ever provides enough benefit to maintain.
 - Which advanced extractor becomes the preferred table/layout parser.
 - Which model-assisted observation adapters are worth supporting.

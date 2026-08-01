@@ -36,6 +36,13 @@ application-data paths, folder grants, process lifecycle, and desktop
 distribution without introducing a second document model or moving product
 logic into Rust.
 
+The intended workflow is agent-assisted and human-accountable. Machines and
+agents extract, validate, reconcile, and assemble provisional values and
+downstream mappings. A person reviews consequential, conflicting, or sampled
+values beside their exact source regions. Confidence, extractor agreement,
+deterministic validation, agent assessment, and explicit human confirmation
+remain distinct, and provisional outputs summarize their evidence coverage.
+
 The delivery sequence is deliberate:
 
 1. **Implemented:** deterministic inventory, content-addressed extraction and
@@ -49,15 +56,18 @@ The delivery sequence is deliberate:
    extraction controls, bounded batches, and the global operational activity
    and diagnostics UI are implemented. Fault/restart, isolated-browser, and
    authorized private-integration gates pass for Tactical 001.
-3. **Following product slice:** durable human review events and portable review
-   state, kept separate from regenerable extractor output.
-4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
-   native folder selection, Python and optional extractor packaging,
-   installers, signing, updating, and cross-platform validation.
+3. **Proposed next slice; not yet authorized:** an Apache-2.0 macOS arm64
+   application proof with a thin Tauri shell, native folder authorization,
+   standalone Python sidecar, and a small Ghostscript-free
+   Poppler/Tesseract/OCRmyPDF baseline pack.
+4. **Later slices:** durable human review state; signed/notarized macOS
+   distribution; optional language/extractor packs; and platform-specific
+   Windows and Linux applications.
 
-Desktop distribution is therefore an explicit destination, while its exact
-packaging mechanics remain intentionally outside the active tactical until a
-bounded prototype establishes them. See
+Desktop distribution is therefore an explicit destination. Its first bounded
+implementation plan is
+[Tactical 002: macOS Tauri desktop application proof](docs/tactical/002-macos-tauri-desktop-application.md),
+which is ready for review but has not been authorized or started. See
 [Product vision and application architecture](docs/product-vision-and-architecture.md),
 [Application platform](docs/topics/application-platform.md), and
 [Desktop library management](docs/topics/library-management.md).
@@ -114,6 +124,15 @@ actions and representation refresh; the application header provides a polling
 activity center with resource lanes, liveness/deadline detail, batch preflight,
 and cancellation.
 
+The maintainer has selected an Apache-2.0 macOS arm64 desktop proof as the next
+planned boundary. Tactical 002 freezes a thin Tauri shell, separate runtime and
+host-control credentials, preservation of the existing application home,
+native library/collection selection through Python-owned services, a
+standalone CPython runtime, and only the Poppler/Tesseract/OCRmyPDF baseline
+pack. It excludes Ghostscript, Docling, Marker, heavyweight model runtimes,
+downloads/plugins, signing/notarization, and Windows/Linux packaging. No
+Tactical 002 implementation has started.
+
 The external acceptance harness used an explicitly authorized registered
 library in the platform-default application home. It exercised a missing OCR
 identity, exact OCR and layout cache reuse, and bounded batch preflight while
@@ -125,14 +144,15 @@ Read these first:
 1. [Product vision and application architecture](docs/product-vision-and-architecture.md)
 2. [Master plan](docs/master-plan.md)
 3. [Living topics](docs/topics/README.md)
-4. [Library management](docs/topics/library-management.md)
-5. [Durable job architecture](docs/topics/job-architecture.md)
-6. [Implementation tacticals](docs/tactical/README.md)
-7. [Architecture](docs/architecture.md)
-8. [Data contracts](docs/data-contracts.md)
-9. [Benchmark plan](docs/benchmarking.md)
-10. [References](docs/references.md)
-11. [Operations](docs/operations.md)
+4. [Product landscape and use cases](docs/topics/product-landscape-and-use-cases.md)
+5. [Library management](docs/topics/library-management.md)
+6. [Durable job architecture](docs/topics/job-architecture.md)
+7. [Implementation tacticals](docs/tactical/README.md)
+8. [Architecture](docs/architecture.md)
+9. [Data contracts](docs/data-contracts.md)
+10. [Benchmark plan](docs/benchmarking.md)
+11. [References](docs/references.md)
+12. [Operations](docs/operations.md)
 
 ## Core Principles
 

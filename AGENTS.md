@@ -43,9 +43,15 @@ implementation decisions:
   persistence, durable execution, recovery, and operational UI. Its automated
   and private-integration gates pass; explicit maintainer interaction
   acceptance remains. Durable human review state follows separately.
-- Native folder pickers, Tauri packaging, Python runtime bundling, optional
-  heavyweight-extractor packs, installers, signing, updating, and
-  cross-platform distribution require a later prototype and approved tactical.
+- Tactical 002 is the proposed, implementation-ready macOS arm64 application
+  proof. It freezes Apache-2.0 project licensing, a thin Tauri shell, separate
+  runtime and host-control credentials, native folder authorization through
+  Python-owned services, standalone CPython, and a small Ghostscript-free
+  Poppler/Tesseract/OCRmyPDF baseline pack. It has not been authorized or
+  started.
+- Optional heavyweight-extractor packs, download/plugin management, signing,
+  notarization, installers, updating, and Windows/Linux distribution require
+  later approved tacticals.
 
 Do not let a short-term localhost or CLI implementation create a competing
 ownership model, embed platform APIs in product components, or make later
@@ -61,6 +67,9 @@ Before substantive work:
    `docs/topics/comparison-review-workspace.md` for application work. Consult
    `docs/topics/maintainer-feature-requests.md` before planning or changing
    the live review interface.
+   Read `docs/topics/product-landscape-and-use-cases.md` before changing
+   product positioning, durable review, candidate observations, domain packs,
+   source-to-form mapping, agent workflows, or external product integration.
    Read `docs/topics/job-architecture.md` before changing job persistence,
    scheduling, workers, extraction execution, artifact publication,
    cancellation, recovery, or operational UI.
@@ -71,8 +80,10 @@ Before substantive work:
 4. Read the active tactical under `docs/tactical/` before implementing its
    scope. `docs/tactical/000-read-only-library-comparison.md` is the implemented
    read-only execution record. `docs/tactical/001-durable-extraction-jobs.md`
-   is implementation-complete and awaiting explicit maintainer acceptance; do
-   not assume its likely durable-review successor is authorized.
+   is implementation-complete and awaiting explicit maintainer acceptance.
+   `docs/tactical/002-macos-tauri-desktop-application.md` is a proposed plan;
+   do not implement it, its signed-distribution successors, or the durable-
+   review successor without explicit maintainer authorization.
 5. Read `docs/master-plan.md`, `docs/architecture.md`, and
    `docs/data-contracts.md` for the affected core boundary.
 6. Read `docs/benchmarking.md` for extractor/evaluation work and
@@ -91,6 +102,12 @@ Before substantive work:
   be retained when an extractor supplies them.
 - Never promote a model or OCR guess directly into an accepted downstream
   fact.
+- Keep extractor confidence, cross-extractor agreement, deterministic
+  validation, agent assessment, and explicit human confirmation separate.
+  Durable review records must identify actor and purpose; an agent decision is
+  never presented as human confirmation.
+- Provisional downstream calculations and form mappings must retain unresolved
+  inputs, reverse provenance, and an evidence-coverage summary.
 - Keep tax logic and other domain mappings in downstream adapters or case
   workspaces, not the generic extraction core.
 - Add heavy extractors as optional adapters. The core package should remain
@@ -261,6 +278,11 @@ language OCR run executed, exact OCR and layout cache reuse worked, broad OCR
 stayed at preflight, and source and registry integrity checks remained
 unchanged. Only explicit maintainer interaction acceptance remains.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
+`docs/tactical/002-macos-tauri-desktop-application.md` is the proposed next
+implementation boundary. It plans a self-contained, unsigned macOS arm64 app
+and baseline extractor pack, but no implementation has started. Signing,
+notarization, DMG/updater work, heavy extractor packs, Windows, and Linux
+remain outside it.
 
 ## Validation and Commits
 

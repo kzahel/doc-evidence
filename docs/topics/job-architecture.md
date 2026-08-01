@@ -11,7 +11,8 @@ bounded per-library scheduling, authenticated API/runtime operations, document
 execution controls, bounded batches, and the global activity/debug UI are
 implemented. Fault/restart, isolated-browser, and authorized
 private-integration gates pass; explicit maintainer interaction acceptance
-remains.
+remains. Tactical 002 plans the first packaged macOS execution environment and
+process-tree lifecycle but is not authorized or started.
 
 ## Purpose
 
@@ -77,6 +78,13 @@ is written beneath an attempt workspace, contract-validated, hashed and
 fsynced, then renamed on the same filesystem into the canonical run location.
 Malformed or conflicting output is retained as attempt evidence and is never
 shown as canonical success.
+
+The proposed macOS desktop composition preserves this protocol. Packaged mode
+will resolve worker and extractor executables only through versioned bundle
+manifests and a minimal allowlisted environment, never ambient `PATH`,
+Homebrew, checkout-relative heavy environments, or an anonymous model cache.
+Graceful app close asks Python to reconcile schedulers and workers before the
+Tauri host's bounded fallback terminates the complete descendant process tree.
 
 Private worker protocol v2 also carries the exact run ID and run key planned at
 enqueue. The worker checks its adapter result against that identity and the
@@ -491,6 +499,8 @@ The core recovery invariant is:
   environments; CPU count alone does not establish safe model concurrency.
 - Cross-platform descendant cleanup must be revalidated when Tauri/Windows
   packaging begins.
+- Tactical 002 must validate macOS app-close, forced-sidecar-exit, and packaged
+  OCR descendant cleanup without changing persisted job semantics.
 - A later topic may define hosted multi-scheduler leases and remote workers;
   they are not latent Tactical 001 requirements.
 - Durable human review and observation history will share the unified database
@@ -503,3 +513,7 @@ The core recovery invariant is:
 end-to-end implementation and validation of this architecture together with
 the required platform-neutral foundation from
 [Desktop library management](library-management.md).
+
+[Tactical 002](../tactical/002-macos-tauri-desktop-application.md) proposes the
+first packaged macOS adapter over the same job and recovery contracts. It does
+not authorize a new scheduler, queue model, job state, or artifact protocol.

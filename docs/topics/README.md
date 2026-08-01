@@ -28,6 +28,10 @@ Do not create one topic per small change. A topic should normally include:
 
 ## Current Topics
 
+- [Product landscape and use cases](product-landscape-and-use-cases.md) —
+  project origin, adjacent document/evidence/tax products, intended agent and
+  human operator model, source-to-form review interaction, promising use
+  cases, and product claims that require stronger guarantees.
 - [Application platform](application-platform.md) — Python application/API
   boundary, generated TypeScript contracts, React runtime ownership,
   localhost/Tauri deployment direction, and lessons from the sibling

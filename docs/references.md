@@ -12,6 +12,13 @@ source path, inspected revision, behavior adopted, and intentional difference.
 Private documents and extracted private content are never reference fixtures
 for this generic repository.
 
+The continuing survey of adjacent document managers, research workbenches,
+investigative and e-discovery systems, tax-workpaper products, and document
+extraction platforms is maintained in
+[Product landscape and use cases](topics/product-landscape-and-use-cases.md).
+That topic records both verified public product behavior and explicit
+uncertainty when a remembered product cannot be identified reliably.
+
 ## atpiano: Direct Application-Architecture Sibling
 
 Repository: [kzahel/atpiano](https://github.com/kzahel/atpiano)  
@@ -69,6 +76,19 @@ publication. `doc-evidence` intentionally uses one discrete process group per
 document/extractor attempt and a same-filesystem content-addressed rename; it
 does not adopt streaming audio horizons, a long-lived model lane, or the
 sibling's export destination model.
+
+For Tactical 002's macOS desktop plan, the same pinned revision was inspected
+at `docs/tactical/030-early-tauri-sidecar-boundary.md`,
+`app/src-tauri/tauri.conf.json`, `app/src-tauri/src/lib.rs`,
+`app/src/runtime/desktop-runtime.ts`, `src/atpiano/desktop.py`,
+`src/atpiano/desktop_sidecar.py`, and `scripts/build-atpiano-desktop`. Adopted
+lessons are a thin Tauri lifecycle/security shell, bounded ready and handshake
+records, isolated standalone Python, exact-origin loopback authentication,
+outside-repository execution, transitive native-library audit, final-byte
+inventory, and complete child cleanup. Doc Evidence intentionally adds a
+second Rust/Python-only credential for native folder authorization, packages a
+small document-tool pack instead of ML transcription models, and defers all
+heavy extractor packs.
 
 ## Documentation-Structure Siblings
 

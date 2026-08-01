@@ -43,6 +43,22 @@ Initial states:
 Review is purpose-specific. Accepting an account balance does not necessarily
 accept document ownership, income classification, or tax treatment.
 
+Review status, review actor, machine confidence, extractor agreement, and
+deterministic validation are separate dimensions. A future durable review
+event must identify whether its actor is a person, agent, or bounded policy and
+must never present agent acceptance as human confirmation. The interface and
+portable exports should be able to distinguish at least:
+
+- unreviewed machine candidates;
+- mechanically validated candidates;
+- agent-assessed candidates that are not human-confirmed; and
+- explicitly human-confirmed or human-corrected evidence.
+
+A provisional calculation or form mapping must retain the review coverage of
+every input and any unresolved conflict. Human confirmation of source
+transcription does not by itself confirm the downstream interpretation or
+calculation.
+
 ## Benchmark and Calibration Contracts
 
 [`schemas/benchmark-suite.schema.json`](../schemas/benchmark-suite.schema.json)

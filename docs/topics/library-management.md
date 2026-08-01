@@ -8,8 +8,9 @@ Topic: library-management
 known-library registry, adopted descriptors, CLI activation, unified library
 persistence, inventory generations, and collection preflight are implemented.
 Shared UI selection and explicit library-scoped job identity are implemented;
-explicit maintainer interaction acceptance remains. Native Tauri folder
-selection, packaging, and store relocation remain later tacticals.
+explicit maintainer interaction acceptance remains. Tactical 002 now plans
+native Tauri folder selection and packaged startup but is not authorized or
+started. Store relocation remains later scope.
 
 ## Purpose
 
@@ -69,6 +70,14 @@ The Tauri shell will eventually own native folder pickers, platform folder
 authorization, sidecar lifecycle, and application-data path injection. React
 product components consume a platform-neutral `DocEvidenceRuntime` library
 contract and do not import Tauri APIs.
+
+The proposed first macOS proof keeps native paths out of the ordinary browser
+API by giving Rust and Python a separate per-launch host-control credential.
+Rust chooses a folder or descriptor with a native dialog and submits it
+directly to a bounded Python desktop-control adapter. Python still owns path
+canonicalization, collection/store overlap policy, stable IDs, descriptors,
+and registry writes. JavaScript receives the resulting library behavior, not
+generic filesystem authority.
 
 ## Application Home
 

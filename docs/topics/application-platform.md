@@ -4,7 +4,9 @@ Topic: application-platform
 
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
 is complete; automated, isolated-browser, and authorized private-library gates
-pass, with explicit maintainer interaction acceptance remaining.
+pass, with explicit maintainer interaction acceptance remaining. Tactical 002
+is the proposed implementation-ready macOS arm64 Tauri application proof; its
+implementation has not been authorized or started.
 
 ## Scope
 
@@ -91,6 +93,13 @@ parallel boundary. The exact inspected documents and pinned revision are in
   desktop bridge as large JSON or a single duplicated in-memory payload.
 - Python packaging and heavyweight model/extractor packs are measured and
   manifested rather than assumed to fit.
+- The first desktop proof packages only Poppler, Tesseract language data, and a
+  Ghostscript-free OCRmyPDF path. Docling, Marker, downloader/plugin behavior,
+  signing, installers, and other operating systems remain later boundaries.
+- Native path selection uses a Rust-held host-control credential distinct from
+  the bearer exposed to the desktop runtime. Product components request a
+  behavioral library/collection operation and never submit an arbitrary path
+  to the ordinary browser API.
 
 ### Intentional differences
 
@@ -169,8 +178,11 @@ tactical.
   maintainer interaction acceptance remains open.
 - Tactical 001 starts with bounded polling for job updates. A later event
   stream remains optional and does not own durable correctness.
-- Tauri packaging, Python runtime staging, and optional extractor-pack
-  discovery have not been prototyped.
+- Tauri packaging, Python runtime staging, and the small baseline extractor
+  pack are planned in Tactical 002 but have not been prototyped.
+- Optional extractor-pack discovery/downloads, signed/notarized macOS
+  distribution, and Windows/Linux packaging remain unplanned implementation
+  work after the macOS proof.
 - The source checkout serves a separately built `web/dist`; self-contained
   wheel/desktop asset packaging is deferred to a packaging tactical.
 - A hosted composition is a possible future adapter, not current scope.
@@ -244,5 +256,9 @@ record is in
 ## Recommended Next Work
 
 Complete the explicit maintainer interaction acceptance in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md). Durable review
-events remain the likely following tactical and are not yet authorized.
+[Tactical 001](../tactical/001-durable-extraction-jobs.md). The maintainer has
+selected an Apache-2.0 macOS arm64 application proof as the next planned
+implementation boundary; review and explicitly authorize
+[Tactical 002](../tactical/002-macos-tauri-desktop-application.md) before code
+work. Durable review events remain a separate later tactical and are not
+authorized by the packaging plan.
