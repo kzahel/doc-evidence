@@ -207,6 +207,20 @@ def _build_parser() -> argparse.ArgumentParser:
     collection_preflight.add_argument("--config", required=True, type=Path)
     collection_preflight.add_argument("--source", required=True, type=Path)
     collection_preflight.add_argument("--json", action="store_true")
+
+    desktop_sidecar = subparsers.add_parser(
+        "desktop-sidecar",
+        help="Run the authenticated sidecar supervised by the desktop shell.",
+    )
+    desktop_sidecar.add_argument(
+        "--expected-protocol",
+        default="doc-evidence.desktop.v1",
+    )
+    desktop_sidecar.add_argument(
+        "--desktop-origin",
+        default="tauri://localhost",
+    )
+    desktop_sidecar.add_argument("--no-parent-stdin", action="store_true")
     return parser
 
 
@@ -564,6 +578,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 library_name=library_name,
                 frontend_dir=args.frontend_dir,
                 open_browser=not args.no_open,
+            )
+        if args.command == "desktop-sidecar":
+            from doc_evidence.desktop_sidecar import run
+
+            return run(
+                expected_protocol=args.expected_protocol,
+                desktop_origin=args.desktop_origin,
+                monitor_parent_stdin=not args.no_parent_stdin,
             )
     except DocEvidenceError as error:
         print(f"doc-evidence: {error}", file=sys.stderr)

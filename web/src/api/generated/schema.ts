@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/desktop/handshake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Desktop Runtime Handshake */
+        get: operations["desktop_runtime_handshake_api_v1_desktop_handshake_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/diagnostics": {
         parameters: {
             query?: never;
@@ -800,6 +817,64 @@ export interface components {
             right_run_ref: string;
             /** Segments */
             segments: components["schemas"]["DiffSegment"][];
+        };
+        /** DesktopHandshake */
+        DesktopHandshake: {
+            /**
+             * Api Version
+             * @default 1
+             * @constant
+             */
+            api_version: 1;
+            /**
+             * Application Home Source
+             * @enum {string}
+             */
+            application_home_source: "environment" | "desktop_host" | "platform_default";
+            /** Application Version */
+            application_version: string;
+            /**
+             * Architecture
+             * @default arm64
+             * @constant
+             */
+            architecture: "arm64";
+            baseline_pack: components["schemas"]["DesktopPackIdentity"] | null;
+            /** Capabilities */
+            capabilities: ("known_libraries" | "durable_extraction_jobs" | "native_library_authorization")[];
+            /**
+             * Compatible
+             * @default true
+             * @constant
+             */
+            compatible: true;
+            /**
+             * Platform
+             * @default macos
+             * @constant
+             */
+            platform: "macos";
+            /**
+             * Protocol Version
+             * @default doc-evidence.desktop.v1
+             * @constant
+             */
+            protocol_version: "doc-evidence.desktop.v1";
+            /**
+             * Schema Version
+             * @default doc-evidence.desktop-handshake.v1
+             * @constant
+             */
+            schema_version: "doc-evidence.desktop-handshake.v1";
+        };
+        /** DesktopPackIdentity */
+        DesktopPackIdentity: {
+            /** Manifest Sha256 */
+            manifest_sha256: string;
+            /** Pack Id */
+            pack_id: string;
+            /** Version */
+            version: string;
         };
         /** DiagnosticCheck */
         DiagnosticCheck: {
@@ -1757,6 +1832,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    desktop_runtime_handshake_api_v1_desktop_handshake_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopHandshake"];
                 };
             };
         };

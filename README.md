@@ -242,6 +242,7 @@ doc-evidence libraries
 doc-evidence library-activate LIBRARY_ID [--default]
 doc-evidence collection-preflight --config PATH --source PATH
 doc-evidence serve [--config PATH]
+doc-evidence desktop-sidecar [HOST-SUPERVISED OPTIONS]
 doc-evidence benchmark-check --suite PATH
 doc-evidence benchmark-run --config PATH --suite PATH
 doc-evidence benchmark-score --report PATH --review PATH

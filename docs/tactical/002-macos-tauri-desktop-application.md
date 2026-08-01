@@ -895,3 +895,25 @@ The first landed slice:
 Validation for that slice passed its focused Ruff checks, three focused unit
 tests, and `uv build`. No credential, remote, signing, notarization, updater,
 release, or publication operation was attempted.
+
+The second landed slice adds the versioned Python desktop process and
+transport boundary:
+
+- two independent 256-bit inherited credentials are validated, removed from
+  the child environment, and never emitted in ready or handshake records;
+- the sidecar binds one ephemeral IPv4 loopback port, emits a strict bounded
+  ready record, and exposes an authenticated runtime handshake only to the
+  exact Tauri origin;
+- a separate originless host-control handshake proves that the Rust/Python-
+  only credential cannot be replaced by the browser runtime credential;
+- platform, architecture, protocol, application-home source, capabilities,
+  and optional baseline-pack identity are strict Pydantic/OpenAPI contracts;
+  and
+- parent stdin closure stops the real server cleanly and shuts down library
+  schedulers through the existing manager lifecycle.
+
+The focused sidecar tests passed against a real subprocess and ephemeral HTTP
+server, including credential swapping, browser-origin rejection, secret/path
+absence in retained startup evidence, and parent-EOF shutdown. The full 66-
+test Python suite, Ruff format/check, Pyright, generated-contract drift,
+frontend typecheck, and all 26 frontend tests pass at this boundary.

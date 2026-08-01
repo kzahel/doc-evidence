@@ -249,6 +249,13 @@ valid artifact whose catalog projection failed. React still consumes only the
 hand-owned runtime; Python retains scheduler, filesystem, database, and
 process ownership.
 
+Tactical 002 now adds a dedicated macOS arm64 desktop-sidecar composition. It
+uses independent runtime and Rust/Python-only host credentials, a strict
+ephemeral-port ready record, an authenticated versioned runtime handshake, an
+originless host-control handshake, and parent-EOF shutdown. The ordinary
+localhost composition remains unchanged; native path operations and the Tauri
+supervisor have not landed yet.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

@@ -62,6 +62,11 @@ from doc_evidence.contracts.api import (
     SearchPage,
     WorkspaceSummary,
 )
+from doc_evidence.contracts.desktop import (
+    DesktopControlHandshake,
+    DesktopHandshake,
+    create_desktop_handshake,
+)
 from doc_evidence.errors import (
     DependencyError,
     DocEvidenceError,
@@ -145,6 +150,9 @@ def create_app(
     allowed_origins: set[str] | None = None,
     static_dir: Path | None = None,
     on_started: Callable[[], None] | None = None,
+    desktop_handshake: DesktopHandshake | None = None,
+    host_control_token: str | None = None,
+    desktop_control_handshake: DesktopControlHandshake | None = None,
 ) -> FastAPI:
     origins = frozenset(allowed_origins or set())
 
@@ -176,6 +184,16 @@ def create_app(
     ) -> Response:
         origin = request.headers.get("origin")
         is_api = request.url.path.startswith("/api/v1/")
+        is_control = request.url.path.startswith("/desktop-control/v1/")
+        is_protected = is_api or is_control
+        if is_control and origin:
+            return JSONResponse(
+                status_code=403,
+                content=ApiProblem(
+                    code="origin_not_allowed",
+                    message="desktop control requests cannot have a browser origin",
+                ).model_dump(),
+            )
         if is_api and origin and origin not in origins:
             return JSONResponse(
                 status_code=403,
@@ -186,7 +204,7 @@ def create_app(
             )
         content_length = request.headers.get("content-length")
         if (
-            is_api
+            is_protected
             and content_length is not None
             and content_length.isdecimal()
             and int(content_length) > 262_144
@@ -240,6 +258,29 @@ def create_app(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+    def authorize_control(
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    ) -> None:
+        if (
+            host_control_token is None
+            or credentials is None
+            or credentials.scheme.casefold() != "bearer"
+            or not hmac.compare_digest(
+                credentials.credentials,
+                host_control_token,
+            )
+        ):
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "code": "desktop_control_authentication_required",
+                    "message": "valid desktop host authentication is required",
+                },
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
     def service(request: Request) -> LibraryApplication:
         value = request.app.state.application
         if value is None:
@@ -259,6 +300,12 @@ def create_app(
         return manager(request).jobs(library_id)
 
     router = APIRouter(prefix="/api/v1", dependencies=[Depends(authorize)])
+
+    @router.get("/desktop/handshake", response_model=DesktopHandshake)
+    def desktop_runtime_handshake() -> DesktopHandshake:
+        if desktop_handshake is None:
+            raise NotFoundError("desktop runtime is not active")
+        return desktop_handshake
 
     @router.get("/app", response_model=AppSummary)
     def app_summary(request: Request) -> AppSummary:
@@ -761,6 +808,18 @@ def create_app(
 
     app.include_router(router)
 
+    if desktop_control_handshake is not None:
+        control_router = APIRouter(
+            prefix="/desktop-control/v1",
+            dependencies=[Depends(authorize_control)],
+        )
+
+        @control_router.get("/handshake", response_model=DesktopControlHandshake)
+        def desktop_host_handshake() -> DesktopControlHandshake:
+            return desktop_control_handshake
+
+        app.include_router(control_router)
+
     @app.exception_handler(NotFoundError)
     async def not_found(_: Request, error: NotFoundError) -> JSONResponse:
         return JSONResponse(
@@ -818,4 +877,11 @@ def create_app(
 def create_contract_app() -> FastAPI:
     """Create the route graph used for deterministic OpenAPI generation."""
 
-    return create_app(None, launch_token="contract-generation-token")
+    return create_app(
+        None,
+        launch_token="contract-generation-token",
+        desktop_handshake=create_desktop_handshake(
+            application_home_source="desktop_host",
+            baseline_pack=None,
+        ),
+    )

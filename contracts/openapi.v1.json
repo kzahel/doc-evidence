@@ -311,6 +311,121 @@
         "title": "ComparisonResult",
         "type": "object"
       },
+      "DesktopHandshake": {
+        "additionalProperties": false,
+        "properties": {
+          "api_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Api Version",
+            "type": "integer"
+          },
+          "application_home_source": {
+            "enum": [
+              "environment",
+              "desktop_host",
+              "platform_default"
+            ],
+            "title": "Application Home Source",
+            "type": "string"
+          },
+          "application_version": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Application Version",
+            "type": "string"
+          },
+          "architecture": {
+            "const": "arm64",
+            "default": "arm64",
+            "title": "Architecture",
+            "type": "string"
+          },
+          "baseline_pack": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesktopPackIdentity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capabilities": {
+            "items": {
+              "enum": [
+                "known_libraries",
+                "durable_extraction_jobs",
+                "native_library_authorization"
+              ],
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "compatible": {
+            "const": true,
+            "default": true,
+            "title": "Compatible",
+            "type": "boolean"
+          },
+          "platform": {
+            "const": "macos",
+            "default": "macos",
+            "title": "Platform",
+            "type": "string"
+          },
+          "protocol_version": {
+            "const": "doc-evidence.desktop.v1",
+            "default": "doc-evidence.desktop.v1",
+            "title": "Protocol Version",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "doc-evidence.desktop-handshake.v1",
+            "default": "doc-evidence.desktop-handshake.v1",
+            "title": "Schema Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_version",
+          "application_home_source",
+          "baseline_pack",
+          "capabilities"
+        ],
+        "title": "DesktopHandshake",
+        "type": "object"
+      },
+      "DesktopPackIdentity": {
+        "additionalProperties": false,
+        "properties": {
+          "manifest_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "pack_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Pack Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pack_id",
+          "version",
+          "manifest_sha256"
+        ],
+        "title": "DesktopPackIdentity",
+        "type": "object"
+      },
       "DiagnosticCheck": {
         "additionalProperties": false,
         "properties": {
@@ -2879,6 +2994,29 @@
           }
         ],
         "summary": "Compare"
+      }
+    },
+    "/api/v1/desktop/handshake": {
+      "get": {
+        "operationId": "desktop_runtime_handshake_api_v1_desktop_handshake_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesktopHandshake"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Desktop Runtime Handshake"
       }
     },
     "/api/v1/diagnostics": {

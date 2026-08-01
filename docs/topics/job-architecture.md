@@ -499,8 +499,9 @@ The core recovery invariant is:
   environments; CPU count alone does not establish safe model concurrency.
 - Cross-platform descendant cleanup must be revalidated when Tauri/Windows
   packaging begins.
-- Tactical 002 must validate macOS app-close, forced-sidecar-exit, and packaged
-  OCR descendant cleanup without changing persisted job semantics.
+- Tactical 002's Python sidecar now shuts down its manager/schedulers on parent
+  EOF. The Tauri app-close, forced-sidecar-exit, and packaged OCR descendant
+  cleanup gates remain and must not change persisted job semantics.
 - A later topic may define hosted multi-scheduler leases and remote workers;
   they are not latent Tactical 001 requirements.
 - Durable human review and observation history will share the unified database
