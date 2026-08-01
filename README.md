@@ -213,6 +213,8 @@ npm ci --prefix desktop
 ./scripts/build-macos-desktop stage
 ./scripts/build-macos-desktop build
 ./scripts/build-macos-desktop review
+./scripts/build-macos-desktop dmg
+./scripts/build-macos-desktop review-dmg
 ```
 
 The resulting application is
@@ -222,7 +224,12 @@ and real synthetic OCR from the application resources. The current baseline
 contains Poppler, Tesseract with English/German/orientation data, OCRmyPDF, and
 PDFium; Ghostscript and heavyweight model extractors are absent. This
 intermediate artifact intentionally has no Developer ID signature,
-notarization, DMG/updater metadata, or release publication yet.
+notarization, updater metadata, or release publication yet. The local `dmg`
+command deliberately avoids Finder automation: it creates a simple image with
+the application and an `/Applications` link, verifies and mounts it read-only,
+audits the mounted application, and detaches it. Its ignored output is under
+`results/desktop/distribution/`; it is a local proof, not a public substitute
+for the eventual signed and notarized release image.
 
 Register an external case configuration once, then launch the selected
 last/default library:

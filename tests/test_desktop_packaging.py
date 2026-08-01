@@ -12,9 +12,11 @@ from doc_evidence.desktop_packaging import (
     _audit_symlinks,
     _files_containing,
     _load_inputs,
+    create_unsigned_dmg,
     repository_root,
     sha256_tree,
     stage_runtime,
+    unsigned_dmg_path,
 )
 
 
@@ -108,6 +110,23 @@ class DesktopPackagingTest(unittest.TestCase):
         )
         self.assertEqual(inputs["platform"], "macos")
         self.assertEqual(inputs["architecture"], "arm64")
+
+    def test_unsigned_dmg_path_and_replacement_are_explicit(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            output = unsigned_dmg_path(root)
+            self.assertEqual(
+                output,
+                root
+                / "results"
+                / "desktop"
+                / "distribution"
+                / "Doc-Evidence_0.4.0_aarch64-unsigned.dmg",
+            )
+            output.parent.mkdir(parents=True)
+            output.write_bytes(b"existing")
+            with self.assertRaisesRegex(RuntimeError, "already exists"):
+                create_unsigned_dmg(root / "missing.app", output, repository=root)
 
 
 if __name__ == "__main__":

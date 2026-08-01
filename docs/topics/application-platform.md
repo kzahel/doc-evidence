@@ -285,6 +285,10 @@ Ghostscript-free synthetic OCR and packaged-sidecar smokes without the
 checkout, Homebrew on `PATH`, or a system Python. Broader Poppler non-Latin
 data behavior is not yet validated; a relocatable Poppler build or measured
 PDFium replacement remains preferable before claiming that coverage.
+A deterministic local DMG path avoids Finder automation, verifies the
+compressed image, mounts it read-only, re-audits the contained application,
+and detaches it. The resulting 73,253,627-byte unsigned image is validation
+evidence, not a release artifact.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

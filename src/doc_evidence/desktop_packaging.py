@@ -61,12 +61,36 @@ def cache_root(root: Path | None = None) -> Path:
     return base / "results" / "desktop" / "cache"
 
 
+def distribution_root(root: Path | None = None) -> Path:
+    base = root or repository_root()
+    return base / "results" / "desktop" / "distribution"
+
+
+def application_bundle_path(root: Path | None = None) -> Path:
+    base = root or repository_root()
+    return (
+        base
+        / "desktop"
+        / "src-tauri"
+        / "target"
+        / "release"
+        / "bundle"
+        / "macos"
+        / f"{PRODUCT_NAME}.app"
+    )
+
+
+def unsigned_dmg_path(root: Path | None = None) -> Path:
+    return distribution_root(root) / f"Doc-Evidence_{__version__}_aarch64-unsigned.dmg"
+
+
 def _run(
     arguments: Sequence[str | Path],
     *,
     cwd: Path | None = None,
     environment: Mapping[str, str] | None = None,
     capture_output: bool = False,
+    timeout_seconds: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [str(argument) for argument in arguments],
@@ -75,6 +99,7 @@ def _run(
         check=True,
         text=True,
         capture_output=capture_output,
+        timeout=timeout_seconds,
     )
 
 
@@ -1763,19 +1788,138 @@ def build_application(*, root: Path | None = None) -> Path:
         cwd=repository,
         environment=environment,
     )
-    app = (
-        repository
-        / "desktop"
-        / "src-tauri"
-        / "target"
-        / "release"
-        / "bundle"
-        / "macos"
-        / f"{PRODUCT_NAME}.app"
-    )
+    app = application_bundle_path(repository)
     if not app.is_dir():
         raise RuntimeError("Tauri did not produce the expected application bundle")
     return app
+
+
+def audit_dmg(
+    dmg: Path,
+    *,
+    repository: Path | None = None,
+) -> dict[str, Any]:
+    _require_host()
+    image = dmg.resolve()
+    repo = (repository or repository_root()).resolve()
+    if image.suffix != ".dmg" or not image.is_file():
+        raise RuntimeError(f"desktop disk image does not exist: {image}")
+    _run(
+        ["hdiutil", "verify", image],
+        capture_output=True,
+        timeout_seconds=120,
+    )
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-dmg-review-") as raw:
+        mount = Path(raw) / "volume"
+        mount.mkdir()
+        attached = False
+        detach_error: str | None = None
+        try:
+            _run(
+                [
+                    "hdiutil",
+                    "attach",
+                    image,
+                    "-readonly",
+                    "-nobrowse",
+                    "-mountpoint",
+                    mount,
+                ],
+                capture_output=True,
+                timeout_seconds=120,
+            )
+            attached = True
+            app = mount / f"{PRODUCT_NAME}.app"
+            applications = mount / "Applications"
+            if (
+                not applications.is_symlink()
+                or os.readlink(applications) != "/Applications"
+            ):
+                raise RuntimeError("desktop disk image lacks its Applications link")
+            app_audit = audit_application(app, repository=repo, smoke=True)
+            app_audit["app"] = f"{PRODUCT_NAME}.app (mounted read-only)"
+        finally:
+            if attached:
+                detached = subprocess.run(
+                    ["hdiutil", "detach", str(mount)],
+                    check=False,
+                    text=True,
+                    capture_output=True,
+                    timeout=60,
+                )
+                if detached.returncode != 0:
+                    forced = subprocess.run(
+                        ["hdiutil", "detach", "-force", str(mount)],
+                        check=False,
+                        text=True,
+                        capture_output=True,
+                        timeout=60,
+                    )
+                    if forced.returncode != 0:
+                        detach_error = (forced.stdout + forced.stderr)[-2000:]
+        if detach_error is not None:
+            raise RuntimeError(f"desktop disk image did not detach: {detach_error}")
+    return {
+        "schema_version": "doc-evidence.desktop-dmg-audit.v1",
+        "status": "passed",
+        "dmg": str(image),
+        "bytes": image.stat().st_size,
+        "sha256": sha256_file(image),
+        "volume_name": PRODUCT_NAME,
+        "applications_link": "/Applications",
+        "application": app_audit,
+    }
+
+
+def create_unsigned_dmg(
+    app: Path,
+    destination: Path,
+    *,
+    repository: Path | None = None,
+    replace: bool = False,
+) -> dict[str, Any]:
+    _require_host()
+    bundle = app.resolve()
+    repo = (repository or repository_root()).resolve()
+    output = destination.resolve()
+    if output.exists() and not replace:
+        raise RuntimeError(f"desktop disk image already exists: {output}")
+    audit_application(bundle, repository=repo, smoke=True)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    partial = output.with_name(f".{output.stem}.partial.dmg")
+    partial.unlink(missing_ok=True)
+    try:
+        with tempfile.TemporaryDirectory(prefix="doc-evidence-dmg-stage-") as raw:
+            volume = Path(raw) / PRODUCT_NAME
+            volume.mkdir()
+            _run(
+                ["ditto", bundle, volume / bundle.name],
+                timeout_seconds=120,
+            )
+            (volume / "Applications").symlink_to("/Applications")
+            _run(
+                [
+                    "hdiutil",
+                    "create",
+                    "-volname",
+                    PRODUCT_NAME,
+                    "-fs",
+                    "HFS+",
+                    "-format",
+                    "UDZO",
+                    "-imagekey",
+                    "zlib-level=9",
+                    "-srcfolder",
+                    volume,
+                    partial,
+                ],
+                capture_output=True,
+                timeout_seconds=300,
+            )
+        os.replace(partial, output)
+        return audit_dmg(output, repository=repo)
+    finally:
+        partial.unlink(missing_ok=True)
 
 
 def _cli(arguments: Sequence[str] | None = None) -> int:
@@ -1788,6 +1932,12 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     audit.add_argument("--smoke", action="store_true")
     review = subparsers.add_parser("review")
     review.add_argument("--app", type=Path)
+    dmg = subparsers.add_parser("dmg")
+    dmg.add_argument("--app", type=Path)
+    dmg.add_argument("--output", type=Path)
+    dmg.add_argument("--replace", action="store_true")
+    review_dmg = subparsers.add_parser("review-dmg")
+    review_dmg.add_argument("--dmg", type=Path)
     args = parser.parse_args(arguments)
     repository = repository_root()
     if args.operation == "stage":
@@ -1804,18 +1954,21 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
             repository=repository,
             smoke=args.smoke,
         )
-    else:
-        app = args.app or (
-            repository
-            / "desktop"
-            / "src-tauri"
-            / "target"
-            / "release"
-            / "bundle"
-            / "macos"
-            / f"{PRODUCT_NAME}.app"
-        )
+    elif args.operation == "review":
+        app = args.app or application_bundle_path(repository)
         result = audit_application(app, repository=repository, smoke=True)
+    elif args.operation == "dmg":
+        result = create_unsigned_dmg(
+            args.app or application_bundle_path(repository),
+            args.output or unsigned_dmg_path(repository),
+            repository=repository,
+            replace=bool(args.replace),
+        )
+    else:
+        result = audit_dmg(
+            args.dmg or unsigned_dmg_path(repository),
+            repository=repository,
+        )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
 

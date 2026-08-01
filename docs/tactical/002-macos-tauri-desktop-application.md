@@ -1050,6 +1050,27 @@ is intentionally unsigned.
 The current Poppler binaries have their build-machine data prefix neutralized
 and the English/German synthetic gate passes, but broader non-Latin Poppler
 mapping data has not been validated. A relocatable Poppler build or measured
-PDFium compatibility replacement remains a release-hardening task. DMG,
-corresponding-source bundle finalization, SBOM completion, signing,
-notarization, updater, CI release, and publication remain unstarted.
+PDFium compatibility replacement remains a release-hardening task. The signed
+release DMG, corresponding-source bundle finalization, SBOM completion,
+signing, notarization, updater, CI release, and publication remain unstarted.
+
+The eighth landed slice adds the unattended local disk-image proof. A direct
+Tauri `--bundles dmg --no-sign --ci` experiment assembled and mounted its
+read/write image but blocked for more than two minutes in Finder/AppleScript
+layout automation. That exact process was stopped and its image detached.
+The tracked local path therefore uses bounded `hdiutil` operations with no
+Finder dependency: it preflights the application, copies it beside an
+`/Applications` link, creates a compressed HFS+ image, verifies it, mounts it
+read-only at a fresh temporary mount point, runs the full application/runtime/
+OCR audit against the mounted bytes, and detaches normally with one bounded
+force-detach fallback.
+
+`Doc-Evidence_0.4.0_aarch64-unsigned.dmg` measures 73,253,627 bytes and has
+SHA-256 `4e953e692d73ecae7a27356470ac0f9e03dddabbb9727eb9ba9c335e79a9aa1a`.
+The application tree inside it matches the copied-out proof at
+`8e4f581a55bc1a8eeaf9724a903afcb9747cd5c20e8508fa77966043a597a8d2`;
+its final mounted smoke again passed exact pack validation and Ghostscript-free
+OCR. This is intentionally unsigned and unnotarized. The production lane still
+follows the pinned sibling signing, bounded-retry, notarization, stapling, and
+post-signing verification conventions rather than treating the local image as
+a releasable artifact.
