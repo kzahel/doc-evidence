@@ -6,6 +6,14 @@ type DiffMode = "differences" | "full";
 export type FontScale = 1 | 1.2 | 1.3;
 export type ReviewMode = "focused" | "stacked" | "compare";
 export type ComparisonView = "diff" | "raw";
+export type ActivityFilter =
+  | "all"
+  | "active"
+  | "queued"
+  | "recent"
+  | "failed"
+  | "cancelled"
+  | "interrupted";
 
 interface WorkspaceState {
   activeLibraryId: string | null;
@@ -25,6 +33,10 @@ interface WorkspaceState {
   libraryCollapsed: boolean;
   sourcePanePercent: number;
   textPresentationMode: TextPresentationMode;
+  activityOpen: boolean;
+  activityFilter: ActivityFilter;
+  selectedJobId: string | null;
+  advancedActivity: boolean;
   selectLibrary: (libraryId: string | null) => void;
   selectDocument: (documentId: string | null, page?: number) => void;
   setPage: (page: number) => void;
@@ -41,6 +53,10 @@ interface WorkspaceState {
   setSourcePanePercent: (percent: number) => void;
   resetSourcePanePercent: () => void;
   setTextPresentationMode: (mode: TextPresentationMode) => void;
+  setActivityOpen: (open: boolean) => void;
+  setActivityFilter: (filter: ActivityFilter) => void;
+  setSelectedJobId: (jobId: string | null) => void;
+  setAdvancedActivity: (advanced: boolean) => void;
 }
 
 export const DEFAULT_SOURCE_PANE_PERCENT = 45;
@@ -87,6 +103,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   libraryCollapsed: false,
   sourcePanePercent: DEFAULT_SOURCE_PANE_PERCENT,
   textPresentationMode: "auto",
+  activityOpen: false,
+  activityFilter: "active",
+  selectedJobId: null,
+  advancedActivity: false,
   selectLibrary: (activeLibraryId) =>
     set({
       activeLibraryId,
@@ -98,6 +118,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       comparisonGroupId: null,
       activeGroupId: null,
       numericIndex: 0,
+      selectedJobId: null,
     }),
   selectDocument: (documentId, page = 1) =>
     set({
@@ -138,4 +159,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     set({ sourcePanePercent: clampSourcePanePercent(sourcePanePercent) }),
   resetSourcePanePercent: () => set({ sourcePanePercent: DEFAULT_SOURCE_PANE_PERCENT }),
   setTextPresentationMode: (textPresentationMode) => set({ textPresentationMode }),
+  setActivityOpen: (activityOpen) => set({ activityOpen }),
+  setActivityFilter: (activityFilter) => set({ activityFilter }),
+  setSelectedJobId: (selectedJobId) => set({ selectedJobId }),
+  setAdvancedActivity: (advancedActivity) => set({ advancedActivity }),
 }));

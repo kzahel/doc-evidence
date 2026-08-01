@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import json
 import os
+import platform
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from doc_evidence.application.jobs import (
+    AttemptDiagnosticsRecord,
     BatchCreation,
+    BatchPreflightRecord,
     CachedResult,
     ClaimedJob,
     ExecutionMode,
@@ -23,6 +28,7 @@ from doc_evidence.application.jobs import (
     JobRecord,
     JobSpec,
     JobState,
+    QueueStateRecord,
 )
 from doc_evidence.attempts import (
     AttemptPlan,
@@ -366,13 +372,158 @@ class LocalExtractionJobs:
         return self.repository.events(job_id, after=after, limit=limit)
 
     def attempts(self, job_id: str) -> tuple[JobAttemptRecord, ...]:
-        return self.repository.attempts(job_id)
+        now = datetime.now(UTC)
+        records: list[JobAttemptRecord] = []
+        for record in self.repository.attempts(job_id):
+            process_alive: bool | None = None
+            if record.worker_pid is not None:
+                if record.state in {"starting", "running", "cancelling"}:
+                    try:
+                        os.kill(record.worker_pid, 0)
+                    except ProcessLookupError:
+                        process_alive = False
+                    except PermissionError:
+                        process_alive = True
+                    else:
+                        process_alive = True
+                else:
+                    process_alive = False
+            heartbeat_age: float | None = None
+            if record.heartbeat_at is not None:
+                try:
+                    heartbeat_age = max(
+                        0.0,
+                        (
+                            now
+                            - datetime.fromisoformat(record.heartbeat_at).astimezone(
+                                UTC
+                            )
+                        ).total_seconds(),
+                    )
+                except ValueError:
+                    heartbeat_age = None
+            try:
+                deadline_expired = (
+                    datetime.fromisoformat(record.deadline_at).astimezone(UTC) < now
+                )
+            except ValueError:
+                deadline_expired = False
+            records.append(
+                replace(
+                    record,
+                    process_alive=process_alive,
+                    heartbeat_age_seconds=heartbeat_age,
+                    deadline_expired=deadline_expired,
+                )
+            )
+        return tuple(records)
+
+    def attempt_diagnostics(
+        self, job_id: str, attempt_id: str
+    ) -> AttemptDiagnosticsRecord:
+        job = self.get(job_id)
+        attempts = {item.attempt_id: item for item in self.attempts(job_id)}
+        attempt = attempts.get(attempt_id)
+        if attempt is None:
+            raise NotFoundError("job attempt was not found")
+        relative = self.repository.attempt_path(job_id, attempt_id)
+        if relative is None:
+            relative = (
+                Path("blobs")
+                / job.content_sha256[:2]
+                / job.content_sha256
+                / "attempts"
+                / attempt_id
+            ).as_posix()
+        root = self.config.store.resolve()
+        attempt_dir = (root / relative).resolve()
+        if not attempt_dir.is_relative_to(root):
+            raise CatalogError("attempt diagnostics path escaped the artifact store")
+
+        def tail(name: str, limit: int = 16_384) -> str:
+            path = attempt_dir / name
+            try:
+                with path.open("rb") as source:
+                    source.seek(0, os.SEEK_END)
+                    size = source.tell()
+                    source.seek(max(0, size - limit))
+                    return source.read(limit).decode("utf-8", errors="replace")
+            except OSError:
+                return ""
+
+        result: dict[str, Any] = {}
+        try:
+            loaded = json.loads((attempt_dir / "attempt.json").read_text("utf-8"))
+            if isinstance(loaded, dict):
+                result = loaded
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            pass
+        published = job.result_artifact_path is not None
+        return AttemptDiagnosticsRecord(
+            attempt_id=attempt_id,
+            retained=attempt_dir.is_dir(),
+            stdout_tail=tail("worker.stdout.log"),
+            stderr_tail=tail("worker.stderr.log"),
+            stdout_truncated_bytes=int(result.get("stdout_truncated_bytes", 0) or 0),
+            stderr_truncated_bytes=int(result.get("stderr_truncated_bytes", 0) or 0),
+            extractor_descriptor=dict(job.execution.get("descriptor", {})),
+            settings=dict(job.settings),
+            environment={
+                "python": platform.python_version(),
+                "platform": platform.system(),
+                "machine": platform.machine(),
+            },
+            staging_status=(
+                "retained"
+                if attempt_dir.is_dir()
+                else "removed by retention or not created"
+            ),
+            validation_status=(
+                "passed"
+                if attempt.publication_outcome
+                in {"executed", "concurrent_cache_win", "verified_cache_match"}
+                else ("failed" if attempt.completed_at else "pending")
+            ),
+            publication_status=attempt.publication_outcome or "pending",
+            projection_status=(
+                "repair required"
+                if job.outcome == "published_projection_failed"
+                else ("registered" if published else "not published")
+            ),
+        )
 
     def cancel(self, job_id: str) -> JobRecord:
         return self.repository.request_cancel(job_id)
 
     def retry(self, job_id: str) -> JobRecord:
         return self.repository.retry(job_id)
+
+    def repair_projection(self, job_id: str) -> JobRecord:
+        job = self.get(job_id)
+        if not (
+            job.state == "failed"
+            and job.outcome == "published_projection_failed"
+            and job.result_artifact_path is not None
+            and job.result_run_id is not None
+            and job.run_key is not None
+        ):
+            raise RequestError("job does not have a repairable catalog projection")
+        root = self.config.store.resolve()
+        run_dir = (root / job.result_artifact_path).resolve()
+        if not run_dir.is_relative_to(root):
+            raise CatalogError("published artifact path escaped the library store")
+        validate_run(
+            run_dir,
+            extractor_id=job.extractor_id,
+            source_sha256=job.content_sha256,
+            run_key=job.run_key,
+        )
+        self.database.register_run_sidecars(
+            store=self.config.store,
+            content_sha256=job.content_sha256,
+            expected_run_id=job.result_run_id,
+        )
+        return self.repository.projection_repaired(job_id)
 
     def enqueue_batch(
         self,
@@ -452,8 +603,98 @@ class LocalExtractionJobs:
             disposition="created",
         )
 
+    def preflight_image_only_ocr(self) -> BatchPreflightRecord:
+        connection = self.database.connect(readonly=True)
+        try:
+            rows = connection.execute(
+                """
+                SELECT content.document_id
+                FROM content_objects content
+                JOIN generation_documents member
+                  ON member.content_sha256 = content.content_sha256
+                 AND member.generation_id = (
+                    SELECT active_generation_id FROM library_metadata
+                    WHERE singleton = 1
+                 )
+                WHERE content.extraction_status = 'image_only'
+                  AND content.media_type = 'application/pdf'
+                ORDER BY content.document_id LIMIT 200
+                """
+            ).fetchall()
+            candidate_count = int(
+                connection.execute(
+                    """
+                    SELECT COUNT(*) FROM content_objects content
+                    JOIN generation_documents member
+                      ON member.content_sha256 = content.content_sha256
+                     AND member.generation_id = (
+                        SELECT active_generation_id FROM library_metadata
+                        WHERE singleton = 1
+                     )
+                    WHERE content.extraction_status = 'image_only'
+                      AND content.media_type = 'application/pdf'
+                    """
+                ).fetchone()[0]
+            )
+            unsupported_count = int(
+                connection.execute(
+                    """
+                    SELECT COUNT(*) FROM content_objects content
+                    JOIN generation_documents member
+                      ON member.content_sha256 = content.content_sha256
+                     AND member.generation_id = (
+                        SELECT active_generation_id FROM library_metadata
+                        WHERE singleton = 1
+                     )
+                    WHERE content.extraction_status = 'image_only'
+                      AND content.media_type != 'application/pdf'
+                    """
+                ).fetchone()[0]
+            )
+        finally:
+            connection.close()
+        capability = self.registry.capability("ocrmypdf-tesseract")
+        selected: list[str] = []
+        cache_hits = 0
+        unsupported = unsupported_count
+        for row in rows:
+            document_id = str(row["document_id"])
+            if not capability.available:
+                selected.append(document_id)
+                continue
+            try:
+                source, prepared = self.prepare(
+                    document_id=document_id,
+                    extractor_id="ocrmypdf-tesseract",
+                    settings={},
+                )
+            except (NotFoundError, RequestError):
+                unsupported += 1
+                continue
+            if self._cached(source=source, prepared=prepared) is not None:
+                cache_hits += 1
+            else:
+                selected.append(document_id)
+        return BatchPreflightRecord(
+            policy="image_only_pdf_missing_ocr",
+            extractor_id="ocrmypdf-tesseract",
+            document_ids=tuple(selected),
+            candidate_count=candidate_count,
+            cache_hit_count=cache_hits,
+            execution_count=len(selected) if capability.available else 0,
+            unsupported_count=unsupported,
+            missing_dependency_count=(len(rows) if not capability.available else 0),
+            resource_class="ocr",
+            concurrency_limit=1,
+            maximum_batch_size=200,
+            over_limit_count=max(0, candidate_count - 200),
+        )
+
     def batch(self, batch_id: str) -> JobBatchRecord:
         return self.repository.batch(batch_id)
+
+    def batch_jobs(self, batch_id: str) -> tuple[JobRecord, ...]:
+        return self.repository.batch_jobs(batch_id)
 
     def batches(
         self, *, offset: int = 0, limit: int = 50
@@ -462,6 +703,12 @@ class LocalExtractionJobs:
 
     def counts(self) -> JobCountRecord:
         return self.repository.counts()
+
+    def queue_state(self) -> QueueStateRecord:
+        return self.repository.queue_state()
+
+    def set_queue_paused(self, paused: bool) -> QueueStateRecord:
+        return self.repository.set_queue_paused(paused)
 
     def capabilities(
         self, *, document_id: str | None = None

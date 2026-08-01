@@ -26,17 +26,21 @@ from doc_evidence.application.library import LibraryApplication
 from doc_evidence.contracts.api import (
     ApiProblem,
     AppSummary,
+    AttemptDiagnostics,
     ComparisonRequest,
     ComparisonResult,
     Diagnostics,
     DocumentDetail,
     DocumentPage,
+    ExtractionBatchPreflight,
     ExtractionBatchRequest,
     ExtractionJobRequest,
     ExtractorCapability,
     ExtractorCapabilityList,
     ExtractorDependency,
     JobAttempt,
+    JobBatchCancellationResponse,
+    JobBatchCancelRequest,
     JobBatchCreationResponse,
     JobBatchPage,
     JobBatchSummary,
@@ -52,6 +56,8 @@ from doc_evidence.contracts.api import (
     LibraryDetail,
     PageGroups,
     PageSummary,
+    QueueState,
+    QueueUpdateRequest,
     RunList,
     SearchPage,
     WorkspaceSummary,
@@ -338,6 +344,22 @@ def create_app(
         )
 
     @router.get(
+        "/libraries/{library_id}/jobs/extraction-batches/preflight",
+        response_model=ExtractionBatchPreflight,
+    )
+    def extraction_batch_preflight(
+        request: Request,
+        library_id: str,
+    ) -> ExtractionBatchPreflight:
+        record = job_service(request, library_id).preflight_image_only_ocr()
+        return ExtractionBatchPreflight(
+            **{
+                **record.__dict__,
+                "document_ids": list(record.document_ids),
+            }
+        )
+
+    @router.get(
         "/libraries/{library_id}/jobs/extraction-batches",
         response_model=JobBatchPage,
     )
@@ -355,6 +377,27 @@ def create_app(
             offset=offset,
             limit=limit,
             total=total,
+        )
+
+    @router.post(
+        "/libraries/{library_id}/jobs/extraction-batches/{batch_id}/cancel",
+        response_model=JobBatchCancellationResponse,
+    )
+    def cancel_extraction_batch(
+        request: Request,
+        library_id: str,
+        batch_id: str,
+        body: JobBatchCancelRequest,
+    ) -> JobBatchCancellationResponse:
+        result = manager(request).cancel_batch(
+            library_id,
+            batch_id,
+            cancel_running=body.cancel_running,
+        )
+        return JobBatchCancellationResponse(
+            batch=_batch_summary(result.batch),
+            jobs=[_job_summary(job) for job in result.jobs],
+            cancel_running=result.cancel_running,
         )
 
     @router.get(
@@ -400,6 +443,28 @@ def create_app(
         )
 
     @router.get(
+        "/libraries/{library_id}/jobs/queue",
+        response_model=QueueState,
+    )
+    def job_queue(request: Request, library_id: str) -> QueueState:
+        record = job_service(request, library_id).queue_state()
+        return QueueState(**record.__dict__)
+
+    @router.post(
+        "/libraries/{library_id}/jobs/queue",
+        response_model=QueueState,
+    )
+    def update_job_queue(
+        request: Request,
+        library_id: str,
+        body: QueueUpdateRequest,
+    ) -> QueueState:
+        record = job_service(request, library_id).set_queue_paused(body.paused)
+        if not body.paused:
+            manager(request).start_jobs(library_id)
+        return QueueState(**record.__dict__)
+
+    @router.get(
         "/libraries/{library_id}/jobs/{job_id}",
         response_model=JobDetail,
     )
@@ -437,6 +502,21 @@ def create_app(
             items=[JobEvent(**record.__dict__) for record in records],
         )
 
+    @router.get(
+        "/libraries/{library_id}/jobs/{job_id}/attempts/{attempt_id}/diagnostics",
+        response_model=AttemptDiagnostics,
+    )
+    def job_attempt_diagnostics(
+        request: Request,
+        library_id: str,
+        job_id: str,
+        attempt_id: str,
+    ) -> AttemptDiagnostics:
+        record = job_service(request, library_id).attempt_diagnostics(
+            job_id, attempt_id
+        )
+        return AttemptDiagnostics(**record.__dict__)
+
     @router.post(
         "/libraries/{library_id}/jobs/{job_id}/cancel",
         response_model=JobDetail,
@@ -459,6 +539,22 @@ def create_app(
         service_value = job_service(request, library_id)
         record = service_value.retry(job_id)
         manager(request).start_jobs(library_id)
+        return JobDetail(
+            job=_job_summary(record),
+            attempts=[
+                _job_attempt(attempt) for attempt in service_value.attempts(job_id)
+            ],
+        )
+
+    @router.post(
+        "/libraries/{library_id}/jobs/{job_id}/repair-projection",
+        response_model=JobDetail,
+    )
+    def repair_job_projection(
+        request: Request, library_id: str, job_id: str
+    ) -> JobDetail:
+        service_value = job_service(request, library_id)
+        record = service_value.repair_projection(job_id)
         return JobDetail(
             job=_job_summary(record),
             attempts=[

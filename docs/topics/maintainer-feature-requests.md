@@ -2,9 +2,10 @@
 
 Topic: maintainer-feature-requests
 
-**Status:** Review-workspace revisions implemented; desktop library management
-and UI-triggered extraction execution are approved and planned in Tactical 001
-but not yet implemented.
+**Status:** Review-workspace revisions, desktop library management, and
+UI-triggered durable extraction operations are implemented. Tactical 001
+fault/restart, private-integration, and maintainer acceptance remain in
+progress.
 
 ## Purpose
 
@@ -19,8 +20,9 @@ behavior, and implementation status remain traceable.
 
 ### Remember libraries without repeated command-line configuration
 
-**Status:** PLANNED — approved in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md).
+**Status:** IMPLEMENTED in
+[Tactical 001](../tactical/001-durable-extraction-jobs.md); final acceptance in
+progress.
 
 The first-class product should behave like a desktop application rather than
 require a configuration path at every launch. It should:
@@ -43,8 +45,9 @@ maintainer's normal library registry or stores.
 
 ### Trigger and monitor extraction from the application
 
-**Status:** PLANNED — approved in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md).
+**Status:** IMPLEMENTED in
+[Tactical 001](../tactical/001-durable-extraction-jobs.md); final acceptance in
+progress.
 
 The application should let the user request missing extraction work and
 revisit prior work without leaving the document view.

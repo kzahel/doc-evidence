@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from doc_evidence.adapters.local_jobs import LocalExtractionJobs
 from doc_evidence.app_home import legacy_library_id
 from doc_evidence.attempts import AttemptSupervisor
 from doc_evidence.config import load_config
-from doc_evidence.errors import RequestError
+from doc_evidence.errors import CatalogError, RequestError
 from doc_evidence.inventory import run_inventory
 from doc_evidence.persistence import ensure_library_database
 from doc_evidence.scheduler import LibraryScheduler, ResourceLimits
@@ -257,6 +259,66 @@ class ExtractionJobApplicationTest(unittest.TestCase):
             finally:
                 first.stop()
 
+    def test_queue_pause_blocks_claim_until_resumed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, document_id, _source = self.application(
+                Path(temporary_directory)
+            )
+            created = application.enqueue(
+                document_id=document_id,
+                extractor_id="poppler",
+                execution_mode="fresh_verification",
+            )
+            application.set_queue_paused(True)
+            scheduler = LibraryScheduler(
+                application,
+                poll_seconds=0.02,
+                heartbeat_seconds=0.05,
+            )
+            self.assertTrue(scheduler.start())
+            try:
+                time.sleep(0.15)
+                self.assertEqual(application.get(created.job.job_id).state, "queued")
+                self.assertTrue(application.queue_state().paused)
+                application.set_queue_paused(False)
+                deadline = time.monotonic() + 10
+                while time.monotonic() < deadline:
+                    job = application.get(created.job.job_id)
+                    if job.state in {"succeeded", "failed"}:
+                        break
+                    time.sleep(0.02)
+                else:
+                    self.fail("resumed queue did not dispatch work")
+            finally:
+                scheduler.stop()
+            self.assertEqual(job.state, "succeeded")
+
+    def test_image_only_ocr_batch_preflight_is_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, document_id, _source = self.application(
+                Path(temporary_directory)
+            )
+            connection = application.database.connect()
+            try:
+                connection.execute(
+                    "UPDATE content_objects SET extraction_status = 'image_only'"
+                )
+                connection.commit()
+            finally:
+                connection.close()
+
+            preflight = application.preflight_image_only_ocr()
+
+            self.assertEqual(preflight.candidate_count, 1)
+            self.assertEqual(preflight.document_ids, (document_id,))
+            self.assertEqual(preflight.resource_class, "ocr")
+            self.assertEqual(preflight.concurrency_limit, 1)
+            self.assertEqual(preflight.maximum_batch_size, 200)
+            self.assertEqual(
+                preflight.execution_count + preflight.missing_dependency_count,
+                1,
+            )
+
     def test_transient_worker_launch_gets_only_one_automatic_retry(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             base, document_id, _source = self.application(Path(temporary_directory))
@@ -306,6 +368,93 @@ class ExtractionJobApplicationTest(unittest.TestCase):
             self.assertEqual(job.failure_class, "worker_launch_failed")
             self.assertEqual(job.automatic_retry_count, 1)
             self.assertEqual(attempts, 2)
+
+    def test_projection_failure_preserves_artifact_logs_and_repairs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, document_id, _source = self.application(
+                Path(temporary_directory)
+            )
+            created = application.enqueue(
+                document_id=document_id,
+                extractor_id="poppler",
+                execution_mode="fresh_verification",
+            )
+            scheduler = LibraryScheduler(
+                application,
+                poll_seconds=0.02,
+                heartbeat_seconds=0.05,
+            )
+            with patch.object(
+                application.database,
+                "register_run_sidecars",
+                side_effect=CatalogError("simulated projection failure"),
+            ):
+                self.assertTrue(scheduler.start())
+                try:
+                    deadline = time.monotonic() + 10
+                    while time.monotonic() < deadline:
+                        job = application.get(created.job.job_id)
+                        if job.state == "failed":
+                            break
+                        time.sleep(0.02)
+                    else:
+                        self.fail("projection failure did not settle")
+                finally:
+                    scheduler.stop()
+
+            self.assertEqual(job.outcome, "published_projection_failed")
+            self.assertIsNotNone(job.result_artifact_path)
+            attempts = application.attempts(job.job_id)
+            self.assertEqual(len(attempts), 1)
+            self.assertFalse(attempts[0].process_alive)
+            diagnostics = application.attempt_diagnostics(
+                job.job_id, attempts[0].attempt_id
+            )
+            self.assertTrue(diagnostics.retained)
+            self.assertEqual(diagnostics.projection_status, "repair required")
+            self.assertLessEqual(len(diagnostics.stdout_tail.encode()), 16_384)
+            self.assertLessEqual(len(diagnostics.stderr_tail.encode()), 16_384)
+
+            repaired = application.repair_projection(job.job_id)
+            self.assertEqual(repaired.state, "succeeded")
+            self.assertEqual(repaired.outcome, "projection_repaired")
+            self.assertEqual(
+                application.events(job.job_id)[-1].event_type,
+                "projection_repaired",
+            )
+
+    def test_temporary_database_contention_waits_then_succeeds(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, document_id, _source = self.application(
+                Path(temporary_directory)
+            )
+            blocker = application.database.connect()
+            blocker.execute("BEGIN IMMEDIATE")
+            results: list[str] = []
+            failures: list[Exception] = []
+
+            def enqueue() -> None:
+                try:
+                    results.append(
+                        application.enqueue(
+                            document_id=document_id,
+                            extractor_id="poppler",
+                            idempotency_key="contended-enqueue",
+                        ).job.state
+                    )
+                except (CatalogError, RequestError) as error:
+                    failures.append(error)
+
+            thread = threading.Thread(target=enqueue)
+            thread.start()
+            time.sleep(0.1)
+            blocker.commit()
+            blocker.close()
+            thread.join(timeout=5)
+
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(failures, [])
+            self.assertEqual(results, ["succeeded"])
 
 
 if __name__ == "__main__":

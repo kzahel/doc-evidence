@@ -21,6 +21,7 @@ export type ExtractorCapabilityList = components["schemas"]["ExtractorCapability
 export type ExtractorCapability = components["schemas"]["ExtractorCapability"];
 export type ExtractionJobRequest = components["schemas"]["ExtractionJobRequest"];
 export type ExtractionBatchRequest = components["schemas"]["ExtractionBatchRequest"];
+export type ExtractionBatchPreflight = components["schemas"]["ExtractionBatchPreflight"];
 export type JobSummary = components["schemas"]["JobSummary"];
 export type JobDetail = components["schemas"]["JobDetail"];
 export type JobPage = components["schemas"]["JobPage"];
@@ -28,6 +29,9 @@ export type JobEventPage = components["schemas"]["JobEventPage"];
 export type JobCreationResponse = components["schemas"]["JobCreationResponse"];
 export type JobBatchPage = components["schemas"]["JobBatchPage"];
 export type JobBatchCreationResponse = components["schemas"]["JobBatchCreationResponse"];
+export type JobBatchCancellationResponse = components["schemas"]["JobBatchCancellationResponse"];
+export type QueueState = components["schemas"]["QueueState"];
+export type AttemptDiagnostics = components["schemas"]["AttemptDiagnostics"];
 
 export interface SearchInput {
   query: string;
@@ -52,10 +56,16 @@ export interface DocEvidenceRuntime {
   getExtractors(libraryId: string, documentId?: string, signal?: AbortSignal): Promise<ExtractorCapabilityList>;
   createExtraction(libraryId: string, input: ExtractionJobRequest, idempotencyKey?: string, signal?: AbortSignal): Promise<JobCreationResponse>;
   createExtractionBatch(libraryId: string, input: ExtractionBatchRequest, idempotencyKey?: string, signal?: AbortSignal): Promise<JobBatchCreationResponse>;
+  preflightImageOnlyOcr(libraryId: string, signal?: AbortSignal): Promise<ExtractionBatchPreflight>;
   listJobs(libraryId: string, state?: string, offset?: number, limit?: number, signal?: AbortSignal): Promise<JobPage>;
   getJob(libraryId: string, jobId: string, signal?: AbortSignal): Promise<JobDetail>;
   getJobEvents(libraryId: string, jobId: string, after?: number, limit?: number, signal?: AbortSignal): Promise<JobEventPage>;
   cancelJob(libraryId: string, jobId: string, signal?: AbortSignal): Promise<JobDetail>;
   retryJob(libraryId: string, jobId: string, signal?: AbortSignal): Promise<JobDetail>;
+  repairJobProjection(libraryId: string, jobId: string, signal?: AbortSignal): Promise<JobDetail>;
+  getAttemptDiagnostics(libraryId: string, jobId: string, attemptId: string, signal?: AbortSignal): Promise<AttemptDiagnostics>;
   listBatches(libraryId: string, offset?: number, limit?: number, signal?: AbortSignal): Promise<JobBatchPage>;
+  cancelBatch(libraryId: string, batchId: string, cancelRunning: boolean, signal?: AbortSignal): Promise<JobBatchCancellationResponse>;
+  getQueueState(libraryId: string, signal?: AbortSignal): Promise<QueueState>;
+  setQueuePaused(libraryId: string, paused: boolean, signal?: AbortSignal): Promise<QueueState>;
 }

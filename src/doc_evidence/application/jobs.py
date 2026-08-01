@@ -131,6 +131,26 @@ class JobAttemptRecord:
     error_summary: str | None
     started_at: str
     completed_at: str | None
+    process_alive: bool | None = None
+    heartbeat_age_seconds: float | None = None
+    deadline_expired: bool = False
+
+
+@dataclass(frozen=True)
+class AttemptDiagnosticsRecord:
+    attempt_id: str
+    retained: bool
+    stdout_tail: str
+    stderr_tail: str
+    stdout_truncated_bytes: int
+    stderr_truncated_bytes: int
+    extractor_descriptor: dict[str, Any]
+    settings: dict[str, Any]
+    environment: dict[str, str]
+    staging_status: str
+    validation_status: str
+    publication_status: str
+    projection_status: str
 
 
 @dataclass(frozen=True)
@@ -156,6 +176,29 @@ class BatchCreation:
     batch: JobBatchRecord
     jobs: tuple[JobRecord, ...]
     disposition: Literal["created", "idempotent"]
+
+
+@dataclass(frozen=True)
+class BatchCancellation:
+    batch: JobBatchRecord
+    jobs: tuple[JobRecord, ...]
+    cancel_running: bool
+
+
+@dataclass(frozen=True)
+class BatchPreflightRecord:
+    policy: str
+    extractor_id: str
+    document_ids: tuple[str, ...]
+    candidate_count: int
+    cache_hit_count: int
+    execution_count: int
+    unsupported_count: int
+    missing_dependency_count: int
+    resource_class: ResourceClass
+    concurrency_limit: int
+    maximum_batch_size: int
+    over_limit_count: int
 
 
 @dataclass(frozen=True)
@@ -195,6 +238,14 @@ class JobCountRecord:
     failed: int
 
 
+@dataclass(frozen=True)
+class QueueStateRecord:
+    paused: bool
+    scheduler_instance_id: str | None
+    acquired_at: str | None
+    heartbeat_at: str | None
+
+
 class JobService(Protocol):
     library_id: str
 
@@ -226,9 +277,15 @@ class JobService(Protocol):
 
     def attempts(self, job_id: str) -> tuple[JobAttemptRecord, ...]: ...
 
+    def attempt_diagnostics(
+        self, job_id: str, attempt_id: str
+    ) -> AttemptDiagnosticsRecord: ...
+
     def cancel(self, job_id: str) -> JobRecord: ...
 
     def retry(self, job_id: str) -> JobRecord: ...
+
+    def repair_projection(self, job_id: str) -> JobRecord: ...
 
     def enqueue_batch(
         self,
@@ -241,7 +298,11 @@ class JobService(Protocol):
         idempotency_key: str | None = None,
     ) -> BatchCreation: ...
 
+    def preflight_image_only_ocr(self) -> BatchPreflightRecord: ...
+
     def batch(self, batch_id: str) -> JobBatchRecord: ...
+
+    def batch_jobs(self, batch_id: str) -> tuple[JobRecord, ...]: ...
 
     def batches(
         self, *, offset: int = 0, limit: int = 50
@@ -252,3 +313,7 @@ class JobService(Protocol):
     ) -> tuple[ExtractorCapabilityRecord, ...]: ...
 
     def counts(self) -> JobCountRecord: ...
+
+    def queue_state(self) -> QueueStateRecord: ...
+
+    def set_queue_paused(self, paused: bool) -> QueueStateRecord: ...

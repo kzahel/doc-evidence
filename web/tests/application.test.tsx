@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "../src/App";
 import { FixtureRuntime } from "../src/api/fixtureRuntime";
@@ -10,7 +10,20 @@ import {
   DEFAULT_SOURCE_PANE_PERCENT,
   useWorkspaceStore,
 } from "../src/state/workspaceStore";
-import { detail, documentId, documents, pageGroups, workspace } from "./fixtures";
+import {
+  detail,
+  documentId,
+  documents,
+  extractorCapabilities,
+  failedJob,
+  jobPage,
+  pageGroups,
+  runningJob,
+  runningJobDetail,
+  runningJobEvents,
+  runningAttemptDiagnostics,
+  workspace,
+} from "./fixtures";
 
 function renderApp(runtime: FixtureRuntime) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -37,6 +50,10 @@ describe("application states", () => {
       reviewMode: "focused",
       comparisonView: "diff",
       activeGroupId: null,
+      activityOpen: false,
+      activityFilter: "active",
+      selectedJobId: null,
+      advancedActivity: false,
     });
   });
 
@@ -220,5 +237,140 @@ describe("application states", () => {
     await user.type(input, "4{Enter}");
     expect(useWorkspaceStore.getState().page).toBe(4);
     expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+  });
+
+  it("keeps extraction passive until an explicit cache or run action", async () => {
+    const user = userEvent.setup();
+    const runtime = new FixtureRuntime({
+      workspace,
+      documents,
+      details: { [documentId]: detail },
+      groups: { [`${documentId}|1`]: pageGroups },
+      extractors: extractorCapabilities,
+      jobCreation: {
+        schema_version: 1,
+        disposition: "cache_hit",
+        job: {
+          ...runningJob,
+          state: "succeeded",
+          outcome: "cache_hit",
+          active_attempt_id: null,
+          completed_at: "2026-08-01T00:00:03Z",
+        },
+      },
+    });
+    const create = vi.spyOn(runtime, "createExtraction");
+    renderApp(runtime);
+
+    const cached = await screen.findByRole("button", { name: "Use cached result" });
+    expect(create).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Run extraction" })).toBeDisabled();
+    expect(screen.getByText("ocrmypdf is not installed")).toBeInTheDocument();
+    await user.click(cached);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0]?.[1]).toMatchObject({
+      document_id: documentId,
+      extractor_id: "poppler",
+      execution_mode: "reuse_or_execute",
+    });
+  });
+
+  it("filters activity and exposes cancellation, lease, attempts, and events", async () => {
+    const user = userEvent.setup();
+    const runtime = new FixtureRuntime({
+      workspace,
+      documents,
+      details: { [documentId]: detail },
+      groups: { [`${documentId}|1`]: pageGroups },
+      jobs: jobPage,
+      jobDetails: {
+        [runningJob.job_id]: runningJobDetail,
+        [failedJob.job_id]: { schema_version: 1, job: failedJob, attempts: [] },
+      },
+      jobEvents: { [runningJob.job_id]: runningJobEvents },
+      queueState: {
+        schema_version: 1,
+        paused: false,
+        scheduler_instance_id: "scheduler-fixture",
+        acquired_at: "2026-08-01T00:00:00Z",
+        heartbeat_at: "2026-08-01T00:00:02Z",
+      },
+      attemptDiagnostics: { "attempt-one": runningAttemptDiagnostics },
+    });
+    const pause = vi.spyOn(runtime, "setQueuePaused");
+    renderApp(runtime);
+
+    await user.click(await screen.findByRole("button", { name: /Activity/ }));
+    expect(screen.getByText((_, element) => element?.textContent === "1 active")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "1 failed")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /poppler.*running/i }));
+    await user.click(await screen.findByRole("button", { name: "Advanced debug" }));
+    expect(await screen.findByText(/PID 123/)).toBeInTheDocument();
+    expect(screen.getByText(/scheduler-fixture/)).toBeInTheDocument();
+    expect(screen.getByText("heartbeat")).toBeInTheDocument();
+    expect(screen.getByText(/Process alive · quiet for 12s/)).toBeInTheDocument();
+    expect(screen.getByText("fixture stdout")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pause queue" }));
+    expect(pause).toHaveBeenCalledWith(workspace.library_id, true);
+    await user.click(screen.getByRole("button", { name: "Failed" }));
+    expect(screen.getByText(/Docling dependency is unavailable/)).toBeInTheDocument();
+  });
+
+  it("preflights and explicitly confirms the bounded image-only OCR batch", async () => {
+    const user = userEvent.setup();
+    const runtime = new FixtureRuntime({
+      workspace,
+      documents,
+      details: { [documentId]: detail },
+      groups: { [`${documentId}|1`]: pageGroups },
+      jobs: { ...jobPage, items: [], total: 0, counts: { active: 0, queued: 0, failed: 0 } },
+      batchPreflight: {
+        schema_version: 1,
+        policy: "image_only_pdf_missing_ocr",
+        extractor_id: "ocrmypdf-tesseract",
+        document_ids: [documentId],
+        candidate_count: 2,
+        cache_hit_count: 1,
+        execution_count: 1,
+        unsupported_count: 0,
+        missing_dependency_count: 0,
+        resource_class: "ocr",
+        concurrency_limit: 1,
+        maximum_batch_size: 200,
+        over_limit_count: 0,
+      },
+      batchCreation: {
+        schema_version: 1,
+        disposition: "created",
+        batch: {
+          batch_id: "batch-one",
+          library_id: workspace.library_id,
+          selection: {},
+          policy: {},
+          status: "queued",
+          requested_count: 1,
+          child_count: 1,
+          cache_hit_count: 0,
+          succeeded_count: 0,
+          failed_count: 0,
+          cancelled_count: 0,
+          created_at: "2026-08-01T00:00:00Z",
+          started_at: null,
+          completed_at: null,
+        },
+        jobs: [runningJob],
+      },
+    });
+    const createBatch = vi.spyOn(runtime, "createExtractionBatch");
+    renderApp(runtime);
+
+    await user.click(await screen.findByRole("button", { name: /Activity/ }));
+    await user.click(screen.getByRole("button", { name: "Preflight batch" }));
+    expect(await screen.findByText("2 image-only PDF candidates")).toBeInTheDocument();
+    expect(screen.getByText("1 exact cache hits")).toBeInTheDocument();
+    expect(createBatch).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Confirm 1 OCR executions" }));
+    expect(createBatch).toHaveBeenCalledTimes(1);
+    expect(createBatch.mock.calls[0]?.[1]).toMatchObject({ confirmed: true });
   });
 });

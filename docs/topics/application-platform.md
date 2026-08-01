@@ -164,8 +164,9 @@ tactical.
 
 ## Known Gaps
 
-- Durable extraction jobs, scheduler/worker recovery, and operational controls
-  are not yet implemented.
+- Tactical 001 job, recovery, and operational controls are implemented; its
+  production-like restart, headless-browser, private-integration, and explicit
+  maintainer acceptance gates remain open.
 - Tactical 001 starts with bounded polling for job updates. A later event
   stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and optional extractor-pack
@@ -205,6 +206,15 @@ selection, and document/page deep links. The shared UI provides an actionable
 empty-library home, stable-ID library selection, active-library naming, and
 collection availability/settings without accepting a browser-supplied path.
 
+The current landed boundary adds explicit document extraction actions above
+the generated/runtime contract and a global activity center backed by bounded
+polling. It exposes queue and resource state, confirmed OCR batch preflight,
+pending/running batch cancellation, process liveness separately from progress
+age and deadline, bounded retained log tails, event history, and repair of a
+valid artifact whose catalog projection failed. React still consumes only the
+hand-owned runtime; Python retains scheduler, filesystem, database, and
+process ownership.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;
@@ -233,9 +243,7 @@ record is in
 
 ## Recommended Next Work
 
-Implement [Tactical 001](../tactical/001-durable-extraction-jobs.md) only after
-the maintainer explicitly asks to proceed. Its write, persistence, worker,
-artifact, recovery, and UI boundaries are frozen in the
-[durable job architecture](job-architecture.md) and
-[desktop library management](library-management.md). Durable review events
-remain the likely following tactical.
+Complete the remaining fault/restart, isolated headless-browser, private tax
+library, and maintainer acceptance evidence in
+[Tactical 001](../tactical/001-durable-extraction-jobs.md). Durable review
+events remain the likely following tactical.

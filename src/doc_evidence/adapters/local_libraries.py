@@ -9,7 +9,7 @@ from typing import Literal
 from doc_evidence.adapters.local_jobs import LocalExtractionJobs
 from doc_evidence.adapters.local_workspace import LocalWorkspace
 from doc_evidence.app_home import KnownLibrary, LibraryRegistry, legacy_library_id
-from doc_evidence.application.jobs import JobRecord
+from doc_evidence.application.jobs import BatchCancellation, JobRecord
 from doc_evidence.application.libraries import LibraryManager
 from doc_evidence.application.library import LibraryApplication
 from doc_evidence.config import AppConfig
@@ -271,6 +271,21 @@ class LocalLibraryManager(LibraryManager):
             scheduler.cancel(job_id)
             return self.jobs(library_id).get(job_id)
         return self.jobs(library_id).cancel(job_id)
+
+    def cancel_batch(
+        self, library_id: str, batch_id: str, *, cancel_running: bool
+    ) -> BatchCancellation:
+        service = self.jobs(library_id)
+        for job in service.batch_jobs(batch_id):
+            if job.state == "queued" or (
+                cancel_running and job.state in {"starting", "running", "cancelling"}
+            ):
+                self.cancel_job(library_id, job.job_id)
+        return BatchCancellation(
+            batch=service.batch(batch_id),
+            jobs=service.batch_jobs(batch_id),
+            cancel_running=cancel_running,
+        )
 
     def shutdown(self) -> None:
         for scheduler in list(self._schedulers.values()):

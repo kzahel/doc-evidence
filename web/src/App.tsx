@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRuntime } from "./api/RuntimeProvider";
 import { EmptyState, FailureState, LoadingState } from "./components/AsyncState";
 import { DocumentWorkspace } from "./components/DocumentWorkspace";
+import { ActivityCenter } from "./components/ActivityCenter";
 import { LibraryPanel } from "./components/LibraryPanel";
 import { useWorkspaceStore } from "./state/workspaceStore";
 import styles from "./App.module.css";
@@ -155,6 +156,7 @@ export function App() {
               ))}
             </select>
           </label>
+          <ActivityCenter libraryId={activeLibraryId} />
           <div className={styles.typography} role="group" aria-label="Global text size">
             <button
               aria-pressed={fontScale === 1}

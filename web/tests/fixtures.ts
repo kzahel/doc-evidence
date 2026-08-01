@@ -1,8 +1,14 @@
 import type {
+  AttemptDiagnostics,
   ComparisonResult,
   DocumentDetail,
   DocumentPage,
   ExtractorRun,
+  ExtractorCapabilityList,
+  JobDetail,
+  JobEventPage,
+  JobPage,
+  JobSummary,
   OutputGroup,
   PageGroups,
   WorkspaceSummary,
@@ -170,4 +176,178 @@ export const equivalentComparison: ComparisonResult = {
     },
   ],
   numeric_discrepancies: [],
+};
+
+export const extractorCapabilities: ExtractorCapabilityList = {
+  schema_version: 1,
+  document_id: documentId,
+  items: [
+    {
+      extractor_id: "poppler",
+      display_name: "Poppler native text",
+      category: "native_text",
+      supported_media_types: ["application/pdf"],
+      dependencies: [
+        { name: "pdftotext", available: true, version: "24.0", reason: null },
+      ],
+      available: true,
+      unavailable_reason: null,
+      version_label: "24.0",
+      resource_class: "light",
+      settings_schema: { type: "object", properties: {} },
+      default_timeout_seconds: 240,
+      deterministic: true,
+      output_kinds: ["normalized_page_text"],
+      document_supported: true,
+      cached: true,
+      run_key: "poppler-fixture-key",
+      run_id: "poppler:fixture",
+      recommended: false,
+    },
+    {
+      extractor_id: "ocrmypdf-tesseract",
+      display_name: "OCRmyPDF + Tesseract",
+      category: "ocr_preprocessing",
+      supported_media_types: ["application/pdf"],
+      dependencies: [
+        { name: "ocrmypdf", available: false, version: null, reason: "ocrmypdf is not installed" },
+      ],
+      available: false,
+      unavailable_reason: "ocrmypdf is not installed",
+      version_label: null,
+      resource_class: "ocr",
+      settings_schema: { type: "object", properties: { languages: { type: "array" } } },
+      default_timeout_seconds: 1_200,
+      deterministic: true,
+      output_kinds: ["normalized_page_text"],
+      document_supported: true,
+      cached: false,
+      run_key: null,
+      run_id: null,
+      recommended: true,
+    },
+  ],
+};
+
+function job(overrides: Partial<JobSummary> = {}): JobSummary {
+  return {
+    job_id: "job-running",
+    library_id: workspace.library_id,
+    batch_id: null,
+    document_id: documentId,
+    extractor_id: "poppler",
+    settings: {},
+    execution_mode: "fresh_verification",
+    run_key: "poppler-fixture-key",
+    priority: 100,
+    resource_class: "light",
+    state: "running",
+    outcome: null,
+    queue_reason: null,
+    retry_count: 0,
+    automatic_retry_count: 0,
+    cancellation_requested: false,
+    active_attempt_id: "attempt-one",
+    result_run_id: null,
+    failure_class: null,
+    error_summary: null,
+    created_at: "2026-08-01T00:00:00Z",
+    queued_at: "2026-08-01T00:00:00Z",
+    started_at: "2026-08-01T00:00:01Z",
+    completed_at: null,
+    updated_at: "2026-08-01T00:00:02Z",
+    ...overrides,
+  };
+}
+
+export const runningJob = job();
+export const failedJob = job({
+  job_id: "job-failed",
+  extractor_id: "docling-standard",
+  resource_class: "model_heavy",
+  state: "failed",
+  outcome: "failed",
+  active_attempt_id: null,
+  failure_class: "dependency_unavailable",
+  error_summary: "Docling dependency is unavailable",
+  completed_at: "2026-08-01T00:00:03Z",
+});
+
+export const jobPage: JobPage = {
+  schema_version: 1,
+  items: [runningJob, failedJob],
+  offset: 0,
+  limit: 50,
+  total: 2,
+  counts: { active: 1, queued: 0, failed: 1 },
+};
+
+export const runningJobDetail: JobDetail = {
+  schema_version: 1,
+  job: runningJob,
+  attempts: [
+    {
+      attempt_id: "attempt-one",
+      attempt_number: 1,
+      state: "running",
+      scheduler_instance_id: "scheduler-fixture",
+      worker_pid: 123,
+      process_group_id: 123,
+      heartbeat_at: "2026-08-01T00:00:02Z",
+      deadline_at: "2026-08-01T00:04:02Z",
+      exit_code: null,
+      publication_outcome: null,
+      artifact_manifest_sha256: null,
+      failure_class: null,
+      error_summary: null,
+      started_at: "2026-08-01T00:00:01Z",
+      completed_at: null,
+      process_alive: true,
+      heartbeat_age_seconds: 12,
+      deadline_expired: false,
+    },
+  ],
+};
+
+export const runningAttemptDiagnostics: AttemptDiagnostics = {
+  schema_version: 1,
+  attempt_id: "attempt-one",
+  retained: true,
+  stdout_tail: "fixture stdout",
+  stderr_tail: "fixture stderr",
+  stdout_truncated_bytes: 0,
+  stderr_truncated_bytes: 0,
+  extractor_descriptor: { extractor: "poppler", version: "fixture" },
+  settings: {},
+  environment: { python: "3.12", platform: "fixture", machine: "fixture" },
+  staging_status: "retained",
+  validation_status: "pending",
+  publication_status: "pending",
+  projection_status: "not published",
+};
+
+export const runningJobEvents: JobEventPage = {
+  schema_version: 1,
+  job_id: runningJob.job_id,
+  after: 0,
+  items: [
+    {
+      sequence: 1,
+      event_type: "queued",
+      stage: "queued",
+      progress_current: null,
+      progress_total: null,
+      detail: {},
+      created_at: "2026-08-01T00:00:00Z",
+    },
+    {
+      sequence: 2,
+      event_type: "heartbeat",
+      stage: "running",
+      progress_current: null,
+      progress_total: null,
+      detail: { worker_pid: 123 },
+      created_at: "2026-08-01T00:00:02Z",
+    },
+  ],
 };

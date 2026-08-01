@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from doc_evidence.application.jobs import JobRecord, JobService
+from doc_evidence.application.jobs import BatchCancellation, JobRecord, JobService
 from doc_evidence.application.library import LibraryApplication
 from doc_evidence.contracts.api import (
     AppSummary,
@@ -32,5 +32,9 @@ class LibraryManager(Protocol):
     def start_jobs(self, library_id: str) -> bool: ...
 
     def cancel_job(self, library_id: str, job_id: str) -> JobRecord: ...
+
+    def cancel_batch(
+        self, library_id: str, batch_id: str, *, cancel_running: bool
+    ) -> BatchCancellation: ...
 
     def shutdown(self) -> None: ...

@@ -366,6 +366,58 @@ class ApplicationIntegrationTest(unittest.TestCase):
         self.assertEqual(batch.json()["batch"]["status"], "succeeded")
         self.assertEqual(batch.json()["batch"]["cache_hit_count"], 1)
 
+        queue = self.client.get(prefix + "/jobs/queue", headers=self.headers)
+        paused = self.client.post(
+            prefix + "/jobs/queue",
+            headers=self.headers,
+            json={"paused": True},
+        )
+        cancellable_batch = self.client.post(
+            prefix + "/jobs/extraction-batches",
+            headers={**self.headers, "Idempotency-Key": "api-cancellable-batch"},
+            json={
+                "document_ids": [self.document_id],
+                "extractor_ids": ["poppler"],
+                "execution_mode": "fresh_verification",
+                "confirmed": True,
+            },
+        )
+        self.assertEqual(cancellable_batch.status_code, 200, cancellable_batch.text)
+        cancellable_batch_id = cancellable_batch.json()["batch"]["batch_id"]
+        cancelled_batch = self.client.post(
+            prefix + f"/jobs/extraction-batches/{cancellable_batch_id}/cancel",
+            headers=self.headers,
+            json={"cancel_running": False},
+        )
+        resumed = self.client.post(
+            prefix + "/jobs/queue",
+            headers=self.headers,
+            json={"paused": False},
+        )
+        self.assertEqual(queue.status_code, 200)
+        self.assertTrue(paused.json()["paused"])
+        self.assertEqual(cancelled_batch.status_code, 200, cancelled_batch.text)
+        self.assertEqual(cancelled_batch.json()["batch"]["status"], "cancelled")
+        self.assertEqual(cancelled_batch.json()["jobs"][0]["state"], "cancelled")
+        self.assertFalse(resumed.json()["paused"])
+
+        assert self.library_id is not None
+        connection = self.manager.jobs(self.library_id).database.connect()
+        try:
+            connection.execute(
+                "UPDATE content_objects SET extraction_status = 'image_only'"
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        preflight = self.client.get(
+            prefix + "/jobs/extraction-batches/preflight",
+            headers=self.headers,
+        )
+        self.assertEqual(preflight.status_code, 200, preflight.text)
+        self.assertEqual(preflight.json()["candidate_count"], 1)
+        self.assertEqual(preflight.json()["maximum_batch_size"], 200)
+
         fresh = self.client.post(
             prefix + "/jobs/extractions",
             headers=self.headers,
@@ -391,6 +443,15 @@ class ApplicationIntegrationTest(unittest.TestCase):
             time.sleep(0.05)
         else:
             self.fail("API-enqueued extraction did not complete")
+        attempt_id = current.json()["attempts"][0]["attempt_id"]
+        diagnostics = self.client.get(
+            prefix + f"/jobs/{fresh_id}/attempts/{attempt_id}/diagnostics",
+            headers=self.headers,
+        )
+        self.assertEqual(diagnostics.status_code, 200, diagnostics.text)
+        self.assertTrue(diagnostics.json()["retained"])
+        self.assertIn("stdout_tail", diagnostics.json())
+        self.assertNotIn(str(self.root), diagnostics.text)
         self.manager.shutdown()
         self.assertEqual(current.json()["job"]["state"], "succeeded")
         self.assertEqual(current.json()["job"]["outcome"], "verified_cache_match")

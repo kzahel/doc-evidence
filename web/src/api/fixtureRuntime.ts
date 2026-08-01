@@ -16,12 +16,16 @@ import type {
   ExtractorCapabilityList,
   ExtractionJobRequest,
   ExtractionBatchRequest,
+  ExtractionBatchPreflight,
   JobCreationResponse,
   JobBatchCreationResponse,
   JobPage,
   JobDetail,
   JobEventPage,
   JobBatchPage,
+  QueueState,
+  AttemptDiagnostics,
+  JobBatchCancellationResponse,
 } from "./runtime";
 
 export interface FixtureRuntimeData {
@@ -43,6 +47,10 @@ export interface FixtureRuntimeData {
   batches?: JobBatchPage;
   jobCreation?: JobCreationResponse;
   batchCreation?: JobBatchCreationResponse;
+  queueState?: QueueState;
+  batchPreflight?: ExtractionBatchPreflight;
+  attemptDiagnostics?: Record<string, AttemptDiagnostics>;
+  batchCancellation?: JobBatchCancellationResponse;
 }
 
 export function comparisonKey(input: ComparisonRequest): string {
@@ -180,6 +188,25 @@ export class FixtureRuntime implements DocEvidenceRuntime {
     return this.data.batchCreation;
   }
 
+  async preflightImageOnlyOcr(): Promise<ExtractionBatchPreflight> {
+    this.check();
+    return this.data.batchPreflight ?? {
+      schema_version: 1,
+      policy: "image_only_pdf_missing_ocr",
+      extractor_id: "ocrmypdf-tesseract",
+      document_ids: [],
+      candidate_count: 0,
+      cache_hit_count: 0,
+      execution_count: 0,
+      unsupported_count: 0,
+      missing_dependency_count: 0,
+      resource_class: "ocr",
+      concurrency_limit: 1,
+      maximum_batch_size: 200,
+      over_limit_count: 0,
+    };
+  }
+
   async listJobs(): Promise<JobPage> {
     this.check();
     return this.data.jobs ?? {
@@ -212,8 +239,51 @@ export class FixtureRuntime implements DocEvidenceRuntime {
     return this.getJob(_libraryId, jobId);
   }
 
+  async repairJobProjection(_libraryId: string, jobId: string): Promise<JobDetail> {
+    return this.getJob(_libraryId, jobId);
+  }
+
+  async getAttemptDiagnostics(
+    _libraryId: string,
+    _jobId: string,
+    attemptId: string,
+  ): Promise<AttemptDiagnostics> {
+    this.check();
+    const value = this.data.attemptDiagnostics?.[attemptId];
+    if (!value) throw new Error("Fixture attempt diagnostics not found");
+    return value;
+  }
+
   async listBatches(): Promise<JobBatchPage> {
     this.check();
     return this.data.batches ?? { schema_version: 1, items: [], offset: 0, limit: 50, total: 0 };
+  }
+
+  async cancelBatch(
+    _libraryId: string,
+    _batchId: string,
+    _cancelRunning: boolean,
+  ): Promise<JobBatchCancellationResponse> {
+    this.check();
+    if (!this.data.batchCancellation) {
+      throw new Error("Fixture batch cancellation not configured");
+    }
+    return this.data.batchCancellation;
+  }
+
+  async getQueueState(): Promise<QueueState> {
+    this.check();
+    return this.data.queueState ?? {
+      schema_version: 1,
+      paused: false,
+      scheduler_instance_id: null,
+      acquired_at: null,
+      heartbeat_at: null,
+    };
+  }
+
+  async setQueuePaused(_libraryId: string, paused: boolean): Promise<QueueState> {
+    this.check();
+    return { ...(await this.getQueueState()), paused };
   }
 }

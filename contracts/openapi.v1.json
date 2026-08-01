@@ -52,6 +52,95 @@
         "title": "AppSummary",
         "type": "object"
       },
+      "AttemptDiagnostics": {
+        "additionalProperties": false,
+        "properties": {
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "environment": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Environment",
+            "type": "object"
+          },
+          "extractor_descriptor": {
+            "additionalProperties": true,
+            "title": "Extractor Descriptor",
+            "type": "object"
+          },
+          "projection_status": {
+            "title": "Projection Status",
+            "type": "string"
+          },
+          "publication_status": {
+            "title": "Publication Status",
+            "type": "string"
+          },
+          "retained": {
+            "title": "Retained",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          },
+          "staging_status": {
+            "title": "Staging Status",
+            "type": "string"
+          },
+          "stderr_tail": {
+            "maxLength": 16384,
+            "title": "Stderr Tail",
+            "type": "string"
+          },
+          "stderr_truncated_bytes": {
+            "minimum": 0.0,
+            "title": "Stderr Truncated Bytes",
+            "type": "integer"
+          },
+          "stdout_tail": {
+            "maxLength": 16384,
+            "title": "Stdout Tail",
+            "type": "string"
+          },
+          "stdout_truncated_bytes": {
+            "minimum": 0.0,
+            "title": "Stdout Truncated Bytes",
+            "type": "integer"
+          },
+          "validation_status": {
+            "title": "Validation Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "retained",
+          "stdout_tail",
+          "stderr_tail",
+          "stdout_truncated_bytes",
+          "stderr_truncated_bytes",
+          "extractor_descriptor",
+          "settings",
+          "environment",
+          "staging_status",
+          "validation_status",
+          "publication_status",
+          "projection_status"
+        ],
+        "title": "AttemptDiagnostics",
+        "type": "object"
+      },
       "BenchmarkAssertion": {
         "additionalProperties": false,
         "properties": {
@@ -583,6 +672,95 @@
         "title": "DuplicateGroup",
         "type": "object"
       },
+      "ExtractionBatchPreflight": {
+        "additionalProperties": false,
+        "properties": {
+          "cache_hit_count": {
+            "minimum": 0.0,
+            "title": "Cache Hit Count",
+            "type": "integer"
+          },
+          "candidate_count": {
+            "minimum": 0.0,
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "concurrency_limit": {
+            "minimum": 1.0,
+            "title": "Concurrency Limit",
+            "type": "integer"
+          },
+          "document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Document Ids",
+            "type": "array"
+          },
+          "execution_count": {
+            "minimum": 0.0,
+            "title": "Execution Count",
+            "type": "integer"
+          },
+          "extractor_id": {
+            "const": "ocrmypdf-tesseract",
+            "title": "Extractor Id",
+            "type": "string"
+          },
+          "maximum_batch_size": {
+            "minimum": 1.0,
+            "title": "Maximum Batch Size",
+            "type": "integer"
+          },
+          "missing_dependency_count": {
+            "minimum": 0.0,
+            "title": "Missing Dependency Count",
+            "type": "integer"
+          },
+          "over_limit_count": {
+            "minimum": 0.0,
+            "title": "Over Limit Count",
+            "type": "integer"
+          },
+          "policy": {
+            "const": "image_only_pdf_missing_ocr",
+            "title": "Policy",
+            "type": "string"
+          },
+          "resource_class": {
+            "const": "ocr",
+            "title": "Resource Class",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "unsupported_count": {
+            "minimum": 0.0,
+            "title": "Unsupported Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "policy",
+          "extractor_id",
+          "document_ids",
+          "candidate_count",
+          "cache_hit_count",
+          "execution_count",
+          "unsupported_count",
+          "missing_dependency_count",
+          "resource_class",
+          "concurrency_limit",
+          "maximum_batch_size",
+          "over_limit_count"
+        ],
+        "title": "ExtractionBatchPreflight",
+        "type": "object"
+      },
       "ExtractionBatchRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1071,6 +1249,11 @@
             "title": "Deadline At",
             "type": "string"
           },
+          "deadline_expired": {
+            "default": false,
+            "title": "Deadline Expired",
+            "type": "boolean"
+          },
           "error_summary": {
             "anyOf": [
               {
@@ -1104,6 +1287,18 @@
             ],
             "title": "Failure Class"
           },
+          "heartbeat_age_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat Age Seconds"
+          },
           "heartbeat_at": {
             "anyOf": [
               {
@@ -1114,6 +1309,17 @@
               }
             ],
             "title": "Heartbeat At"
+          },
+          "process_alive": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Alive"
           },
           "process_group_id": {
             "anyOf": [
@@ -1179,6 +1385,50 @@
           "completed_at"
         ],
         "title": "JobAttempt",
+        "type": "object"
+      },
+      "JobBatchCancelRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "cancel_running": {
+            "default": false,
+            "title": "Cancel Running",
+            "type": "boolean"
+          }
+        },
+        "title": "JobBatchCancelRequest",
+        "type": "object"
+      },
+      "JobBatchCancellationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/JobBatchSummary"
+          },
+          "cancel_running": {
+            "title": "Cancel Running",
+            "type": "boolean"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobSummary"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch",
+          "jobs",
+          "cancel_running"
+        ],
+        "title": "JobBatchCancellationResponse",
         "type": "object"
       },
       "JobBatchCreationResponse": {
@@ -2145,6 +2395,76 @@
           "render_available"
         ],
         "title": "PageSummary",
+        "type": "object"
+      },
+      "QueueState": {
+        "additionalProperties": false,
+        "properties": {
+          "acquired_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acquired At"
+          },
+          "heartbeat_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat At"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "scheduler_instance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduler Instance Id"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "paused",
+          "scheduler_instance_id",
+          "acquired_at",
+          "heartbeat_at"
+        ],
+        "title": "QueueState",
+        "type": "object"
+      },
+      "QueueUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "paused"
+        ],
+        "title": "QueueUpdateRequest",
         "type": "object"
       },
       "RawArtifact": {
@@ -3764,6 +4084,113 @@
         "summary": "Create Extraction Batch"
       }
     },
+    "/api/v1/libraries/{library_id}/jobs/extraction-batches/preflight": {
+      "get": {
+        "operationId": "extraction_batch_preflight_api_v1_libraries__library_id__jobs_extraction_batches_preflight_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionBatchPreflight"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Extraction Batch Preflight"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/extraction-batches/{batch_id}/cancel": {
+      "post": {
+        "operationId": "cancel_extraction_batch_api_v1_libraries__library_id__jobs_extraction_batches__batch_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobBatchCancelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobBatchCancellationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Extraction Batch"
+      }
+    },
     "/api/v1/libraries/{library_id}/jobs/extractions": {
       "post": {
         "operationId": "create_extraction_job_api_v1_libraries__library_id__jobs_extractions_post",
@@ -3834,6 +4261,102 @@
         "summary": "Create Extraction Job"
       }
     },
+    "/api/v1/libraries/{library_id}/jobs/queue": {
+      "get": {
+        "operationId": "job_queue_api_v1_libraries__library_id__jobs_queue_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Job Queue"
+      },
+      "post": {
+        "operationId": "update_job_queue_api_v1_libraries__library_id__jobs_queue_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Job Queue"
+      }
+    },
     "/api/v1/libraries/{library_id}/jobs/{job_id}": {
       "get": {
         "operationId": "job_api_v1_libraries__library_id__jobs__job_id__get",
@@ -3885,6 +4408,68 @@
           }
         ],
         "summary": "Job"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/attempts/{attempt_id}/diagnostics": {
+      "get": {
+        "operationId": "job_attempt_diagnostics_api_v1_libraries__library_id__jobs__job_id__attempts__attempt_id__diagnostics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptDiagnostics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Job Attempt Diagnostics"
       }
     },
     "/api/v1/libraries/{library_id}/jobs/{job_id}/cancel": {
@@ -4011,6 +4596,59 @@
           }
         ],
         "summary": "Job Events"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/repair-projection": {
+      "post": {
+        "operationId": "repair_job_projection_api_v1_libraries__library_id__jobs__job_id__repair_projection_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Repair Job Projection"
       }
     },
     "/api/v1/libraries/{library_id}/jobs/{job_id}/retry": {

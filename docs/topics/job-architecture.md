@@ -6,10 +6,11 @@ Topic: job-architecture
 
 **Status:** Tactical 001 implementation in progress. Unified persistence,
 atomic catalog membership generations, extractor registration, supervised
-attempt execution, atomic artifact publication, durable job persistence, and
-the bounded per-library scheduler are implemented. Authenticated API,
-generated-client/runtime, and bounded batch operations are implemented;
-document controls and operational UI remain in progress.
+attempt execution, atomic artifact publication, durable job persistence,
+bounded per-library scheduling, authenticated API/runtime operations, document
+execution controls, bounded batches, and the global activity/debug UI are
+implemented. Final fault/restart, browser, private-integration, and maintainer
+acceptance evidence remains in progress.
 
 ## Purpose
 
@@ -429,7 +430,8 @@ A developer-oriented job detail exposes:
 - attempt, canonical artifact, and catalog-publication status;
 - structured exit, cancellation, timeout, recovery, and integrity details;
 - copyable diagnostic JSON; and
-- safe local reveal/download actions for registered artifacts and logs.
+- server-bounded retained stdout/stderr tails without exposing filesystem
+  paths.
 
 Operational details do not overwhelm the ordinary document workspace, and the
 launch credential is never present in diagnostics.

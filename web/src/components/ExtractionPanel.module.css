@@ -1,0 +1,154 @@
+.panel {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.6rem;
+  margin-bottom: 0.75rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.panel > summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 0.6rem;
+  justify-content: space-between;
+}
+
+.panel > summary span {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.panel > summary strong,
+.passive,
+.identity > span,
+.identity code,
+.coverage,
+.jobState,
+.error,
+.setting {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.passive {
+  margin: 0.35rem 0 0.55rem;
+}
+
+.groups {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.groups section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.groups h3 {
+  color: var(--accent-strong);
+  font-size: 0.63rem;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.groups article {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.55rem;
+}
+
+.groups .recommended {
+  border-color: var(--accent);
+  box-shadow: inset 0.18rem 0 var(--accent);
+}
+
+.identity {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.identity > div {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+  justify-content: space-between;
+}
+
+.identity strong {
+  font-size: 0.72rem;
+}
+
+.identity code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recommendation,
+.cached,
+.missing {
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 750;
+  padding: 0.16rem 0.35rem;
+}
+
+.recommendation,
+.cached {
+  background: #dbf2e5;
+  color: #246847;
+}
+
+.missing {
+  background: #f0e9dc;
+  color: #725d38;
+}
+
+.coverage {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.setting {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.setting input {
+  font-size: 0.68rem;
+  padding: 0.3rem 0.4rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.actions button {
+  font-size: 0.62rem;
+  padding: 0.34rem 0.48rem;
+}
+
+.actions button:first-child {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: white;
+}
+
+.jobState,
+.error {
+  margin: 0;
+}
+
+.error {
+  color: #9b342c;
+}

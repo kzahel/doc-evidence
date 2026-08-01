@@ -309,6 +309,22 @@ class ExtractionBatchRequest(ContractModel):
     confirmed: bool
 
 
+class ExtractionBatchPreflight(ContractModel):
+    schema_version: Literal[1] = 1
+    policy: Literal["image_only_pdf_missing_ocr"]
+    extractor_id: Literal["ocrmypdf-tesseract"]
+    document_ids: list[str]
+    candidate_count: int = Field(ge=0)
+    cache_hit_count: int = Field(ge=0)
+    execution_count: int = Field(ge=0)
+    unsupported_count: int = Field(ge=0)
+    missing_dependency_count: int = Field(ge=0)
+    resource_class: Literal["ocr"]
+    concurrency_limit: int = Field(ge=1)
+    maximum_batch_size: int = Field(ge=1)
+    over_limit_count: int = Field(ge=0)
+
+
 class JobSummary(ContractModel):
     job_id: str
     library_id: str
@@ -353,6 +369,26 @@ class JobAttempt(ContractModel):
     error_summary: str | None
     started_at: str
     completed_at: str | None
+    process_alive: bool | None = None
+    heartbeat_age_seconds: float | None = Field(default=None, ge=0)
+    deadline_expired: bool = False
+
+
+class AttemptDiagnostics(ContractModel):
+    schema_version: Literal[1] = 1
+    attempt_id: str
+    retained: bool
+    stdout_tail: str = Field(max_length=16_384)
+    stderr_tail: str = Field(max_length=16_384)
+    stdout_truncated_bytes: int = Field(ge=0)
+    stderr_truncated_bytes: int = Field(ge=0)
+    extractor_descriptor: dict[str, Any]
+    settings: dict[str, Any]
+    environment: dict[str, str]
+    staging_status: str
+    validation_status: str
+    publication_status: str
+    projection_status: str
 
 
 class JobDetail(ContractModel):
@@ -365,6 +401,18 @@ class JobCounts(ContractModel):
     queued: int = Field(ge=0)
     active: int = Field(ge=0)
     failed: int = Field(ge=0)
+
+
+class QueueState(ContractModel):
+    schema_version: Literal[1] = 1
+    paused: bool
+    scheduler_instance_id: str | None
+    acquired_at: str | None
+    heartbeat_at: str | None
+
+
+class QueueUpdateRequest(ContractModel):
+    paused: bool
 
 
 class JobPage(ContractModel):
@@ -421,6 +469,17 @@ class JobBatchCreationResponse(ContractModel):
     disposition: Literal["created", "idempotent"]
     batch: JobBatchSummary
     jobs: list[JobSummary]
+
+
+class JobBatchCancelRequest(ContractModel):
+    cancel_running: bool = False
+
+
+class JobBatchCancellationResponse(ContractModel):
+    schema_version: Literal[1] = 1
+    batch: JobBatchSummary
+    jobs: list[JobSummary]
+    cancel_running: bool
 
 
 class JobBatchPage(ContractModel):

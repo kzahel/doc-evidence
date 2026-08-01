@@ -430,6 +430,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{library_id}/jobs/extraction-batches/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Extraction Batch Preflight */
+        get: operations["extraction_batch_preflight_api_v1_libraries__library_id__jobs_extraction_batches_preflight_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/extraction-batches/{batch_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Extraction Batch */
+        post: operations["cancel_extraction_batch_api_v1_libraries__library_id__jobs_extraction_batches__batch_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{library_id}/jobs/extractions": {
         parameters: {
             query?: never;
@@ -447,6 +481,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{library_id}/jobs/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Queue */
+        get: operations["job_queue_api_v1_libraries__library_id__jobs_queue_get"];
+        put?: never;
+        /** Update Job Queue */
+        post: operations["update_job_queue_api_v1_libraries__library_id__jobs_queue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{library_id}/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -456,6 +508,23 @@ export interface paths {
         };
         /** Job */
         get: operations["job_api_v1_libraries__library_id__jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/attempts/{attempt_id}/diagnostics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Attempt Diagnostics */
+        get: operations["job_attempt_diagnostics_api_v1_libraries__library_id__jobs__job_id__attempts__attempt_id__diagnostics_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -492,6 +561,23 @@ export interface paths {
         get: operations["job_events_api_v1_libraries__library_id__jobs__job_id__events_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/repair-projection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Repair Job Projection */
+        post: operations["repair_job_projection_api_v1_libraries__library_id__jobs__job_id__repair_projection_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -601,6 +687,47 @@ export interface components {
              * @constant
              */
             schema_version: 1;
+        };
+        /** AttemptDiagnostics */
+        AttemptDiagnostics: {
+            /** Attempt Id */
+            attempt_id: string;
+            /** Environment */
+            environment: {
+                [key: string]: string;
+            };
+            /** Extractor Descriptor */
+            extractor_descriptor: {
+                [key: string]: unknown;
+            };
+            /** Projection Status */
+            projection_status: string;
+            /** Publication Status */
+            publication_status: string;
+            /** Retained */
+            retained: boolean;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+            /** Staging Status */
+            staging_status: string;
+            /** Stderr Tail */
+            stderr_tail: string;
+            /** Stderr Truncated Bytes */
+            stderr_truncated_bytes: number;
+            /** Stdout Tail */
+            stdout_tail: string;
+            /** Stdout Truncated Bytes */
+            stdout_truncated_bytes: number;
+            /** Validation Status */
+            validation_status: string;
         };
         /** BenchmarkAssertion */
         BenchmarkAssertion: {
@@ -804,6 +931,48 @@ export interface components {
             /** Member Count */
             member_count: number;
         };
+        /** ExtractionBatchPreflight */
+        ExtractionBatchPreflight: {
+            /** Cache Hit Count */
+            cache_hit_count: number;
+            /** Candidate Count */
+            candidate_count: number;
+            /** Concurrency Limit */
+            concurrency_limit: number;
+            /** Document Ids */
+            document_ids: string[];
+            /** Execution Count */
+            execution_count: number;
+            /**
+             * Extractor Id
+             * @constant
+             */
+            extractor_id: "ocrmypdf-tesseract";
+            /** Maximum Batch Size */
+            maximum_batch_size: number;
+            /** Missing Dependency Count */
+            missing_dependency_count: number;
+            /** Over Limit Count */
+            over_limit_count: number;
+            /**
+             * Policy
+             * @constant
+             */
+            policy: "image_only_pdf_missing_ocr";
+            /**
+             * Resource Class
+             * @constant
+             */
+            resource_class: "ocr";
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Unsupported Count */
+            unsupported_count: number;
+        };
         /** ExtractionBatchRequest */
         ExtractionBatchRequest: {
             /** Confirmed */
@@ -970,14 +1139,23 @@ export interface components {
             completed_at: string | null;
             /** Deadline At */
             deadline_at: string;
+            /**
+             * Deadline Expired
+             * @default false
+             */
+            deadline_expired: boolean;
             /** Error Summary */
             error_summary: string | null;
             /** Exit Code */
             exit_code: number | null;
             /** Failure Class */
             failure_class: string | null;
+            /** Heartbeat Age Seconds */
+            heartbeat_age_seconds?: number | null;
             /** Heartbeat At */
             heartbeat_at: string | null;
+            /** Process Alive */
+            process_alive?: boolean | null;
             /** Process Group Id */
             process_group_id: number | null;
             /** Publication Outcome */
@@ -990,6 +1168,28 @@ export interface components {
             state: string;
             /** Worker Pid */
             worker_pid: number | null;
+        };
+        /** JobBatchCancelRequest */
+        JobBatchCancelRequest: {
+            /**
+             * Cancel Running
+             * @default false
+             */
+            cancel_running: boolean;
+        };
+        /** JobBatchCancellationResponse */
+        JobBatchCancellationResponse: {
+            batch: components["schemas"]["JobBatchSummary"];
+            /** Cancel Running */
+            cancel_running: boolean;
+            /** Jobs */
+            jobs: components["schemas"]["JobSummary"][];
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
         };
         /** JobBatchCreationResponse */
         JobBatchCreationResponse: {
@@ -1343,6 +1543,28 @@ export interface components {
             page_count: number;
             /** Render Available */
             render_available: boolean;
+        };
+        /** QueueState */
+        QueueState: {
+            /** Acquired At */
+            acquired_at: string | null;
+            /** Heartbeat At */
+            heartbeat_at: string | null;
+            /** Paused */
+            paused: boolean;
+            /** Scheduler Instance Id */
+            scheduler_instance_id: string | null;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** QueueUpdateRequest */
+        QueueUpdateRequest: {
+            /** Paused */
+            paused: boolean;
         };
         /** RawArtifact */
         RawArtifact: {
@@ -2261,6 +2483,73 @@ export interface operations {
             };
         };
     };
+    extraction_batch_preflight_api_v1_libraries__library_id__jobs_extraction_batches_preflight_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractionBatchPreflight"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_extraction_batch_api_v1_libraries__library_id__jobs_extraction_batches__batch_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobBatchCancelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobBatchCancellationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_extraction_job_api_v1_libraries__library_id__jobs_extractions_post: {
         parameters: {
             query?: never;
@@ -2298,6 +2587,72 @@ export interface operations {
             };
         };
     };
+    job_queue_api_v1_libraries__library_id__jobs_queue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_job_queue_api_v1_libraries__library_id__jobs_queue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueueUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     job_api_v1_libraries__library_id__jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -2317,6 +2672,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_attempt_diagnostics_api_v1_libraries__library_id__jobs__job_id__attempts__attempt_id__diagnostics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+                job_id: string;
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptDiagnostics"];
                 };
             };
             /** @description Validation Error */
@@ -2384,6 +2772,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobEventPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repair_job_projection_api_v1_libraries__library_id__jobs__job_id__repair_projection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobDetail"];
                 };
             };
             /** @description Validation Error */

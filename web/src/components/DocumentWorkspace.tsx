@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useCallback,
   useRef,
   useState,
   type CSSProperties,
@@ -12,6 +13,7 @@ import { useRuntime } from "../api/RuntimeProvider";
 import { useWorkspaceStore } from "../state/workspaceStore";
 import { EmptyState, FailureState, LoadingState } from "./AsyncState";
 import { OutputGroups } from "./OutputGroups";
+import { ExtractionPanel } from "./ExtractionPanel";
 import styles from "./DocumentWorkspace.module.css";
 
 function useBlobUrl(blob: Blob | undefined): string | null {
@@ -36,9 +38,12 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
   const sourcePanePercent = useWorkspaceStore((state) => state.sourcePanePercent);
   const setSourcePanePercent = useWorkspaceStore((state) => state.setSourcePanePercent);
   const resetSourcePanePercent = useWorkspaceStore((state) => state.resetSourcePanePercent);
+  const setActiveGroupId = useWorkspaceStore((state) => state.setActiveGroupId);
+  const setReviewMode = useWorkspaceStore((state) => state.setReviewMode);
   const inspectionRef = useRef<HTMLElement>(null);
   const pageInputRef = useRef<HTMLInputElement>(null);
   const [pageDraft, setPageDraft] = useState(String(page));
+  const [highlightExtractor, setHighlightExtractor] = useState<string | null>(null);
   const documentQuery = useQuery({
     queryKey: ["library", libraryId, "document", documentId],
     queryFn: ({ signal }) => runtime.getDocument(libraryId!, documentId, signal),
@@ -58,6 +63,21 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
     enabled: libraryId !== null && renderable,
   });
   const imageUrl = useBlobUrl(renderQuery.data);
+  const representationReady = useCallback((extractorId: string) => {
+    setHighlightExtractor(extractorId);
+  }, []);
+
+  useEffect(() => {
+    if (!highlightExtractor || !groupsQuery.data) return;
+    const group = groupsQuery.data.groups.find((item) =>
+      item.runs.some((run) => run.extractor_id === highlightExtractor),
+    );
+    if (group) {
+      setActiveGroupId(group.group_id);
+      setReviewMode("focused");
+      setHighlightExtractor(null);
+    }
+  }, [groupsQuery.data, highlightExtractor, setActiveGroupId, setReviewMode]);
 
   useEffect(() => {
     setPageDraft(String(page));
@@ -130,6 +150,10 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
           </span>
         </div>
       </header>
+      <ExtractionPanel
+        documentId={documentId}
+        onRepresentationReady={representationReady}
+      />
       {document.warnings.length > 0 && (
         <details className={styles.warnings}>
           <summary>{document.warnings.length} source or extraction warnings</summary>

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import signal
 import subprocess
 import sys
 import time
@@ -14,6 +15,24 @@ def main() -> int:
     settings = request.get("settings", {})
     behavior = settings.get("behavior", "success")
     attempt_dir = Path(request["attempt_dir"])
+    if behavior == "crash":
+        sys.stderr.write("simulated immediate worker crash\n")
+        return 23
+    if behavior == "hang":
+        time.sleep(120)
+        return 1
+    if behavior == "ignore-cancel":
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        child = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(120)",
+            ]
+        )
+        (attempt_dir / "child.pid").write_text(str(child.pid), encoding="ascii")
+        time.sleep(120)
+        return 1
     if behavior == "block":
         child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
         (attempt_dir / "child.pid").write_text(str(child.pid), encoding="ascii")
@@ -70,10 +89,11 @@ def main() -> int:
     }
     if behavior == "corrupt":
         normalized["source_sha256"] = "0" * 64
-    (run_dir / "normalized.json").write_text(
-        json.dumps(normalized),
-        encoding="utf-8",
-    )
+    if behavior != "incomplete":
+        (run_dir / "normalized.json").write_text(
+            json.dumps(normalized),
+            encoding="utf-8",
+        )
     response_path.write_text(
         json.dumps(
             {

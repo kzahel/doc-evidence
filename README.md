@@ -45,9 +45,10 @@ The delivery sequence is deliberate:
    registry, private worker protocol, supervised process trees, validated
    staging, atomic artifact publication, durable queue, scheduler lease,
    bounded resource dispatcher, cancellation, and restart reconciliation are
-   also implemented. Authenticated API contracts, generated clients, runtime
-   operations, and confirmed bounded batches are implemented; the document
-   controls and operational UI continue in Tactical 001.
+   also implemented. Authenticated API contracts, generated clients, document
+   extraction controls, bounded batches, and the global operational activity
+   and diagnostics UI are implemented. Fault/restart and production-like
+   acceptance validation continues in Tactical 001.
 3. **Following product slice:** durable human review events and portable review
    state, kept separate from regenerable extractor output.
 4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
@@ -104,8 +105,12 @@ cache fulfillment, a process-locked per-library scheduler, priority aging,
 resource limits, cancellation, one bounded transient retry, and startup
 reconciliation. The library-scoped v1 API and generated React runtime now
 expose capabilities, single-document and confirmed-batch enqueue, activity,
-attempt/event detail, cancellation, and retry without accepting client paths
-or executables.
+attempt/event detail, cancellation, retry, queue control, bounded log
+diagnostics, and catalog projection repair without accepting client paths or
+executables. The document workspace provides explicit cache/fresh extraction
+actions and representation refresh; the application header provides a polling
+activity center with resource lanes, liveness/deadline detail, batch preflight,
+and cancellation.
 
 Read these first:
 

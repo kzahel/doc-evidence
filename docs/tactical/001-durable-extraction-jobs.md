@@ -8,8 +8,8 @@ Topic: application-platform
 
 Topic: maintainer-feature-requests
 
-**Status:** Implementation in progress; application-home and known-library
-foundation implemented.
+**Status:** Implementation in progress; product slices 1–8 implemented and
+final validation/acceptance in progress.
 
 ## Motivation and User-Visible Outcome
 
@@ -1003,3 +1003,53 @@ API-enqueued fresh Poppler execution, batch coalescing membership, schema
 migration, generated-contract drift, TypeScript, Ruff, and Pyright validation
 pass. The document execution panel and global activity/batch UI remain in
 progress.
+
+### Slice 7 — explicit document extraction controls
+
+Implemented the document-local execution experience without introducing
+implicit work:
+
+- extractor capabilities grouped by representation role with version,
+  dependency, media, resource, deadline, exact-cache, and run-key detail;
+- image-only OCR recommendations and bounded language settings owned by the
+  registered server schema;
+- explicit **Use cached result**, **Run extraction**, **Verify fresh**,
+  cancellation, and failed-attempt retry actions;
+- shared TanStack Query polling at one second while work is relevant and five
+  seconds while idle; and
+- completion invalidation of capability, document, and page-group queries,
+  followed by focus/highlight of the newly available representation without
+  resetting unrelated review layout.
+
+Component validation confirms that opening a document remains passive,
+unavailable dependencies disable execution with an explanation, and cached
+work starts only after an explicit click.
+
+### Slice 8 — global activity, bounded batches, and diagnostics
+
+Implemented the application-wide operational surface and its missing server
+operations:
+
+- active/queued/failed header counts and active, queued, recent, failed,
+  cancelled, interrupted, and all filters;
+- queue pause/resume, elapsed/outcome/cache explanation, selected-job
+  cancellation/retry, and visual-only clearing of recent successes;
+- bounded image-only/missing-exact-OCR preflight with dependency, cache,
+  execution, unsupported, resource/concurrency, and maximum-size counts;
+- explicit batch confirmation plus separate pending-only and confirmed
+  running-child cancellation;
+- advanced resource-lane, scheduler lease, attempt, event, PID/process-group,
+  liveness, quiet-heartbeat, deadline, exit, validation, publication, and
+  projection detail;
+- server-bounded retained stdout/stderr tails, safe platform/version detail,
+  and copyable diagnostic JSON without paths or credentials; and
+- validation and repair of a canonical artifact whose catalog projection
+  failed.
+
+Focused Python/API tests cover queue control, batch bounds/cancellation,
+temporary SQLite contention, projection failure/repair, diagnostics, worker
+crash, incomplete output, timeout, insufficient space, simulated publication
+write failure, cooperative and ignored cancellation, descendants, and bounded
+logs. Generated-contract drift, Pyright, TypeScript, 25 component tests, and a
+production frontend build pass. Full restart-boundary, isolated Playwright,
+private integration, and maintainer acceptance evidence remain in progress.

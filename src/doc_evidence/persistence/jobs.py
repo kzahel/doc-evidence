@@ -20,6 +20,7 @@ from doc_evidence.application.jobs import (
     JobRecord,
     JobSpec,
     JobState,
+    QueueStateRecord,
 )
 from doc_evidence.attempts import AttemptResult
 from doc_evidence.errors import CatalogError, NotFoundError, RequestError
@@ -688,6 +689,23 @@ class JobRepository:
             for row in rows
         )
 
+    def attempt_path(self, job_id: str, attempt_id: str) -> str | None:
+        self.get(job_id)
+        connection = self.database.connect(readonly=True)
+        try:
+            row = connection.execute(
+                """
+                SELECT attempt_path FROM job_attempts
+                WHERE job_id = ? AND attempt_id = ?
+                """,
+                (job_id, attempt_id),
+            ).fetchone()
+        finally:
+            connection.close()
+        if row is None:
+            raise NotFoundError("job attempt was not found")
+        return str(row["attempt_path"]) if row["attempt_path"] is not None else None
+
     def claim_next(
         self,
         *,
@@ -1081,6 +1099,53 @@ class JobRepository:
         finally:
             connection.close()
 
+    def projection_repaired(self, job_id: str) -> JobRecord:
+        now = isoformat_z()
+        connection = self.database.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM jobs WHERE job_id = ?", (job_id,)
+            ).fetchone()
+            if row is None:
+                raise NotFoundError("job was not found")
+            if not (
+                str(row["state"]) == "failed"
+                and str(row["outcome"]) == "published_projection_failed"
+                and row["result_run_id"] is not None
+                and row["result_artifact_path"] is not None
+            ):
+                raise RequestError("job does not have a repairable catalog projection")
+            connection.execute(
+                """
+                UPDATE jobs SET state = 'succeeded', outcome = 'projection_repaired',
+                    failure_class = NULL, error_summary = NULL, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (now, job_id),
+            )
+            self._append_event(
+                connection,
+                job_id=job_id,
+                event_type="projection_repaired",
+                stage="completed",
+                detail={"run_id": str(row["result_run_id"])},
+                created_at=now,
+            )
+            final = connection.execute(
+                "SELECT * FROM jobs WHERE job_id = ?", (job_id,)
+            ).fetchone()
+            connection.commit()
+            assert final is not None
+            return _record(final)
+        except (sqlite3.Error, NotFoundError, RequestError) as error:
+            connection.rollback()
+            if isinstance(error, (NotFoundError, RequestError)):
+                raise
+            raise CatalogError(f"cannot record projection repair: {error}") from error
+        finally:
+            connection.close()
+
     def schedule_automatic_retry(
         self, job_id: str, *, delay_seconds: float = 1.0
     ) -> JobRecord:
@@ -1229,6 +1294,48 @@ class JobRepository:
             active=int(row["active"] or 0),
             failed=int(row["failed"] or 0),
         )
+
+    def queue_state(self) -> QueueStateRecord:
+        connection = self.database.connect(readonly=True)
+        try:
+            row = connection.execute(
+                "SELECT * FROM scheduler_lease WHERE singleton = 1"
+            ).fetchone()
+        finally:
+            connection.close()
+        if row is None:
+            raise CatalogError("scheduler lease row is missing")
+        return QueueStateRecord(
+            paused=bool(row["queue_paused"]),
+            scheduler_instance_id=(
+                str(row["scheduler_instance_id"])
+                if row["scheduler_instance_id"] is not None
+                else None
+            ),
+            acquired_at=(
+                str(row["acquired_at"]) if row["acquired_at"] is not None else None
+            ),
+            heartbeat_at=(
+                str(row["heartbeat_at"]) if row["heartbeat_at"] is not None else None
+            ),
+        )
+
+    def set_queue_paused(self, paused: bool) -> QueueStateRecord:
+        connection = self.database.connect()
+        try:
+            connection.execute(
+                "UPDATE scheduler_lease SET queue_paused = ? WHERE singleton = 1",
+                (int(paused),),
+            )
+            connection.commit()
+        except sqlite3.Error as error:
+            connection.rollback()
+            raise CatalogError(
+                f"cannot update scheduler queue state: {error}"
+            ) from error
+        finally:
+            connection.close()
+        return self.queue_state()
 
     def interrupt(self, job_id: str, *, detail: str) -> JobRecord:
         now = isoformat_z()

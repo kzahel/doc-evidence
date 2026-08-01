@@ -10,6 +10,7 @@ import time
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import patch
 
 from doc_evidence.attempts import (
     AttemptPlan,
@@ -132,6 +133,61 @@ class AttemptSupervisorTest(unittest.TestCase):
                 ).exists()
             )
 
+    def test_crash_incomplete_timeout_and_write_failure_are_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            crash_plan = _plan(root, attempt_id="crash", settings={"behavior": "crash"})
+            crash = self.supervisor().execute(crash_plan)
+            incomplete = self.supervisor().execute(
+                _plan(
+                    root,
+                    attempt_id="incomplete",
+                    settings={"behavior": "incomplete", "run_key": "incomplete"},
+                )
+            )
+            timeout = self.supervisor(cancellation_grace_seconds=0.1).execute(
+                _plan(
+                    root,
+                    attempt_id="timeout",
+                    settings={"behavior": "hang"},
+                    timeout=1,
+                )
+            )
+            write_plan = _plan(
+                root,
+                attempt_id="write-failure",
+                settings={"run_key": "write-failure"},
+            )
+            with patch.object(
+                Path, "rename", side_effect=OSError("simulated write failure")
+            ):
+                write_failure = self.supervisor().execute(write_plan)
+
+            self.assertEqual(crash.outcome, "failed")
+            self.assertEqual(crash.exit_code, 23)
+            self.assertIn(
+                "simulated immediate worker crash",
+                (
+                    crash_plan.blob_dir / "attempts" / "crash" / "worker.stderr.log"
+                ).read_text(encoding="utf-8"),
+            )
+            self.assertEqual(incomplete.failure_class, "validation_or_publication")
+            self.assertEqual(timeout.outcome, "timeout")
+            self.assertEqual(write_failure.failure_class, "validation_or_publication")
+            self.assertFalse(
+                (
+                    write_plan.blob_dir / "runs" / "fixture-extractor" / "write-failure"
+                ).exists()
+            )
+
+    def test_insufficient_staging_space_fails_before_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            plan = _plan(root, attempt_id="no-space", settings={})
+            with self.assertRaisesRegex(RequestError, "enough free staging space"):
+                AttemptSupervisor(minimum_free_bytes=2**63).execute(plan)
+            self.assertFalse((plan.blob_dir / "attempts" / "no-space").exists())
+
     def test_worker_launch_failure_is_recorded(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
@@ -252,6 +308,48 @@ class AttemptSupervisorTest(unittest.TestCase):
                 time.sleep(0.05)
             else:
                 self.fail("worker descendant remained alive after cancellation")
+
+    @unittest.skipUnless(os.name == "posix", "ignored cancellation test is POSIX")
+    def test_ignored_cancellation_escalates_and_kills_descendant(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            plan = _plan(
+                root,
+                attempt_id="ignored-cancel",
+                settings={"behavior": "ignore-cancel"},
+                timeout=20,
+            )
+            cancel = threading.Event()
+
+            def request_cancel() -> None:
+                child_path = plan.blob_dir / "attempts" / "ignored-cancel" / "child.pid"
+                deadline = time.monotonic() + 5
+                while not child_path.is_file() and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                cancel.set()
+
+            thread = threading.Thread(target=request_cancel)
+            thread.start()
+            result = self.supervisor(cancellation_grace_seconds=0.1).execute(
+                plan, cancel=cancel
+            )
+            thread.join(timeout=5)
+            child_pid = int(
+                (plan.blob_dir / "attempts" / "ignored-cancel" / "child.pid").read_text(
+                    encoding="ascii"
+                )
+            )
+
+            self.assertEqual(result.outcome, "cancelled")
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(child_pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.05)
+            else:
+                self.fail("ignored-cancellation descendant remained alive")
 
     @unittest.skipUnless(
         shutil.which("pdfinfo") and shutil.which("pdftotext"),

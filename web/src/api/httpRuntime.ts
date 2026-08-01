@@ -158,6 +158,14 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
       if (!data) throw failure(error, response);
       return data;
     },
+    async preflightImageOnlyOcr(libraryId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs/extraction-batches/preflight", {
+        params: { path: { library_id: libraryId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
     async listJobs(libraryId, state, offset = 0, limit = 50, signal) {
       const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs", {
         params: { path: { library_id: libraryId }, query: { state, offset, limit } },
@@ -198,9 +206,51 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
       if (!data) throw failure(error, response);
       return data;
     },
+    async repairJobProjection(libraryId, jobId, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/{job_id}/repair-projection", {
+        params: { path: { library_id: libraryId, job_id: jobId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async getAttemptDiagnostics(libraryId, jobId, attemptId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs/{job_id}/attempts/{attempt_id}/diagnostics", {
+        params: { path: { library_id: libraryId, job_id: jobId, attempt_id: attemptId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
     async listBatches(libraryId, offset = 0, limit = 50, signal) {
       const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs/extraction-batches", {
         params: { path: { library_id: libraryId }, query: { offset, limit } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async cancelBatch(libraryId, batchId, cancelRunning, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/extraction-batches/{batch_id}/cancel", {
+        params: { path: { library_id: libraryId, batch_id: batchId } },
+        body: { cancel_running: cancelRunning },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async getQueueState(libraryId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs/queue", {
+        params: { path: { library_id: libraryId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async setQueuePaused(libraryId, paused, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/queue", {
+        params: { path: { library_id: libraryId } },
+        body: { paused },
         signal,
       });
       if (!data) throw failure(error, response);
