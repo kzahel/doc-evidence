@@ -200,7 +200,9 @@ tactical.
 - Tactical 001 starts with bounded polling for job updates. A later event
   stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and the small baseline extractor
-  pack are being implemented through Tactical 002's unattended local lane.
+  pack are implemented locally through Tactical 002's unattended lane. A
+  copied-out unsigned application passes manifest, architecture, host-path,
+  authenticated-sidecar, and real synthetic OCR audits.
 - Developer ID signing, notarization/stapling, DMG/updater artifacts, and
   release finalization are also Tactical 002 scope, following the pinned
   sibling conventions. Optional extractor-pack discovery/downloads and
@@ -263,17 +265,26 @@ import. A thin Tauri 2 shell now owns dual-secret generation, app-data
 injection, strict ready/control validation, single-instance focus, Rust-owned
 folder dialogs, sidecar supervision, app-close cleanup, and bounded failure
 events. The ordinary localhost composition remains unchanged; standalone
-runtime and extractor-pack staging are the next packaging boundaries.
+runtime and extractor-pack staging remain owned by the desktop packaging
+boundary.
 
-The standalone-runtime boundary is now landed locally. One tracked entry point
-pins the upstream macOS arm64 CPython 3.12.12 `install_only_stripped` archive by
-URL and SHA-256, exports only frozen production dependencies, removes installer
-and build-only material, records component licenses and every staged file, and
-audits architecture, load paths, symlinks, build-host paths, authentication,
-and parent-EOF shutdown. Tauri assembled those exact resources into an
-unsigned `.app`; a copy under `/private/tmp` passed the same packaged-sidecar
-smoke without using the checkout Python. The baseline extractor pack remains
-the next packaging boundary.
+The standalone-runtime and baseline-pack boundary is now landed locally. One
+tracked entry point pins the upstream macOS arm64 CPython 3.12.12
+`install_only_stripped` archive by URL and SHA-256, exports only frozen
+production dependencies, removes installer and build-only material, records
+component licenses and every staged file, and audits architecture, load paths,
+symlinks, build-host paths, authentication, and parent-EOF shutdown. The pack
+pins OCRmyPDF 17.8.1, PDFium 5.5.0, Poppler 26.03.0, Tesseract 5.5.3,
+English/German/orientation data, and the exact small Tesseract renderer
+configurations. All copied native inputs are arm64-only, have bundle-relative
+load paths, and have ambient Homebrew defaults neutralized before nested ad-hoc
+signing. Tauri verifies the bundle/pack identity before launch and requires the
+Python ready record to report the same pack. An unsigned 192,070,647-byte
+copied-out `.app` containing 3,840 files and 112 Mach-O objects passed real
+Ghostscript-free synthetic OCR and packaged-sidecar smokes without the
+checkout, Homebrew on `PATH`, or a system Python. Broader Poppler non-Latin
+data behavior is not yet validated; a relocatable Poppler build or measured
+PDFium replacement remains preferable before claiming that coverage.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

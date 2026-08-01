@@ -29,6 +29,7 @@ from doc_evidence.contracts.desktop import (
     create_desktop_ready,
     require_macos_arm64,
 )
+from doc_evidence.desktop_pack import BASELINE_PACK_ENV, load_baseline_pack
 from doc_evidence.errors import DocEvidenceError, RequestError
 
 RUNTIME_TOKEN_ENV = "DOC_EVIDENCE_DESKTOP_RUNTIME_TOKEN"
@@ -69,6 +70,16 @@ def _desktop_home(environ: MutableMapping[str, str]) -> Path:
     return path.resolve()
 
 
+def _baseline_pack(environ: MutableMapping[str, str]):
+    raw = environ.pop(BASELINE_PACK_ENV, "")
+    if not raw:
+        return None
+    path = Path(raw)
+    if not path.is_absolute():
+        raise RequestError("desktop baseline-pack root must be absolute")
+    return load_baseline_pack(path)
+
+
 def _start_parent_watcher(server: uvicorn.Server) -> None:
     def watch() -> None:
         try:
@@ -93,6 +104,7 @@ def run(
     values = environ if environ is not None else os.environ
     credentials = DesktopCredentials.consume(values)
     desktop_home = _desktop_home(values)
+    baseline_pack = _baseline_pack(values)
     if expected_protocol != DESKTOP_PROTOCOL_VERSION:
         raise RequestError("desktop protocol is incompatible")
     if desktop_origin != DESKTOP_ORIGIN:
@@ -110,7 +122,8 @@ def run(
     application = manager.application(selected_id) if selected_id is not None else None
     handshake = create_desktop_handshake(
         application_home_source=home.source,
-        baseline_pack=None,
+        baseline_pack=baseline_pack,
+        native_library_authorization=True,
     )
     control_handshake = DesktopControlHandshake(
         capabilities=[

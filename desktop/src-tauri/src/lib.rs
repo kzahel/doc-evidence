@@ -1,8 +1,10 @@
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use std::{
     env,
     fmt::Write as _,
+    fs,
     io::{BufRead, BufReader, Read, Write},
     net::{Ipv4Addr, SocketAddrV4, TcpStream},
     path::{Path, PathBuf},
@@ -22,6 +24,8 @@ const DESKTOP_ORIGIN: &str = "tauri://localhost";
 const APPLICATION_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_READY_BYTES: usize = 64 * 1024;
 const MAX_CONTROL_RESPONSE_BYTES: usize = 1024 * 1024;
+const MAX_BUNDLE_MANIFEST_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_PACK_MANIFEST_BYTES: u64 = 1024 * 1024;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const CONTROL_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -44,6 +48,27 @@ struct DesktopPackIdentity {
     pack_id: String,
     version: String,
     manifest_sha256: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct BundleManifestIdentity {
+    schema_version: String,
+    product: String,
+    version: String,
+    identifier: String,
+    platform: String,
+    architecture: String,
+    python_version: String,
+    extractor_packs: Vec<DesktopPackIdentity>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PackManifestIdentity {
+    schema_version: String,
+    pack_id: String,
+    version: String,
+    platform: String,
+    architecture: String,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
@@ -235,6 +260,66 @@ fn application_home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|error| format!("could not locate application data: {error}"))
 }
 
+fn read_bounded(path: &Path, maximum: u64, label: &str) -> Result<Vec<u8>, String> {
+    let metadata = fs::metadata(path).map_err(|_| format!("{label} is missing"))?;
+    if !metadata.is_file() || metadata.len() > maximum {
+        return Err(format!("{label} is invalid"));
+    }
+    fs::read(path).map_err(|_| format!("{label} is unreadable"))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+fn packaged_baseline_identity(runtime_root: &Path) -> Result<DesktopPackIdentity, String> {
+    let bundle_bytes = read_bounded(
+        &runtime_root.join("bundle-manifest.json"),
+        MAX_BUNDLE_MANIFEST_BYTES,
+        "desktop bundle manifest",
+    )?;
+    let bundle: BundleManifestIdentity = serde_json::from_slice(&bundle_bytes)
+        .map_err(|_| "desktop bundle manifest is invalid".to_string())?;
+    if bundle.schema_version != "doc-evidence.desktop-bundle-manifest.v1"
+        || bundle.product != "Doc Evidence"
+        || bundle.version != APPLICATION_VERSION
+        || bundle.identifier != "io.github.kzahel.doc-evidence"
+        || bundle.platform != "macos"
+        || bundle.architecture != "arm64"
+        || bundle.python_version != "3.12.12"
+        || bundle.extractor_packs.len() != 1
+    {
+        return Err("desktop bundle manifest is incompatible".to_string());
+    }
+    let expected = bundle.extractor_packs[0].clone();
+    if expected.pack_id != "baseline-macos-arm64"
+        || expected.version.is_empty()
+        || !is_lower_hex_64(&expected.manifest_sha256)
+    {
+        return Err("desktop bundle extractor-pack identity is incompatible".to_string());
+    }
+
+    let pack_bytes = read_bounded(
+        &runtime_root.join("baseline-pack/pack-manifest.json"),
+        MAX_PACK_MANIFEST_BYTES,
+        "baseline extractor-pack manifest",
+    )?;
+    if sha256_hex(&pack_bytes) != expected.manifest_sha256 {
+        return Err("baseline extractor-pack manifest identity changed".to_string());
+    }
+    let pack: PackManifestIdentity = serde_json::from_slice(&pack_bytes)
+        .map_err(|_| "baseline extractor-pack manifest is invalid".to_string())?;
+    if pack.schema_version != "doc-evidence.extractor-pack-manifest.v1"
+        || pack.pack_id != expected.pack_id
+        || pack.version != expected.version
+        || pack.platform != "macos"
+        || pack.architecture != "arm64"
+    {
+        return Err("baseline extractor-pack manifest is incompatible".to_string());
+    }
+    Ok(expected)
+}
+
 fn read_ready(reader: impl Read) -> Result<ReadyRecord, String> {
     let mut bytes = Vec::new();
     BufReader::new(reader)
@@ -247,7 +332,7 @@ fn read_ready(reader: impl Read) -> Result<ReadyRecord, String> {
     serde_json::from_slice(&bytes).map_err(|_| "desktop startup record is invalid".to_string())
 }
 
-fn validate_ready(ready: &ReadyRecord) -> Result<(), String> {
+fn validate_ready(ready: &ReadyRecord, expected_pack: &DesktopPackIdentity) -> Result<(), String> {
     if ready.schema_version != "doc-evidence.desktop-ready.v1"
         || ready.protocol_version != DESKTOP_PROTOCOL
         || ready.application_version != APPLICATION_VERSION
@@ -263,13 +348,8 @@ fn validate_ready(ready: &ReadyRecord) -> Result<(), String> {
     {
         return Err("desktop startup record is incompatible".to_string());
     }
-    if let Some(pack) = &ready.baseline_pack {
-        if pack.pack_id.is_empty()
-            || pack.version.is_empty()
-            || !is_lower_hex_64(&pack.manifest_sha256)
-        {
-            return Err("desktop extractor-pack record is incompatible".to_string());
-        }
+    if ready.baseline_pack.as_ref() != Some(expected_pack) {
+        return Err("desktop extractor-pack record is incompatible".to_string());
     }
     Ok(())
 }
@@ -421,11 +501,25 @@ fn start_sidecar(
     status: Arc<RwLock<RuntimeStatus>>,
 ) -> Result<(DesktopProcess, HostControl, DesktopRuntimeInfo), String> {
     let runtime_root = runtime_root(app)?;
+    let expected_pack = packaged_baseline_identity(&runtime_root)?;
     let python = runtime_root.join("python/bin/python3");
     if !python.is_file() {
         return Err("packaged Python runtime is missing".to_string());
     }
     let app_home = application_home(app)?;
+    let pack = runtime_root.join("baseline-pack");
+    let pack_bin = pack.join("bin");
+    let python_bin = runtime_root.join("python/bin");
+    let executable_path = env::join_paths([
+        pack_bin,
+        python_bin,
+        PathBuf::from("/usr/bin"),
+        PathBuf::from("/bin"),
+    ])
+    .map_err(|_| "could not construct the desktop executable path".to_string())?;
+    let writable_cache = app_home.join("cache");
+    fs::create_dir_all(&writable_cache)
+        .map_err(|_| "could not create the desktop cache directory".to_string())?;
     let runtime_token = token()?;
     let control_token = token()?;
     if runtime_token == control_token {
@@ -437,6 +531,7 @@ fn start_sidecar(
         .env_clear()
         .current_dir(&runtime_root)
         .arg("-I")
+        .arg("-B")
         .arg("-m")
         .arg("doc_evidence.desktop_sidecar")
         .arg("--expected-protocol")
@@ -446,6 +541,12 @@ fn start_sidecar(
         .env("DOC_EVIDENCE_DESKTOP_RUNTIME_TOKEN", &runtime_token)
         .env("DOC_EVIDENCE_DESKTOP_HOST_CONTROL_TOKEN", &control_token)
         .env("DOC_EVIDENCE_DESKTOP_APP_HOME", &app_home)
+        .env("DOC_EVIDENCE_BASELINE_PACK", &pack)
+        .env("PATH", executable_path)
+        .env("TESSDATA_PREFIX", pack.join("tessdata"))
+        .env("FONTCONFIG_FILE", pack.join("etc/fonts/fonts.conf"))
+        .env("FONTCONFIG_PATH", pack.join("etc/fonts"))
+        .env("XDG_CACHE_HOME", writable_cache)
         .env("PYTHONDONTWRITEBYTECODE", "1")
         .env("PYTHONNOUSERSITE", "1")
         .env("PYTHONUTF8", "1")
@@ -489,7 +590,7 @@ fn start_sidecar(
             return Err(error);
         }
     };
-    if let Err(error) = validate_ready(&ready) {
+    if let Err(error) = validate_ready(&ready, &expected_pack) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(error);
@@ -807,9 +908,18 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
+    fn pack() -> DesktopPackIdentity {
+        DesktopPackIdentity {
+            pack_id: "baseline-macos-arm64".to_string(),
+            version: "2026.08.1".to_string(),
+            manifest_sha256: "a".repeat(64),
+        }
+    }
+
     fn ready() -> String {
+        let pack = serde_json::to_string(&pack()).unwrap();
         format!(
-            "{{\"schema_version\":\"doc-evidence.desktop-ready.v1\",\"protocol_version\":\"{DESKTOP_PROTOCOL}\",\"application_version\":\"{APPLICATION_VERSION}\",\"api_version\":1,\"host\":\"127.0.0.1\",\"port\":43111,\"platform\":\"macos\",\"architecture\":\"arm64\",\"application_home_source\":\"desktop_host\",\"baseline_pack\":null}}\n"
+            "{{\"schema_version\":\"doc-evidence.desktop-ready.v1\",\"protocol_version\":\"{DESKTOP_PROTOCOL}\",\"application_version\":\"{APPLICATION_VERSION}\",\"api_version\":1,\"host\":\"127.0.0.1\",\"port\":43111,\"platform\":\"macos\",\"architecture\":\"arm64\",\"application_home_source\":\"desktop_host\",\"baseline_pack\":{pack}}}\n"
         )
     }
 
@@ -825,13 +935,54 @@ mod tests {
     #[test]
     fn ready_record_is_strict_bounded_and_compatible() {
         let parsed = read_ready(Cursor::new(ready())).unwrap();
-        validate_ready(&parsed).unwrap();
+        validate_ready(&parsed, &pack()).unwrap();
         assert!(read_ready(Cursor::new("x".repeat(MAX_READY_BYTES + 1))).is_err());
-        let extra = ready().replace(
-            "\"baseline_pack\":null",
-            "\"baseline_pack\":null,\"token\":\"secret\"",
-        );
+        let extra = ready().replace("}}\n", "},\"token\":\"secret\"}\n");
         assert!(read_ready(Cursor::new(extra)).is_err());
+        let other = DesktopPackIdentity {
+            version: "other".to_string(),
+            ..pack()
+        };
+        assert!(validate_ready(&parsed, &other).is_err());
+    }
+
+    #[test]
+    fn packaged_pack_identity_binds_bundle_and_pack_manifests() {
+        let root = env::temp_dir().join(format!("doc-evidence-rust-pack-{}", token().unwrap()));
+        fs::create_dir_all(root.join("baseline-pack")).unwrap();
+        let pack_manifest = json!({
+            "schema_version": "doc-evidence.extractor-pack-manifest.v1",
+            "pack_id": "baseline-macos-arm64",
+            "version": "2026.08.1",
+            "platform": "macos",
+            "architecture": "arm64"
+        });
+        let pack_bytes = serde_json::to_vec(&pack_manifest).unwrap();
+        fs::write(root.join("baseline-pack/pack-manifest.json"), &pack_bytes).unwrap();
+        let identity = DesktopPackIdentity {
+            manifest_sha256: sha256_hex(&pack_bytes),
+            ..pack()
+        };
+        let bundle_manifest = json!({
+            "schema_version": "doc-evidence.desktop-bundle-manifest.v1",
+            "product": "Doc Evidence",
+            "version": APPLICATION_VERSION,
+            "identifier": "io.github.kzahel.doc-evidence",
+            "platform": "macos",
+            "architecture": "arm64",
+            "python_version": "3.12.12",
+            "extractor_packs": [identity]
+        });
+        fs::write(
+            root.join("bundle-manifest.json"),
+            serde_json::to_vec(&bundle_manifest).unwrap(),
+        )
+        .unwrap();
+        let loaded = packaged_baseline_identity(&root).unwrap();
+        assert_eq!(loaded.pack_id, "baseline-macos-arm64");
+        fs::write(root.join("baseline-pack/pack-manifest.json"), b"{}").unwrap();
+        assert!(packaged_baseline_identity(&root).is_err());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

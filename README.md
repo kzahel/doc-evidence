@@ -203,8 +203,10 @@ uv sync && npm ci --prefix web && npm run build --prefix web
 ```
 
 On macOS arm64, the current intermediate unsigned desktop proof is built with
-one entry point. `stage` downloads only the exact hash-pinned standalone
-CPython input; repeat staging requires the explicit `--replace` flag.
+one entry point. `stage` downloads the exact hash-pinned standalone CPython
+input, installs the hash-locked Python baseline, and copies the exact declared
+Poppler 26.03.0 and Tesseract 5.5.3 Homebrew inputs into a self-contained
+bundle. Repeat staging requires the explicit `--replace` flag.
 
 ```sh
 npm ci --prefix desktop
@@ -215,9 +217,12 @@ npm ci --prefix desktop
 
 The resulting application is
 `desktop/src-tauri/target/release/bundle/macos/Doc Evidence.app`. `review`
-audits its final bytes and runs the packaged sidecar from the application
-resources. This intermediate artifact intentionally has no Developer ID
-signature, notarization, DMG/updater metadata, or baseline extractor pack yet.
+audits its final bytes and runs both an authenticated packaged-sidecar smoke
+and real synthetic OCR from the application resources. The current baseline
+contains Poppler, Tesseract with English/German/orientation data, OCRmyPDF, and
+PDFium; Ghostscript and heavyweight model extractors are absent. This
+intermediate artifact intentionally has no Developer ID signature,
+notarization, DMG/updater metadata, or release publication yet.
 
 Register an external case configuration once, then launch the selected
 last/default library:

@@ -36,6 +36,23 @@ class DesktopPackagingTest(unittest.TestCase):
             _archive_path(inputs, Path("/cache")).name,
             "cpython-3.12.12+20260114-aarch64-apple-darwin-install_only_stripped.tar.gz",
         )
+        baseline = inputs["baseline_pack"]
+        self.assertEqual(baseline["pack_id"], "baseline-macos-arm64")
+        self.assertEqual(baseline["version"], "2026.08.1")
+        self.assertEqual(
+            baseline["requirements_sha256"],
+            "f5fefe5c38b22be54318b12ccd742d75b4e4192f4530457f8dee0873d59db5e8",
+        )
+        self.assertEqual(
+            baseline["python_components"],
+            {"ocrmypdf": "17.8.1", "pypdfium2": "5.5.0"},
+        )
+        self.assertEqual(
+            set(baseline["tools"]),
+            {"pdfinfo", "pdftoppm", "pdftotext", "tesseract"},
+        )
+        self.assertEqual(set(baseline["language_data"]), {"eng", "deu", "osd"})
+        self.assertEqual(set(baseline["support_data"]), {"configs/hocr", "configs/txt"})
 
     def test_tree_identity_includes_paths_bytes_and_symlink_targets(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

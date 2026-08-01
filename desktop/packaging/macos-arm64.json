@@ -11,6 +11,77 @@
     "sha256": "ed1f300bd3b45aa481d887b2dd8e12f989b583f67755c219a6092756a09b609f",
     "license_concluded": "PSF-2.0"
   },
+  "baseline_pack": {
+    "pack_id": "baseline-macos-arm64",
+    "version": "2026.08.1",
+    "requirements_sha256": "f5fefe5c38b22be54318b12ccd742d75b4e4192f4530457f8dee0873d59db5e8",
+    "python_components": {
+      "ocrmypdf": "17.8.1",
+      "pypdfium2": "5.5.0"
+    },
+    "tools": {
+      "pdfinfo": {
+        "formula": "poppler",
+        "version": "26.03.0",
+        "input_sha256": "aca7c31b014695b109454d0f2f917105d8d2fb65984c4a123b8c5fb7792eb887",
+        "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
+      },
+      "pdftotext": {
+        "formula": "poppler",
+        "version": "26.03.0",
+        "input_sha256": "15789c23a95c36f75fe8bbb77ab9834eb03665a4a4eb1fdc5d5922dc9853e498",
+        "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
+      },
+      "pdftoppm": {
+        "formula": "poppler",
+        "version": "26.03.0",
+        "input_sha256": "7d554369712cf165045f5a0e85335a98fe9565364b9465392af142c266075cd0",
+        "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
+      },
+      "tesseract": {
+        "formula": "tesseract",
+        "version": "5.5.3",
+        "input_sha256": "16020f485da1f534089d82608797d98f71322c67dee772438fb755ad9b4f79b5",
+        "license_concluded": "Apache-2.0"
+      }
+    },
+    "source_archives": [
+      {
+        "component_id": "homebrew-poppler",
+        "version": "26.03.0",
+        "url": "https://poppler.freedesktop.org/poppler-26.03.0.tar.xz",
+        "sha256": "8b3c5e2a9f2ab4c3ec5029f28af1b433c6b71f0d1e7b3997aa561cf1c0ca4ebe"
+      },
+      {
+        "component_id": "homebrew-tesseract",
+        "version": "5.5.3",
+        "url": "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.5.3.tar.gz",
+        "sha256": "9218e62793116d42a9f6d14cd9348518b27f382096eea3d0f2d1a24616bb5884"
+      },
+      {
+        "component_id": "tesseract-language-data",
+        "version": "4.1.0",
+        "url": "https://github.com/tesseract-ocr/tessdata/archive/refs/tags/4.1.0.tar.gz",
+        "sha256": "990fffb9b7a9b52dc9a2d053a9ef6852ca2b72bd8dfb22988b0b990a700fd3c7"
+      },
+      {
+        "component_id": "python-pypdfium2",
+        "version": "5.5.0",
+        "cache_name": "pypdfium2-5.5.0.tar.gz",
+        "url": "https://github.com/pypdfium2-team/pypdfium2/archive/refs/tags/5.5.0.tar.gz",
+        "sha256": "5a2fd4bbc94e4c9ffc6df41f6c122db7818b89136cc94033ef92f897db06f528"
+      }
+    ],
+    "language_data": {
+      "eng": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "deu": "19d219bbb6672c869d20a9636c6816a81eb9a71796cb93ebe0cb1530e2cdb22d",
+      "osd": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff"
+    },
+    "support_data": {
+      "configs/hocr": "d6a7ec7c5143317a59fce2393054f6b7a8261824b934e7426fdd24febc929ad6",
+      "configs/txt": "9bcbdbe285fd3a024be563cb237751ceb3435d86610e231f08894023321af5d7"
+    }
+  },
   "forbidden_python_distributions": [
     "hypothesis",
     "mypy",

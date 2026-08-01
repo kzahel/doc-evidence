@@ -1016,3 +1016,40 @@ passed the final-byte application audit and packaged-sidecar smoke; strict
 codesign verification failed with the expected unsigned-local-proof status.
 This is an intermediate core application: the baseline extractor pack, DMG,
 signing, notarization, updater, and publication are still absent.
+
+The seventh landed slice adds and validates the baseline extractor pack:
+
+- the hash-locked baseline contains OCRmyPDF 17.8.1 and pypdfium2 5.5.0,
+  exact Poppler 26.03.0 and Tesseract 5.5.3 native inputs, and exact English,
+  German, orientation, `hocr`, and `txt` Tesseract data;
+- every native dependency is copied to the pack, rewritten to a
+  bundle-relative load path, reduced to arm64, stripped of ambient Homebrew
+  default prefixes, and nested ad-hoc signed before final inventory;
+- the runtime validates the strict extractor-pack manifest and every declared
+  tool/data/library hash, while Tauri independently binds the bundle manifest,
+  pack-manifest SHA-256, and Python ready record before exposing the runtime;
+- the sidecar runs with only pack/Python/system executable directories, a
+  pack-owned Tesseract/font configuration, app-owned writable cache, and no
+  bytecode writes into application resources; and
+- the stage and final-application audits perform real OCR of a generated
+  image-only PDF, recover the expected text with bundled `pdftotext`, prove
+  English/German/orientation availability, and assert that Ghostscript cannot
+  be resolved.
+
+The staged runtime measures 181,746,413 bytes and contains 3,836 files and 112
+arm64 Mach-O objects. Tauri assembled a 192,070,647-byte application containing
+3,840 files. The copied artifact at
+`/private/tmp/doc-evidence-baseline-review.gtYJOD/Doc Evidence.app` has tree
+SHA-256 `8e4f581a55bc1a8eeaf9724a903afcb9747cd5c20e8508fa77966043a597a8d2`
+and passed the final-byte audit with no repository, user-home, or Homebrew path
+hits. Its pack manifest SHA-256 is
+`441bd6a384f3bbefdc8231917448078ff19b1caa2885c73a488c8bb4383bbdcb`.
+Strict outer codesign verification still fails as expected because this lane
+is intentionally unsigned.
+
+The current Poppler binaries have their build-machine data prefix neutralized
+and the English/German synthetic gate passes, but broader non-Latin Poppler
+mapping data has not been validated. A relocatable Poppler build or measured
+PDFium compatibility replacement remains a release-hardening task. DMG,
+corresponding-source bundle finalization, SBOM completion, signing,
+notarization, updater, CI release, and publication remain unstarted.

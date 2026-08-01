@@ -12,6 +12,7 @@
     "architecture",
     "tools",
     "language_data",
+    "support_files",
     "python_components",
     "native_libraries"
   ],
@@ -39,6 +40,10 @@
     "language_data": {
       "type": "array",
       "items": { "$ref": "#/$defs/languageData" }
+    },
+    "support_files": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/supportFile" }
     },
     "python_components": {
       "type": "array",
@@ -89,6 +94,16 @@
         "path": { "$ref": "#/$defs/relativePath" },
         "sha256": { "$ref": "#/$defs/sha256" },
         "license_concluded": { "const": "Apache-2.0" }
+      }
+    },
+    "supportFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "component_id"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relativePath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "component_id": { "type": "string", "minLength": 1 }
       }
     },
     "nativeLibrary": {

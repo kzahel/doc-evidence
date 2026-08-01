@@ -11,8 +11,9 @@ bounded per-library scheduling, authenticated API/runtime operations, document
 execution controls, bounded batches, and the global activity/debug UI are
 implemented. Fault/restart, isolated-browser, and authorized
 private-integration gates pass; explicit maintainer interaction acceptance
-remains. Tactical 002 plans the first packaged macOS execution environment and
-process-tree lifecycle but is not authorized or started.
+remains. Tactical 002's unattended local lane now packages the first macOS
+execution environment and baseline extractor pack; signing and publication
+remain deliberately unstarted.
 
 ## Purpose
 
@@ -79,8 +80,8 @@ fsynced, then renamed on the same filesystem into the canonical run location.
 Malformed or conflicting output is retained as attempt evidence and is never
 shown as canonical success.
 
-The proposed macOS desktop composition preserves this protocol. Packaged mode
-will resolve worker and extractor executables only through versioned bundle
+The macOS desktop composition preserves this protocol. Packaged mode resolves
+worker and extractor executables only through versioned bundle
 manifests and a minimal allowlisted environment, never ambient `PATH`,
 Homebrew, checkout-relative heavy environments, or an anonymous model cache.
 Graceful app close asks Python to reconcile schedulers and workers before the
@@ -517,6 +518,7 @@ end-to-end implementation and validation of this architecture together with
 the required platform-neutral foundation from
 [Desktop library management](library-management.md).
 
-[Tactical 002](../tactical/002-macos-tauri-desktop-application.md) proposes the
-first packaged macOS adapter over the same job and recovery contracts. It does
-not authorize a new scheduler, queue model, job state, or artifact protocol.
+[Tactical 002](../tactical/002-macos-tauri-desktop-application.md) owns the first
+packaged macOS adapter over the same job and recovery contracts. Its local
+baseline-pack and sidecar smokes are implemented; it does not authorize a new
+scheduler, queue model, job state, or artifact protocol.
