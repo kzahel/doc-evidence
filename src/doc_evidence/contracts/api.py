@@ -244,6 +244,193 @@ class ComparisonResult(ContractModel):
     numeric_discrepancies: list[NumericDiscrepancy]
 
 
+class ExtractorDependency(ContractModel):
+    name: str
+    available: bool
+    version: str | None
+    reason: str | None
+
+
+class ExtractorCapability(ContractModel):
+    extractor_id: str
+    display_name: str
+    category: Literal["native_text", "ocr_preprocessing", "layout_parser", "other"]
+    supported_media_types: list[str]
+    dependencies: list[ExtractorDependency]
+    available: bool
+    unavailable_reason: str | None
+    version_label: str | None
+    resource_class: Literal["light", "ocr", "model_heavy"]
+    settings_schema: dict[str, Any]
+    default_timeout_seconds: int = Field(ge=1)
+    deterministic: bool
+    output_kinds: list[str]
+    document_supported: bool | None
+    cached: bool | None
+    run_key: str | None
+    run_id: str | None
+    recommended: bool
+
+
+class ExtractorCapabilityList(ContractModel):
+    schema_version: Literal[1] = 1
+    document_id: str | None
+    items: list[ExtractorCapability]
+
+
+JobStateContract = Literal[
+    "queued",
+    "starting",
+    "running",
+    "cancelling",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "interrupted",
+]
+
+
+class ExtractionJobRequest(ContractModel):
+    document_id: str = Field(min_length=1, max_length=100)
+    extractor_id: str = Field(min_length=1, max_length=100)
+    settings: dict[str, Any] = Field(default_factory=dict)
+    execution_mode: Literal["reuse_or_execute", "fresh_verification"] = (
+        "reuse_or_execute"
+    )
+
+
+class ExtractionBatchRequest(ContractModel):
+    document_ids: list[str] = Field(min_length=1, max_length=200)
+    extractor_ids: list[str] = Field(min_length=1, max_length=5)
+    settings: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    execution_mode: Literal["reuse_or_execute", "fresh_verification"] = (
+        "reuse_or_execute"
+    )
+    confirmed: bool
+
+
+class JobSummary(ContractModel):
+    job_id: str
+    library_id: str
+    batch_id: str | None
+    document_id: str
+    extractor_id: str
+    settings: dict[str, Any]
+    execution_mode: Literal["reuse_or_execute", "fresh_verification"]
+    run_key: str | None
+    priority: int
+    resource_class: Literal["light", "ocr", "model_heavy"]
+    state: JobStateContract
+    outcome: str | None
+    queue_reason: str | None
+    retry_count: int = Field(ge=0)
+    automatic_retry_count: int = Field(ge=0, le=1)
+    cancellation_requested: bool
+    active_attempt_id: str | None
+    result_run_id: str | None
+    failure_class: str | None
+    error_summary: str | None
+    created_at: str
+    queued_at: str
+    started_at: str | None
+    completed_at: str | None
+    updated_at: str
+
+
+class JobAttempt(ContractModel):
+    attempt_id: str
+    attempt_number: int = Field(ge=1)
+    state: str
+    scheduler_instance_id: str
+    worker_pid: int | None
+    process_group_id: int | None
+    heartbeat_at: str | None
+    deadline_at: str
+    exit_code: int | None
+    publication_outcome: str | None
+    artifact_manifest_sha256: str | None
+    failure_class: str | None
+    error_summary: str | None
+    started_at: str
+    completed_at: str | None
+
+
+class JobDetail(ContractModel):
+    schema_version: Literal[1] = 1
+    job: JobSummary
+    attempts: list[JobAttempt]
+
+
+class JobCounts(ContractModel):
+    queued: int = Field(ge=0)
+    active: int = Field(ge=0)
+    failed: int = Field(ge=0)
+
+
+class JobPage(ContractModel):
+    schema_version: Literal[1] = 1
+    items: list[JobSummary]
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    total: int = Field(ge=0)
+    counts: JobCounts
+
+
+class JobCreationResponse(ContractModel):
+    schema_version: Literal[1] = 1
+    disposition: Literal["created", "coalesced", "idempotent", "cache_hit"]
+    job: JobSummary
+
+
+class JobEvent(ContractModel):
+    sequence: int = Field(ge=1)
+    event_type: str
+    stage: str
+    progress_current: int | None = Field(default=None, ge=0)
+    progress_total: int | None = Field(default=None, ge=0)
+    detail: dict[str, Any]
+    created_at: str
+
+
+class JobEventPage(ContractModel):
+    schema_version: Literal[1] = 1
+    job_id: str
+    after: int = Field(ge=0)
+    items: list[JobEvent]
+
+
+class JobBatchSummary(ContractModel):
+    batch_id: str
+    library_id: str
+    selection: dict[str, Any]
+    policy: dict[str, Any]
+    status: str
+    requested_count: int = Field(ge=0)
+    child_count: int = Field(ge=0)
+    cache_hit_count: int = Field(ge=0)
+    succeeded_count: int = Field(ge=0)
+    failed_count: int = Field(ge=0)
+    cancelled_count: int = Field(ge=0)
+    created_at: str
+    started_at: str | None
+    completed_at: str | None
+
+
+class JobBatchCreationResponse(ContractModel):
+    schema_version: Literal[1] = 1
+    disposition: Literal["created", "idempotent"]
+    batch: JobBatchSummary
+    jobs: list[JobSummary]
+
+
+class JobBatchPage(ContractModel):
+    schema_version: Literal[1] = 1
+    items: list[JobBatchSummary]
+    offset: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    total: int = Field(ge=0)
+
+
 class DiagnosticCheck(ContractModel):
     name: str
     status: Literal["ok", "warning", "error"]

@@ -6,8 +6,10 @@ import sqlite3
 from dataclasses import dataclass
 from typing import Literal
 
+from doc_evidence.adapters.local_jobs import LocalExtractionJobs
 from doc_evidence.adapters.local_workspace import LocalWorkspace
 from doc_evidence.app_home import KnownLibrary, LibraryRegistry, legacy_library_id
+from doc_evidence.application.jobs import JobRecord
 from doc_evidence.application.libraries import LibraryManager
 from doc_evidence.application.library import LibraryApplication
 from doc_evidence.config import AppConfig
@@ -20,6 +22,8 @@ from doc_evidence.contracts.api import (
     LibraryDetail,
 )
 from doc_evidence.errors import ApplicationStateError, DocEvidenceError, NotFoundError
+from doc_evidence.persistence import ensure_library_database
+from doc_evidence.scheduler import LibraryScheduler
 
 PREFLIGHT_KINDS = [
     "add_sibling",
@@ -55,6 +59,8 @@ class LocalLibraryManager(LibraryManager):
         self.registry = registry
         self.explicit_config = explicit_config
         self._applications: dict[str, LibraryApplication] = {}
+        self._jobs: dict[str, LocalExtractionJobs] = {}
+        self._schedulers: dict[str, LibraryScheduler] = {}
         if explicit_config is None:
             self.explicit_known = None
         else:
@@ -224,3 +230,49 @@ class LocalLibraryManager(LibraryManager):
         )
         self._applications[library_id] = application
         return application
+
+    def jobs(self, library_id: str) -> LocalExtractionJobs:
+        cached = self._jobs.get(library_id)
+        if cached is not None:
+            return cached
+        detail = self.library(library_id)
+        if detail.library.status != "ready":
+            raise ApplicationStateError(
+                detail.library.status_detail or "library is unavailable"
+            )
+        known = next(item for item in self._known() if item.library_id == library_id)
+        config = self._config(known)
+        database = ensure_library_database(
+            config,
+            library_id=library_id,
+            name=known.name,
+        )
+        service = LocalExtractionJobs(
+            library_id=library_id,
+            config=config,
+            database=database,
+        )
+        self._jobs[library_id] = service
+        return service
+
+    def start_jobs(self, library_id: str) -> bool:
+        scheduler = self._schedulers.get(library_id)
+        if scheduler is not None:
+            return scheduler.running
+        scheduler = LibraryScheduler(self.jobs(library_id))
+        started = scheduler.start()
+        if started:
+            self._schedulers[library_id] = scheduler
+        return started
+
+    def cancel_job(self, library_id: str, job_id: str) -> JobRecord:
+        scheduler = self._schedulers.get(library_id)
+        if scheduler is not None and scheduler.running:
+            scheduler.cancel(job_id)
+            return self.jobs(library_id).get(job_id)
+        return self.jobs(library_id).cancel(job_id)
+
+    def shutdown(self) -> None:
+        for scheduler in list(self._schedulers.values()):
+            scheduler.stop()
+        self._schedulers.clear()

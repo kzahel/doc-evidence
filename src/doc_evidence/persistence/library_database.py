@@ -19,7 +19,7 @@ from doc_evidence.util import hash_json, isoformat_z
 if TYPE_CHECKING:
     from doc_evidence.inventory import DocumentRecord, InventoryResult
 
-DATABASE_SCHEMA_VERSION = 2
+DATABASE_SCHEMA_VERSION = 3
 BUSY_TIMEOUT_MS = 5_000
 
 
@@ -393,6 +393,37 @@ def _migration_2(connection: sqlite3.Connection) -> None:
     )
 
 
+def _migration_3(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        BEGIN IMMEDIATE;
+        ALTER TABLE job_batches ADD COLUMN idempotency_key TEXT;
+        ALTER TABLE job_batches ADD COLUMN request_hash TEXT;
+        CREATE UNIQUE INDEX job_batches_idempotency_idx
+            ON job_batches(library_id, idempotency_key)
+            WHERE idempotency_key IS NOT NULL;
+        CREATE TABLE job_batch_members (
+            batch_id TEXT NOT NULL
+                REFERENCES job_batches(batch_id) ON DELETE CASCADE,
+            job_id TEXT NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,
+            ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+            PRIMARY KEY (batch_id, job_id),
+            UNIQUE (batch_id, ordinal)
+        );
+        INSERT INTO job_batch_members (batch_id, job_id, ordinal)
+        SELECT batch_id, job_id,
+               ROW_NUMBER() OVER (
+                   PARTITION BY batch_id ORDER BY created_at, job_id
+               ) - 1
+        FROM jobs WHERE batch_id IS NOT NULL;
+        INSERT INTO schema_migrations (version, applied_at)
+        VALUES (3, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+        PRAGMA user_version = 3;
+        COMMIT;
+        """
+    )
+
+
 def _migrate(connection: sqlite3.Connection) -> None:
     version = int(connection.execute("PRAGMA user_version").fetchone()[0])
     if version > DATABASE_SCHEMA_VERSION:
@@ -411,6 +442,14 @@ def _migrate(connection: sqlite3.Connection) -> None:
     if version == 1:
         try:
             _migration_2(connection)
+        except sqlite3.Error as error:
+            if connection.in_transaction:
+                connection.rollback()
+            raise CatalogError(f"cannot migrate library database: {error}") from error
+        version = 2
+    if version == 2:
+        try:
+            _migration_3(connection)
         except sqlite3.Error as error:
             if connection.in_transaction:
                 connection.rollback()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from doc_evidence.application.jobs import JobRecord, JobService
 from doc_evidence.application.library import LibraryApplication
 from doc_evidence.contracts.api import (
     AppSummary,
@@ -25,3 +26,11 @@ class LibraryManager(Protocol):
     def activate(self, library_id: str) -> LibraryActivation: ...
 
     def application(self, library_id: str) -> LibraryApplication: ...
+
+    def jobs(self, library_id: str) -> JobService: ...
+
+    def start_jobs(self, library_id: str) -> bool: ...
+
+    def cancel_job(self, library_id: str, job_id: str) -> JobRecord: ...
+
+    def shutdown(self) -> None: ...

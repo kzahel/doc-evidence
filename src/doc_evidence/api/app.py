@@ -6,13 +6,21 @@ import hmac
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
-from fastapi import APIRouter, Depends, FastAPI, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, Header, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
+from doc_evidence.application.jobs import (
+    ExtractorCapabilityRecord,
+    JobAttemptRecord,
+    JobBatchRecord,
+    JobRecord,
+    JobState,
+)
 from doc_evidence.application.libraries import LibraryManager
 from doc_evidence.application.library import LibraryApplication
 from doc_evidence.contracts.api import (
@@ -23,6 +31,22 @@ from doc_evidence.contracts.api import (
     Diagnostics,
     DocumentDetail,
     DocumentPage,
+    ExtractionBatchRequest,
+    ExtractionJobRequest,
+    ExtractorCapability,
+    ExtractorCapabilityList,
+    ExtractorDependency,
+    JobAttempt,
+    JobBatchCreationResponse,
+    JobBatchPage,
+    JobBatchSummary,
+    JobCounts,
+    JobCreationResponse,
+    JobDetail,
+    JobEvent,
+    JobEventPage,
+    JobPage,
+    JobSummary,
     KnownLibraryList,
     LibraryActivation,
     LibraryDetail,
@@ -42,6 +66,70 @@ from doc_evidence.errors import (
 _bearer = HTTPBearer(auto_error=False)
 
 
+def _job_summary(record: JobRecord) -> JobSummary:
+    return JobSummary(
+        job_id=record.job_id,
+        library_id=record.library_id,
+        batch_id=record.batch_id,
+        document_id=record.document_id,
+        extractor_id=record.extractor_id,
+        settings=record.settings,
+        execution_mode=record.execution_mode,
+        run_key=record.run_key,
+        priority=record.priority,
+        resource_class=record.resource_class,
+        state=record.state,
+        outcome=record.outcome,
+        queue_reason=record.queue_reason,
+        retry_count=record.retry_count,
+        automatic_retry_count=record.automatic_retry_count,
+        cancellation_requested=record.cancellation_requested,
+        active_attempt_id=record.active_attempt_id,
+        result_run_id=record.result_run_id,
+        failure_class=record.failure_class,
+        error_summary=record.error_summary,
+        created_at=record.created_at,
+        queued_at=record.queued_at,
+        started_at=record.started_at,
+        completed_at=record.completed_at,
+        updated_at=record.updated_at,
+    )
+
+
+def _job_attempt(record: JobAttemptRecord) -> JobAttempt:
+    return JobAttempt(**record.__dict__)
+
+
+def _batch_summary(record: JobBatchRecord) -> JobBatchSummary:
+    return JobBatchSummary(**record.__dict__)
+
+
+def _extractor_capability(record: ExtractorCapabilityRecord) -> ExtractorCapability:
+    return ExtractorCapability(
+        extractor_id=record.extractor_id,
+        display_name=record.display_name,
+        category=record.category,  # type: ignore[arg-type]
+        supported_media_types=list(record.supported_media_types),
+        dependencies=[
+            ExtractorDependency(**dependency.__dict__)
+            for dependency in record.dependencies
+        ],
+        available=record.available,
+        unavailable_reason=record.unavailable_reason,
+        version_label=record.version_label,
+        resource_class=record.resource_class,
+        settings_schema=record.settings_schema,
+        default_timeout_seconds=record.default_timeout_seconds,
+        deterministic=record.deterministic,
+        output_kinds=list(record.output_kinds),
+        document_supported=record.document_supported,
+        cached=record.cached,
+        run_key=record.run_key,
+        run_id=record.run_id,
+        recommended=record.recommended,
+    )
+
+
 def create_app(
     application: LibraryApplication | None,
     *,
@@ -57,7 +145,11 @@ def create_app(
     async def lifespan(_: FastAPI):
         if on_started is not None:
             on_started()
-        yield
+        try:
+            yield
+        finally:
+            if library_manager is not None:
+                library_manager.shutdown()
 
     app = FastAPI(
         title="doc-evidence local API",
@@ -85,13 +177,30 @@ def create_app(
                     message="request origin is not allowed",
                 ).model_dump(),
             )
+        content_length = request.headers.get("content-length")
+        if (
+            is_api
+            and content_length is not None
+            and content_length.isdecimal()
+            and int(content_length) > 262_144
+        ):
+            response = JSONResponse(
+                status_code=413,
+                content=ApiProblem(
+                    code="request_too_large",
+                    message="API request body exceeds 256 KiB",
+                ).model_dump(),
+            )
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            return response
         if is_api and request.method == "OPTIONS":
             response = Response(status_code=204)
             if origin:
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Vary"] = "Origin"
             response.headers["Access-Control-Allow-Headers"] = (
-                "Authorization, Content-Type"
+                "Authorization, Content-Type, Idempotency-Key"
             )
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
             response.headers["Access-Control-Max-Age"] = "600"
@@ -139,6 +248,9 @@ def create_app(
     def library_service(request: Request, library_id: str) -> LibraryApplication:
         return manager(request).application(library_id)
 
+    def job_service(request: Request, library_id: str):
+        return manager(request).jobs(library_id)
+
     router = APIRouter(prefix="/api/v1", dependencies=[Depends(authorize)])
 
     @router.get("/app", response_model=AppSummary)
@@ -159,6 +271,200 @@ def create_app(
     )
     def activate_library(request: Request, library_id: str) -> LibraryActivation:
         return manager(request).activate(library_id)
+
+    @router.get(
+        "/libraries/{library_id}/extractors",
+        response_model=ExtractorCapabilityList,
+    )
+    def library_extractors(
+        request: Request,
+        library_id: str,
+        document_id: str | None = None,
+    ) -> ExtractorCapabilityList:
+        records = job_service(request, library_id).capabilities(document_id=document_id)
+        return ExtractorCapabilityList(
+            document_id=document_id,
+            items=[_extractor_capability(record) for record in records],
+        )
+
+    @router.post(
+        "/libraries/{library_id}/jobs/extractions",
+        response_model=JobCreationResponse,
+    )
+    def create_extraction_job(
+        request: Request,
+        library_id: str,
+        body: ExtractionJobRequest,
+        idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    ) -> JobCreationResponse:
+        creation = job_service(request, library_id).enqueue(
+            document_id=body.document_id,
+            extractor_id=body.extractor_id,
+            settings=body.settings,
+            execution_mode=body.execution_mode,
+            idempotency_key=idempotency_key,
+        )
+        if creation.job.state == "queued":
+            manager(request).start_jobs(library_id)
+        return JobCreationResponse(
+            disposition=creation.disposition,
+            job=_job_summary(creation.job),
+        )
+
+    @router.post(
+        "/libraries/{library_id}/jobs/extraction-batches",
+        response_model=JobBatchCreationResponse,
+    )
+    def create_extraction_batch(
+        request: Request,
+        library_id: str,
+        body: ExtractionBatchRequest,
+        idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    ) -> JobBatchCreationResponse:
+        creation = job_service(request, library_id).enqueue_batch(
+            document_ids=body.document_ids,
+            extractor_ids=body.extractor_ids,
+            settings=body.settings,
+            execution_mode=body.execution_mode,
+            confirmed=body.confirmed,
+            idempotency_key=idempotency_key,
+        )
+        if any(job.state == "queued" for job in creation.jobs):
+            manager(request).start_jobs(library_id)
+        return JobBatchCreationResponse(
+            disposition=creation.disposition,
+            batch=_batch_summary(creation.batch),
+            jobs=[_job_summary(job) for job in creation.jobs],
+        )
+
+    @router.get(
+        "/libraries/{library_id}/jobs/extraction-batches",
+        response_model=JobBatchPage,
+    )
+    def extraction_batches(
+        request: Request,
+        library_id: str,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> JobBatchPage:
+        records, total = job_service(request, library_id).batches(
+            offset=offset, limit=limit
+        )
+        return JobBatchPage(
+            items=[_batch_summary(record) for record in records],
+            offset=offset,
+            limit=limit,
+            total=total,
+        )
+
+    @router.get(
+        "/libraries/{library_id}/jobs",
+        response_model=JobPage,
+    )
+    def jobs(
+        request: Request,
+        library_id: str,
+        state: str | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> JobPage:
+        allowed: set[str] = {
+            "queued",
+            "starting",
+            "running",
+            "cancelling",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "interrupted",
+        }
+        raw_states = tuple(
+            item.strip() for item in (state or "").split(",") if item.strip()
+        )
+        if set(raw_states) - allowed:
+            raise RequestError("job state filter contains an unknown state")
+        states = cast(tuple[JobState, ...], raw_states)
+        service_value = job_service(request, library_id)
+        records, total = service_value.list(
+            states=states,
+            offset=offset,
+            limit=limit,
+        )
+        counts = service_value.counts()
+        return JobPage(
+            items=[_job_summary(record) for record in records],
+            offset=offset,
+            limit=limit,
+            total=total,
+            counts=JobCounts(**counts.__dict__),
+        )
+
+    @router.get(
+        "/libraries/{library_id}/jobs/{job_id}",
+        response_model=JobDetail,
+    )
+    def job(
+        request: Request,
+        library_id: str,
+        job_id: str,
+    ) -> JobDetail:
+        service_value = job_service(request, library_id)
+        record = service_value.get(job_id)
+        return JobDetail(
+            job=_job_summary(record),
+            attempts=[
+                _job_attempt(attempt) for attempt in service_value.attempts(job_id)
+            ],
+        )
+
+    @router.get(
+        "/libraries/{library_id}/jobs/{job_id}/events",
+        response_model=JobEventPage,
+    )
+    def job_events(
+        request: Request,
+        library_id: str,
+        job_id: str,
+        after: int = 0,
+        limit: int = 200,
+    ) -> JobEventPage:
+        records = job_service(request, library_id).events(
+            job_id, after=after, limit=limit
+        )
+        return JobEventPage(
+            job_id=job_id,
+            after=after,
+            items=[JobEvent(**record.__dict__) for record in records],
+        )
+
+    @router.post(
+        "/libraries/{library_id}/jobs/{job_id}/cancel",
+        response_model=JobDetail,
+    )
+    def cancel_job(request: Request, library_id: str, job_id: str) -> JobDetail:
+        record = manager(request).cancel_job(library_id, job_id)
+        return JobDetail(
+            job=_job_summary(record),
+            attempts=[
+                _job_attempt(attempt)
+                for attempt in job_service(request, library_id).attempts(job_id)
+            ],
+        )
+
+    @router.post(
+        "/libraries/{library_id}/jobs/{job_id}/retry",
+        response_model=JobDetail,
+    )
+    def retry_job(request: Request, library_id: str, job_id: str) -> JobDetail:
+        service_value = job_service(request, library_id)
+        record = service_value.retry(job_id)
+        manager(request).start_jobs(library_id)
+        return JobDetail(
+            job=_job_summary(record),
+            attempts=[
+                _job_attempt(attempt) for attempt in service_value.attempts(job_id)
+            ],
+        )
 
     @router.get(
         "/libraries/{library_id}/workspace",
@@ -363,6 +669,18 @@ def create_app(
         return JSONResponse(
             status_code=404,
             content=ApiProblem(code="not_found", message=str(error)).model_dump(),
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_contract(
+        _: Request, error: RequestValidationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=400,
+            content=ApiProblem(
+                code="invalid_request",
+                message=f"request payload or parameters are invalid ({len(error.errors())} error(s))",
+            ).model_dump(),
         )
 
     @app.exception_handler(RequestError)

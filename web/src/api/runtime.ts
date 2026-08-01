@@ -17,6 +17,17 @@ export type ComparisonRequest = components["schemas"]["ComparisonRequest"];
 export type ComparisonResult = components["schemas"]["ComparisonResult"];
 export type DiffToken = components["schemas"]["DiffToken"];
 export type Diagnostics = components["schemas"]["Diagnostics"];
+export type ExtractorCapabilityList = components["schemas"]["ExtractorCapabilityList"];
+export type ExtractorCapability = components["schemas"]["ExtractorCapability"];
+export type ExtractionJobRequest = components["schemas"]["ExtractionJobRequest"];
+export type ExtractionBatchRequest = components["schemas"]["ExtractionBatchRequest"];
+export type JobSummary = components["schemas"]["JobSummary"];
+export type JobDetail = components["schemas"]["JobDetail"];
+export type JobPage = components["schemas"]["JobPage"];
+export type JobEventPage = components["schemas"]["JobEventPage"];
+export type JobCreationResponse = components["schemas"]["JobCreationResponse"];
+export type JobBatchPage = components["schemas"]["JobBatchPage"];
+export type JobBatchCreationResponse = components["schemas"]["JobBatchCreationResponse"];
 
 export interface SearchInput {
   query: string;
@@ -38,4 +49,13 @@ export interface DocEvidenceRuntime {
   getPageRender(libraryId: string, documentId: string, page: number, signal?: AbortSignal): Promise<Blob>;
   getArtifact(libraryId: string, artifactId: string, signal?: AbortSignal): Promise<Blob>;
   getDiagnostics(libraryId: string, signal?: AbortSignal): Promise<Diagnostics>;
+  getExtractors(libraryId: string, documentId?: string, signal?: AbortSignal): Promise<ExtractorCapabilityList>;
+  createExtraction(libraryId: string, input: ExtractionJobRequest, idempotencyKey?: string, signal?: AbortSignal): Promise<JobCreationResponse>;
+  createExtractionBatch(libraryId: string, input: ExtractionBatchRequest, idempotencyKey?: string, signal?: AbortSignal): Promise<JobBatchCreationResponse>;
+  listJobs(libraryId: string, state?: string, offset?: number, limit?: number, signal?: AbortSignal): Promise<JobPage>;
+  getJob(libraryId: string, jobId: string, signal?: AbortSignal): Promise<JobDetail>;
+  getJobEvents(libraryId: string, jobId: string, after?: number, limit?: number, signal?: AbortSignal): Promise<JobEventPage>;
+  cancelJob(libraryId: string, jobId: string, signal?: AbortSignal): Promise<JobDetail>;
+  retryJob(libraryId: string, jobId: string, signal?: AbortSignal): Promise<JobDetail>;
+  listBatches(libraryId: string, offset?: number, limit?: number, signal?: AbortSignal): Promise<JobBatchPage>;
 }

@@ -378,6 +378,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{library_id}/extractors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Library Extractors */
+        get: operations["library_extractors_api_v1_libraries__library_id__extractors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Jobs */
+        get: operations["jobs_api_v1_libraries__library_id__jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/extraction-batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Extraction Batches */
+        get: operations["extraction_batches_api_v1_libraries__library_id__jobs_extraction_batches_get"];
+        put?: never;
+        /** Create Extraction Batch */
+        post: operations["create_extraction_batch_api_v1_libraries__library_id__jobs_extraction_batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Extraction Job */
+        post: operations["create_extraction_job_api_v1_libraries__library_id__jobs_extractions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job */
+        get: operations["job_api_v1_libraries__library_id__jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Job */
+        post: operations["cancel_job_api_v1_libraries__library_id__jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Job Events */
+        get: operations["job_events_api_v1_libraries__library_id__jobs__job_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Job */
+        post: operations["retry_job_api_v1_libraries__library_id__jobs__job_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{library_id}/search": {
         parameters: {
             query?: never;
@@ -667,6 +804,115 @@ export interface components {
             /** Member Count */
             member_count: number;
         };
+        /** ExtractionBatchRequest */
+        ExtractionBatchRequest: {
+            /** Confirmed */
+            confirmed: boolean;
+            /** Document Ids */
+            document_ids: string[];
+            /**
+             * Execution Mode
+             * @default reuse_or_execute
+             * @enum {string}
+             */
+            execution_mode: "reuse_or_execute" | "fresh_verification";
+            /** Extractor Ids */
+            extractor_ids: string[];
+            /** Settings */
+            settings?: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        /** ExtractionJobRequest */
+        ExtractionJobRequest: {
+            /** Document Id */
+            document_id: string;
+            /**
+             * Execution Mode
+             * @default reuse_or_execute
+             * @enum {string}
+             */
+            execution_mode: "reuse_or_execute" | "fresh_verification";
+            /** Extractor Id */
+            extractor_id: string;
+            /** Settings */
+            settings?: {
+                [key: string]: unknown;
+            };
+        };
+        /** ExtractorCapability */
+        ExtractorCapability: {
+            /** Available */
+            available: boolean;
+            /** Cached */
+            cached: boolean | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "native_text" | "ocr_preprocessing" | "layout_parser" | "other";
+            /** Default Timeout Seconds */
+            default_timeout_seconds: number;
+            /** Dependencies */
+            dependencies: components["schemas"]["ExtractorDependency"][];
+            /** Deterministic */
+            deterministic: boolean;
+            /** Display Name */
+            display_name: string;
+            /** Document Supported */
+            document_supported: boolean | null;
+            /** Extractor Id */
+            extractor_id: string;
+            /** Output Kinds */
+            output_kinds: string[];
+            /** Recommended */
+            recommended: boolean;
+            /**
+             * Resource Class
+             * @enum {string}
+             */
+            resource_class: "light" | "ocr" | "model_heavy";
+            /** Run Id */
+            run_id: string | null;
+            /** Run Key */
+            run_key: string | null;
+            /** Settings Schema */
+            settings_schema: {
+                [key: string]: unknown;
+            };
+            /** Supported Media Types */
+            supported_media_types: string[];
+            /** Unavailable Reason */
+            unavailable_reason: string | null;
+            /** Version Label */
+            version_label: string | null;
+        };
+        /** ExtractorCapabilityList */
+        ExtractorCapabilityList: {
+            /** Document Id */
+            document_id: string | null;
+            /** Items */
+            items: components["schemas"]["ExtractorCapability"][];
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** ExtractorDependency */
+        ExtractorDependency: {
+            /** Available */
+            available: boolean;
+            /** Name */
+            name: string;
+            /** Reason */
+            reason: string | null;
+            /** Version */
+            version: string | null;
+        };
         /** ExtractorRun */
         ExtractorRun: {
             /**
@@ -711,6 +957,260 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** JobAttempt */
+        JobAttempt: {
+            /** Artifact Manifest Sha256 */
+            artifact_manifest_sha256: string | null;
+            /** Attempt Id */
+            attempt_id: string;
+            /** Attempt Number */
+            attempt_number: number;
+            /** Completed At */
+            completed_at: string | null;
+            /** Deadline At */
+            deadline_at: string;
+            /** Error Summary */
+            error_summary: string | null;
+            /** Exit Code */
+            exit_code: number | null;
+            /** Failure Class */
+            failure_class: string | null;
+            /** Heartbeat At */
+            heartbeat_at: string | null;
+            /** Process Group Id */
+            process_group_id: number | null;
+            /** Publication Outcome */
+            publication_outcome: string | null;
+            /** Scheduler Instance Id */
+            scheduler_instance_id: string;
+            /** Started At */
+            started_at: string;
+            /** State */
+            state: string;
+            /** Worker Pid */
+            worker_pid: number | null;
+        };
+        /** JobBatchCreationResponse */
+        JobBatchCreationResponse: {
+            batch: components["schemas"]["JobBatchSummary"];
+            /**
+             * Disposition
+             * @enum {string}
+             */
+            disposition: "created" | "idempotent";
+            /** Jobs */
+            jobs: components["schemas"]["JobSummary"][];
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** JobBatchPage */
+        JobBatchPage: {
+            /** Items */
+            items: components["schemas"]["JobBatchSummary"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Total */
+            total: number;
+        };
+        /** JobBatchSummary */
+        JobBatchSummary: {
+            /** Batch Id */
+            batch_id: string;
+            /** Cache Hit Count */
+            cache_hit_count: number;
+            /** Cancelled Count */
+            cancelled_count: number;
+            /** Child Count */
+            child_count: number;
+            /** Completed At */
+            completed_at: string | null;
+            /** Created At */
+            created_at: string;
+            /** Failed Count */
+            failed_count: number;
+            /** Library Id */
+            library_id: string;
+            /** Policy */
+            policy: {
+                [key: string]: unknown;
+            };
+            /** Requested Count */
+            requested_count: number;
+            /** Selection */
+            selection: {
+                [key: string]: unknown;
+            };
+            /** Started At */
+            started_at: string | null;
+            /** Status */
+            status: string;
+            /** Succeeded Count */
+            succeeded_count: number;
+        };
+        /** JobCounts */
+        JobCounts: {
+            /** Active */
+            active: number;
+            /** Failed */
+            failed: number;
+            /** Queued */
+            queued: number;
+        };
+        /** JobCreationResponse */
+        JobCreationResponse: {
+            /**
+             * Disposition
+             * @enum {string}
+             */
+            disposition: "created" | "coalesced" | "idempotent" | "cache_hit";
+            job: components["schemas"]["JobSummary"];
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** JobDetail */
+        JobDetail: {
+            /** Attempts */
+            attempts: components["schemas"]["JobAttempt"][];
+            job: components["schemas"]["JobSummary"];
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** JobEvent */
+        JobEvent: {
+            /** Created At */
+            created_at: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+            /** Event Type */
+            event_type: string;
+            /** Progress Current */
+            progress_current?: number | null;
+            /** Progress Total */
+            progress_total?: number | null;
+            /** Sequence */
+            sequence: number;
+            /** Stage */
+            stage: string;
+        };
+        /** JobEventPage */
+        JobEventPage: {
+            /** After */
+            after: number;
+            /** Items */
+            items: components["schemas"]["JobEvent"][];
+            /** Job Id */
+            job_id: string;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** JobPage */
+        JobPage: {
+            counts: components["schemas"]["JobCounts"];
+            /** Items */
+            items: components["schemas"]["JobSummary"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Total */
+            total: number;
+        };
+        /** JobSummary */
+        JobSummary: {
+            /** Active Attempt Id */
+            active_attempt_id: string | null;
+            /** Automatic Retry Count */
+            automatic_retry_count: number;
+            /** Batch Id */
+            batch_id: string | null;
+            /** Cancellation Requested */
+            cancellation_requested: boolean;
+            /** Completed At */
+            completed_at: string | null;
+            /** Created At */
+            created_at: string;
+            /** Document Id */
+            document_id: string;
+            /** Error Summary */
+            error_summary: string | null;
+            /**
+             * Execution Mode
+             * @enum {string}
+             */
+            execution_mode: "reuse_or_execute" | "fresh_verification";
+            /** Extractor Id */
+            extractor_id: string;
+            /** Failure Class */
+            failure_class: string | null;
+            /** Job Id */
+            job_id: string;
+            /** Library Id */
+            library_id: string;
+            /** Outcome */
+            outcome: string | null;
+            /** Priority */
+            priority: number;
+            /** Queue Reason */
+            queue_reason: string | null;
+            /** Queued At */
+            queued_at: string;
+            /**
+             * Resource Class
+             * @enum {string}
+             */
+            resource_class: "light" | "ocr" | "model_heavy";
+            /** Result Run Id */
+            result_run_id: string | null;
+            /** Retry Count */
+            retry_count: number;
+            /** Run Key */
+            run_key: string | null;
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+            /** Started At */
+            started_at: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "starting" | "running" | "cancelling" | "succeeded" | "failed" | "cancelled" | "interrupted";
+            /** Updated At */
+            updated_at: string;
         };
         /** KnownLibraryList */
         KnownLibraryList: {
@@ -1609,6 +2109,313 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    library_extractors_api_v1_libraries__library_id__extractors_get: {
+        parameters: {
+            query?: {
+                document_id?: string | null;
+            };
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractorCapabilityList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    jobs_api_v1_libraries__library_id__jobs_get: {
+        parameters: {
+            query?: {
+                state?: string | null;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extraction_batches_api_v1_libraries__library_id__jobs_extraction_batches_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobBatchPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_extraction_batch_api_v1_libraries__library_id__jobs_extraction_batches_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtractionBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobBatchCreationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_extraction_job_api_v1_libraries__library_id__jobs_extractions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtractionJobRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobCreationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_api_v1_libraries__library_id__jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_job_api_v1_libraries__library_id__jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    job_events_api_v1_libraries__library_id__jobs__job_id__events_get: {
+        parameters: {
+            query?: {
+                after?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                library_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobEventPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_job_api_v1_libraries__library_id__jobs__job_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                library_id: string;
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobDetail"];
                 };
             };
             /** @description Validation Error */

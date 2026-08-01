@@ -240,6 +240,9 @@ Schema-versioned jobs/attempts/events, exact cache fulfillment, idempotent and
 coalesced enqueue, process-locked scheduler leasing, priority aging, bounded
 resource dispatch, cancellation, one transient retry, and restart/integrity
 reconciliation are the fifth landed boundary.
+Extractor capability, single-job, confirmed-batch, activity, attempt/event,
+cancel, and retry contracts are the sixth landed boundary, including checked
+OpenAPI/TypeScript generation and the hand-owned React runtime operations.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits

@@ -5,122 +5,29 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
+from doc_evidence.application.jobs import (
+    ActiveAttemptRecord,
+    CachedResult,
+    ClaimedJob,
+    JobAttemptRecord,
+    JobBatchRecord,
+    JobCountRecord,
+    JobCreation,
+    JobEventRecord,
+    JobRecord,
+    JobSpec,
+    JobState,
+)
 from doc_evidence.attempts import AttemptResult
 from doc_evidence.errors import CatalogError, NotFoundError, RequestError
 from doc_evidence.extractor_registry import ResourceClass
 from doc_evidence.persistence.library_database import LibraryDatabase
 from doc_evidence.util import hash_json, isoformat_z
 
-JobState = Literal[
-    "queued",
-    "starting",
-    "running",
-    "cancelling",
-    "succeeded",
-    "failed",
-    "cancelled",
-    "interrupted",
-]
-ExecutionMode = Literal["reuse_or_execute", "fresh_verification"]
-TERMINAL_STATES = frozenset({"succeeded", "failed", "cancelled", "interrupted"})
-ACTIVE_STATES = frozenset({"queued", "starting", "running", "cancelling"})
 MAX_EVENTS_PER_JOB = 500
-
-
-@dataclass(frozen=True)
-class JobSpec:
-    library_id: str
-    document_id: str
-    content_sha256: str
-    extractor_id: str
-    cache_key: str
-    settings: dict[str, Any]
-    execution: dict[str, Any]
-    execution_mode: ExecutionMode
-    run_key: str
-    priority: int
-    resource_class: ResourceClass
-    idempotency_key: str | None = None
-    batch_id: str | None = None
-
-
-@dataclass(frozen=True)
-class CachedResult:
-    run_id: str
-    artifact_path: str
-
-
-@dataclass(frozen=True)
-class JobRecord:
-    job_id: str
-    library_id: str
-    batch_id: str | None
-    idempotency_key: str | None
-    document_id: str
-    content_sha256: str
-    extractor_id: str
-    cache_key: str
-    settings: dict[str, Any]
-    execution: dict[str, Any]
-    execution_mode: ExecutionMode
-    run_key: str | None
-    priority: int
-    resource_class: ResourceClass
-    state: JobState
-    outcome: str | None
-    queue_reason: str | None
-    retry_count: int
-    automatic_retry_count: int
-    cancellation_requested: bool
-    active_attempt_id: str | None
-    result_run_id: str | None
-    result_artifact_path: str | None
-    failure_class: str | None
-    error_summary: str | None
-    created_at: str
-    queued_at: str
-    started_at: str | None
-    completed_at: str | None
-    updated_at: str
-
-
-@dataclass(frozen=True)
-class JobCreation:
-    job: JobRecord
-    disposition: Literal["created", "coalesced", "idempotent", "cache_hit"]
-
-
-@dataclass(frozen=True)
-class ClaimedJob:
-    job: JobRecord
-    attempt_id: str
-    attempt_number: int
-    deadline_at: str
-
-
-@dataclass(frozen=True)
-class JobEventRecord:
-    sequence: int
-    event_type: str
-    stage: str
-    progress_current: int | None
-    progress_total: int | None
-    detail: dict[str, Any]
-    created_at: str
-
-
-@dataclass(frozen=True)
-class ActiveAttemptRecord:
-    job_id: str
-    attempt_id: str
-    worker_pid: int | None
-    process_group_id: int | None
-    heartbeat_at: str | None
-    deadline_at: str
 
 
 def _utc(value: str) -> datetime:
@@ -179,6 +86,27 @@ def _record(row: sqlite3.Row) -> JobRecord:
             str(row["completed_at"]) if row["completed_at"] is not None else None
         ),
         updated_at=str(row["updated_at"]),
+    )
+
+
+def _batch_record(row: sqlite3.Row) -> JobBatchRecord:
+    return JobBatchRecord(
+        batch_id=str(row["batch_id"]),
+        library_id=str(row["library_id"]),
+        selection=json.loads(str(row["selection_json"])),
+        policy=json.loads(str(row["policy_json"])),
+        status=str(row["status"]),
+        requested_count=int(row["requested_count"]),
+        child_count=int(row["child_count"]),
+        cache_hit_count=int(row["cache_hit_count"]),
+        succeeded_count=int(row["succeeded_count"]),
+        failed_count=int(row["failed_count"]),
+        cancelled_count=int(row["cancelled_count"]),
+        created_at=str(row["created_at"]),
+        started_at=str(row["started_at"]) if row["started_at"] is not None else None,
+        completed_at=(
+            str(row["completed_at"]) if row["completed_at"] is not None else None
+        ),
     )
 
 
@@ -378,6 +306,240 @@ class JobRepository:
         finally:
             connection.close()
 
+    def create_batch(
+        self,
+        *,
+        library_id: str,
+        selection: dict[str, Any],
+        policy: dict[str, Any],
+        requested_count: int,
+        idempotency_key: str | None,
+    ) -> tuple[JobBatchRecord, Literal["created", "idempotent"]]:
+        if requested_count < 1 or requested_count > 500:
+            raise RequestError("batch request count is outside its allowed bounds")
+        request_hash = hash_json(
+            {
+                "selection": selection,
+                "policy": policy,
+                "requested_count": requested_count,
+            }
+        )
+        now = isoformat_z()
+        connection = self.database.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            if idempotency_key is not None:
+                existing = connection.execute(
+                    """
+                    SELECT * FROM job_batches
+                    WHERE library_id = ? AND idempotency_key = ?
+                    """,
+                    (library_id, idempotency_key),
+                ).fetchone()
+                if existing is not None:
+                    if str(existing["request_hash"]) != request_hash:
+                        raise RequestError(
+                            "idempotency key was already used for a different batch"
+                        )
+                    connection.commit()
+                    return _batch_record(existing), "idempotent"
+            batch_id = str(uuid.uuid4())
+            connection.execute(
+                """
+                INSERT INTO job_batches (
+                    batch_id, library_id, selection_json, policy_json, status,
+                    requested_count, created_at, idempotency_key, request_hash
+                ) VALUES (?, ?, ?, ?, 'preflighting', ?, ?, ?, ?)
+                """,
+                (
+                    batch_id,
+                    library_id,
+                    json.dumps(selection, sort_keys=True),
+                    json.dumps(policy, sort_keys=True),
+                    requested_count,
+                    now,
+                    idempotency_key,
+                    request_hash,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM job_batches WHERE batch_id = ?", (batch_id,)
+            ).fetchone()
+            connection.commit()
+            assert row is not None
+            return _batch_record(row), "created"
+        except (sqlite3.Error, RequestError) as error:
+            connection.rollback()
+            if isinstance(error, RequestError):
+                raise
+            raise CatalogError(f"cannot create extraction batch: {error}") from error
+        finally:
+            connection.close()
+
+    @staticmethod
+    def _refresh_batch_row(
+        connection: sqlite3.Connection, batch_id: str
+    ) -> sqlite3.Row:
+        batch = connection.execute(
+            "SELECT * FROM job_batches WHERE batch_id = ?", (batch_id,)
+        ).fetchone()
+        if batch is None:
+            raise NotFoundError("job batch was not found")
+        counts = connection.execute(
+            """
+            SELECT COUNT(*) AS child_count,
+                   SUM(CASE WHEN outcome = 'cache_hit' THEN 1 ELSE 0 END)
+                       AS cache_hits,
+                   SUM(CASE WHEN state = 'succeeded' THEN 1 ELSE 0 END)
+                       AS succeeded,
+                   SUM(CASE WHEN state IN ('failed', 'interrupted') THEN 1 ELSE 0 END)
+                       AS failed,
+                   SUM(CASE WHEN state = 'cancelled' THEN 1 ELSE 0 END)
+                       AS cancelled,
+                   SUM(CASE WHEN state = 'queued' THEN 1 ELSE 0 END) AS queued,
+                   SUM(CASE WHEN state IN ('starting', 'running', 'cancelling')
+                            THEN 1 ELSE 0 END) AS active
+            FROM jobs
+            JOIN job_batch_members member ON member.job_id = jobs.job_id
+            WHERE member.batch_id = ?
+            """,
+            (batch_id,),
+        ).fetchone()
+        assert counts is not None
+        child_count = int(counts["child_count"] or 0)
+        succeeded = int(counts["succeeded"] or 0)
+        failed = int(counts["failed"] or 0)
+        cancelled = int(counts["cancelled"] or 0)
+        queued = int(counts["queued"] or 0)
+        active = int(counts["active"] or 0)
+        terminal = succeeded + failed + cancelled
+        if child_count == 0:
+            status = "preflighting"
+        elif active:
+            status = "running"
+        elif queued:
+            status = "queued"
+        elif failed and terminal == failed:
+            status = "failed"
+        elif cancelled and terminal == cancelled:
+            status = "cancelled"
+        elif failed or cancelled:
+            status = "partially_failed"
+        else:
+            status = "succeeded"
+        now = isoformat_z()
+        completed_at = now if terminal == child_count and child_count else None
+        started_at = (
+            str(batch["started_at"])
+            if batch["started_at"] is not None
+            else (now if active or terminal else None)
+        )
+        connection.execute(
+            """
+            UPDATE job_batches SET status = ?, child_count = ?,
+                cache_hit_count = ?, succeeded_count = ?, failed_count = ?,
+                cancelled_count = ?, started_at = ?, completed_at = ?
+            WHERE batch_id = ?
+            """,
+            (
+                status,
+                child_count,
+                int(counts["cache_hits"] or 0),
+                succeeded,
+                failed,
+                cancelled,
+                started_at,
+                completed_at,
+                batch_id,
+            ),
+        )
+        refreshed = connection.execute(
+            "SELECT * FROM job_batches WHERE batch_id = ?", (batch_id,)
+        ).fetchone()
+        assert refreshed is not None
+        return refreshed
+
+    def batch(self, batch_id: str) -> JobBatchRecord:
+        connection = self.database.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = self._refresh_batch_row(connection, batch_id)
+            connection.commit()
+            return _batch_record(row)
+        except (sqlite3.Error, NotFoundError) as error:
+            connection.rollback()
+            if isinstance(error, NotFoundError):
+                raise
+            raise CatalogError(f"cannot read extraction batch: {error}") from error
+        finally:
+            connection.close()
+
+    def batches(
+        self, *, offset: int = 0, limit: int = 50
+    ) -> tuple[list[JobBatchRecord], int]:
+        if offset < 0 or limit < 1 or limit > 100:
+            raise RequestError("batch pagination is outside its allowed bounds")
+        connection = self.database.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            total = int(
+                connection.execute("SELECT COUNT(*) FROM job_batches").fetchone()[0]
+            )
+            identifiers = [
+                str(row[0])
+                for row in connection.execute(
+                    """
+                    SELECT batch_id FROM job_batches
+                    ORDER BY created_at DESC, batch_id DESC LIMIT ? OFFSET ?
+                    """,
+                    (limit, offset),
+                ).fetchall()
+            ]
+            rows = [self._refresh_batch_row(connection, item) for item in identifiers]
+            connection.commit()
+            return [_batch_record(row) for row in rows], total
+        except (sqlite3.Error, NotFoundError) as error:
+            connection.rollback()
+            if isinstance(error, NotFoundError):
+                raise
+            raise CatalogError(f"cannot list extraction batches: {error}") from error
+        finally:
+            connection.close()
+
+    def batch_jobs(self, batch_id: str) -> tuple[JobRecord, ...]:
+        self.batch(batch_id)
+        connection = self.database.connect(readonly=True)
+        try:
+            rows = connection.execute(
+                """
+                SELECT jobs.* FROM jobs
+                JOIN job_batch_members member ON member.job_id = jobs.job_id
+                WHERE member.batch_id = ? ORDER BY member.ordinal
+                """,
+                (batch_id,),
+            ).fetchall()
+        finally:
+            connection.close()
+        return tuple(_record(row) for row in rows)
+
+    def attach_batch_job(self, *, batch_id: str, job_id: str, ordinal: int) -> None:
+        connection = self.database.connect()
+        try:
+            connection.execute(
+                """
+                INSERT INTO job_batch_members (batch_id, job_id, ordinal)
+                VALUES (?, ?, ?)
+                ON CONFLICT(batch_id, job_id) DO NOTHING
+                """,
+                (batch_id, job_id, ordinal),
+            )
+            connection.commit()
+        except sqlite3.Error as error:
+            connection.rollback()
+            raise CatalogError(f"cannot attach batch child job: {error}") from error
+        finally:
+            connection.close()
+
     def get(self, job_id: str) -> JobRecord:
         connection = self.database.connect(readonly=True)
         try:
@@ -459,6 +621,72 @@ class JobRepository:
             )
             for row in rows
         ]
+
+    def attempts(self, job_id: str) -> tuple[JobAttemptRecord, ...]:
+        self.get(job_id)
+        connection = self.database.connect(readonly=True)
+        try:
+            rows = connection.execute(
+                """
+                SELECT * FROM job_attempts
+                WHERE job_id = ? ORDER BY attempt_number
+                """,
+                (job_id,),
+            ).fetchall()
+        finally:
+            connection.close()
+        return tuple(
+            JobAttemptRecord(
+                attempt_id=str(row["attempt_id"]),
+                attempt_number=int(row["attempt_number"]),
+                state=str(row["state"]),
+                scheduler_instance_id=str(row["scheduler_instance_id"]),
+                worker_pid=(
+                    int(row["worker_pid"]) if row["worker_pid"] is not None else None
+                ),
+                process_group_id=(
+                    int(row["process_group_id"])
+                    if row["process_group_id"] is not None
+                    else None
+                ),
+                heartbeat_at=(
+                    str(row["heartbeat_at"])
+                    if row["heartbeat_at"] is not None
+                    else None
+                ),
+                deadline_at=str(row["deadline_at"]),
+                exit_code=(
+                    int(row["exit_code"]) if row["exit_code"] is not None else None
+                ),
+                publication_outcome=(
+                    str(row["publication_outcome"])
+                    if row["publication_outcome"] is not None
+                    else None
+                ),
+                artifact_manifest_sha256=(
+                    str(row["artifact_manifest_sha256"])
+                    if row["artifact_manifest_sha256"] is not None
+                    else None
+                ),
+                failure_class=(
+                    str(row["failure_class"])
+                    if row["failure_class"] is not None
+                    else None
+                ),
+                error_summary=(
+                    str(row["error_summary"])
+                    if row["error_summary"] is not None
+                    else None
+                ),
+                started_at=str(row["started_at"]),
+                completed_at=(
+                    str(row["completed_at"])
+                    if row["completed_at"] is not None
+                    else None
+                ),
+            )
+            for row in rows
+        )
 
     def claim_next(
         self,
@@ -979,6 +1207,28 @@ class JobRepository:
 
     def active_jobs(self) -> list[JobRecord]:
         return self.list(states=("starting", "running", "cancelling"), limit=200)[0]
+
+    def counts(self) -> JobCountRecord:
+        connection = self.database.connect(readonly=True)
+        try:
+            row = connection.execute(
+                """
+                SELECT SUM(CASE WHEN state = 'queued' THEN 1 ELSE 0 END) AS queued,
+                       SUM(CASE WHEN state IN ('starting', 'running', 'cancelling')
+                                THEN 1 ELSE 0 END) AS active,
+                       SUM(CASE WHEN state IN ('failed', 'interrupted')
+                                THEN 1 ELSE 0 END) AS failed
+                FROM jobs
+                """
+            ).fetchone()
+        finally:
+            connection.close()
+        assert row is not None
+        return JobCountRecord(
+            queued=int(row["queued"] or 0),
+            active=int(row["active"] or 0),
+            failed=int(row["failed"] or 0),
+        )
 
     def interrupt(self, job_id: str, *, detail: str) -> JobRecord:
         now = isoformat_z()

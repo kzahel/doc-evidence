@@ -11,10 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
-from doc_evidence.application.jobs import ExtractionJobApplication
+from doc_evidence.adapters.local_jobs import LocalExtractionJobs
+from doc_evidence.application.jobs import ClaimedJob
 from doc_evidence.errors import DocEvidenceError
 from doc_evidence.extractor_registry import ResourceClass
-from doc_evidence.persistence.jobs import ClaimedJob
 
 TRANSIENT_FAILURES = frozenset(
     {"worker_launch_failed", "timeout", "OSError", "unexpected_scheduler_error"}
@@ -95,7 +95,7 @@ class LibraryScheduler:
 
     def __init__(
         self,
-        application: ExtractionJobApplication,
+        application: LocalExtractionJobs,
         *,
         resource_limits: ResourceLimits | None = None,
         poll_seconds: float = 0.1,

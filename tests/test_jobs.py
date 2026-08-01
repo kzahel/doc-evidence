@@ -6,8 +6,8 @@ import time
 import unittest
 from pathlib import Path
 
+from doc_evidence.adapters.local_jobs import LocalExtractionJobs
 from doc_evidence.app_home import legacy_library_id
-from doc_evidence.application.jobs import ExtractionJobApplication
 from doc_evidence.attempts import AttemptSupervisor
 from doc_evidence.config import load_config
 from doc_evidence.errors import RequestError
@@ -38,7 +38,7 @@ store:
     "Poppler tools are required for durable job integration",
 )
 class ExtractionJobApplicationTest(unittest.TestCase):
-    def application(self, root: Path) -> tuple[ExtractionJobApplication, str, Path]:
+    def application(self, root: Path) -> tuple[LocalExtractionJobs, str, Path]:
         documents = root / "documents"
         documents.mkdir()
         source = documents / "one.pdf"
@@ -48,7 +48,7 @@ class ExtractionJobApplicationTest(unittest.TestCase):
         library_id = legacy_library_id(config.path)
         database = ensure_library_database(config, library_id=library_id)
         return (
-            ExtractionJobApplication(
+            LocalExtractionJobs(
                 library_id=library_id,
                 config=config,
                 database=database,
@@ -203,6 +203,46 @@ class ExtractionJobApplicationTest(unittest.TestCase):
                     extractor_id="poppler",
                 )
 
+    def test_batch_preflight_idempotency_and_coalesced_membership(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, document_id, _source = self.application(
+                Path(temporary_directory)
+            )
+            active = application.enqueue(
+                document_id=document_id,
+                extractor_id="poppler",
+                execution_mode="fresh_verification",
+            )
+            with self.assertRaisesRegex(RequestError, "confirmation"):
+                application.enqueue_batch(
+                    document_ids=[document_id],
+                    extractor_ids=["poppler"],
+                    execution_mode="fresh_verification",
+                    confirmed=False,
+                )
+
+            created = application.enqueue_batch(
+                document_ids=[document_id],
+                extractor_ids=["poppler"],
+                execution_mode="fresh_verification",
+                confirmed=True,
+                idempotency_key="batch-request",
+            )
+            repeated = application.enqueue_batch(
+                document_ids=[document_id],
+                extractor_ids=["poppler"],
+                execution_mode="fresh_verification",
+                confirmed=True,
+                idempotency_key="batch-request",
+            )
+
+            self.assertEqual(created.disposition, "created")
+            self.assertEqual(repeated.disposition, "idempotent")
+            self.assertEqual(created.batch.batch_id, repeated.batch.batch_id)
+            self.assertEqual(created.jobs[0].job_id, active.job.job_id)
+            self.assertEqual(created.batch.child_count, 1)
+            self.assertEqual(created.batch.status, "queued")
+
     def test_process_lock_rejects_a_second_scheduler(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             application, _document_id, _source = self.application(
@@ -220,7 +260,7 @@ class ExtractionJobApplicationTest(unittest.TestCase):
     def test_transient_worker_launch_gets_only_one_automatic_retry(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             base, document_id, _source = self.application(Path(temporary_directory))
-            application = ExtractionJobApplication(
+            application = LocalExtractionJobs(
                 library_id=base.library_id,
                 config=base.config,
                 database=base.database,

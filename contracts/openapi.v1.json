@@ -583,6 +583,335 @@
         "title": "DuplicateGroup",
         "type": "object"
       },
+      "ExtractionBatchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Document Ids",
+            "type": "array"
+          },
+          "execution_mode": {
+            "default": "reuse_or_execute",
+            "enum": [
+              "reuse_or_execute",
+              "fresh_verification"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "extractor_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Extractor Ids",
+            "type": "array"
+          },
+          "settings": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_ids",
+          "extractor_ids",
+          "confirmed"
+        ],
+        "title": "ExtractionBatchRequest",
+        "type": "object"
+      },
+      "ExtractionJobRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Document Id",
+            "type": "string"
+          },
+          "execution_mode": {
+            "default": "reuse_or_execute",
+            "enum": [
+              "reuse_or_execute",
+              "fresh_verification"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "extractor_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Extractor Id",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_id",
+          "extractor_id"
+        ],
+        "title": "ExtractionJobRequest",
+        "type": "object"
+      },
+      "ExtractorCapability": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "cached": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached"
+          },
+          "category": {
+            "enum": [
+              "native_text",
+              "ocr_preprocessing",
+              "layout_parser",
+              "other"
+            ],
+            "title": "Category",
+            "type": "string"
+          },
+          "default_timeout_seconds": {
+            "minimum": 1.0,
+            "title": "Default Timeout Seconds",
+            "type": "integer"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractorDependency"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "deterministic": {
+            "title": "Deterministic",
+            "type": "boolean"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "document_supported": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Supported"
+          },
+          "extractor_id": {
+            "title": "Extractor Id",
+            "type": "string"
+          },
+          "output_kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Output Kinds",
+            "type": "array"
+          },
+          "recommended": {
+            "title": "Recommended",
+            "type": "boolean"
+          },
+          "resource_class": {
+            "enum": [
+              "light",
+              "ocr",
+              "model_heavy"
+            ],
+            "title": "Resource Class",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "run_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Key"
+          },
+          "settings_schema": {
+            "additionalProperties": true,
+            "title": "Settings Schema",
+            "type": "object"
+          },
+          "supported_media_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported Media Types",
+            "type": "array"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "version_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Label"
+          }
+        },
+        "required": [
+          "extractor_id",
+          "display_name",
+          "category",
+          "supported_media_types",
+          "dependencies",
+          "available",
+          "unavailable_reason",
+          "version_label",
+          "resource_class",
+          "settings_schema",
+          "default_timeout_seconds",
+          "deterministic",
+          "output_kinds",
+          "document_supported",
+          "cached",
+          "run_key",
+          "run_id",
+          "recommended"
+        ],
+        "title": "ExtractorCapability",
+        "type": "object"
+      },
+      "ExtractorCapabilityList": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractorCapability"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "items"
+        ],
+        "title": "ExtractorCapabilityList",
+        "type": "object"
+      },
+      "ExtractorDependency": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "name",
+          "available",
+          "version",
+          "reason"
+        ],
+        "title": "ExtractorDependency",
+        "type": "object"
+      },
       "ExtractorRun": {
         "additionalProperties": false,
         "properties": {
@@ -702,6 +1031,782 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JobAttempt": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_manifest_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Manifest Sha256"
+          },
+          "attempt_id": {
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "attempt_number": {
+            "minimum": 1.0,
+            "title": "Attempt Number",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "deadline_at": {
+            "title": "Deadline At",
+            "type": "string"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "failure_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Class"
+          },
+          "heartbeat_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heartbeat At"
+          },
+          "process_group_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Group Id"
+          },
+          "publication_outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Outcome"
+          },
+          "scheduler_instance_id": {
+            "title": "Scheduler Instance Id",
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "worker_pid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Pid"
+          }
+        },
+        "required": [
+          "attempt_id",
+          "attempt_number",
+          "state",
+          "scheduler_instance_id",
+          "worker_pid",
+          "process_group_id",
+          "heartbeat_at",
+          "deadline_at",
+          "exit_code",
+          "publication_outcome",
+          "artifact_manifest_sha256",
+          "failure_class",
+          "error_summary",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "JobAttempt",
+        "type": "object"
+      },
+      "JobBatchCreationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/JobBatchSummary"
+          },
+          "disposition": {
+            "enum": [
+              "created",
+              "idempotent"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobSummary"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "disposition",
+          "batch",
+          "jobs"
+        ],
+        "title": "JobBatchCreationResponse",
+        "type": "object"
+      },
+      "JobBatchPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JobBatchSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "offset",
+          "limit",
+          "total"
+        ],
+        "title": "JobBatchPage",
+        "type": "object"
+      },
+      "JobBatchSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "cache_hit_count": {
+            "minimum": 0.0,
+            "title": "Cache Hit Count",
+            "type": "integer"
+          },
+          "cancelled_count": {
+            "minimum": 0.0,
+            "title": "Cancelled Count",
+            "type": "integer"
+          },
+          "child_count": {
+            "minimum": 0.0,
+            "title": "Child Count",
+            "type": "integer"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "failed_count": {
+            "minimum": 0.0,
+            "title": "Failed Count",
+            "type": "integer"
+          },
+          "library_id": {
+            "title": "Library Id",
+            "type": "string"
+          },
+          "policy": {
+            "additionalProperties": true,
+            "title": "Policy",
+            "type": "object"
+          },
+          "requested_count": {
+            "minimum": 0.0,
+            "title": "Requested Count",
+            "type": "integer"
+          },
+          "selection": {
+            "additionalProperties": true,
+            "title": "Selection",
+            "type": "object"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "succeeded_count": {
+            "minimum": 0.0,
+            "title": "Succeeded Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch_id",
+          "library_id",
+          "selection",
+          "policy",
+          "status",
+          "requested_count",
+          "child_count",
+          "cache_hit_count",
+          "succeeded_count",
+          "failed_count",
+          "cancelled_count",
+          "created_at",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "JobBatchSummary",
+        "type": "object"
+      },
+      "JobCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "minimum": 0.0,
+            "title": "Active",
+            "type": "integer"
+          },
+          "failed": {
+            "minimum": 0.0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "queued": {
+            "minimum": 0.0,
+            "title": "Queued",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued",
+          "active",
+          "failed"
+        ],
+        "title": "JobCounts",
+        "type": "object"
+      },
+      "JobCreationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "enum": [
+              "created",
+              "coalesced",
+              "idempotent",
+              "cache_hit"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobSummary"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "disposition",
+          "job"
+        ],
+        "title": "JobCreationResponse",
+        "type": "object"
+      },
+      "JobDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/JobAttempt"
+            },
+            "title": "Attempts",
+            "type": "array"
+          },
+          "job": {
+            "$ref": "#/components/schemas/JobSummary"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job",
+          "attempts"
+        ],
+        "title": "JobDetail",
+        "type": "object"
+      },
+      "JobEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "progress_current": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Current"
+          },
+          "progress_total": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress Total"
+          },
+          "sequence": {
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "event_type",
+          "stage",
+          "detail",
+          "created_at"
+        ],
+        "title": "JobEvent",
+        "type": "object"
+      },
+      "JobEventPage": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "minimum": 0.0,
+            "title": "After",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JobEvent"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "after",
+          "items"
+        ],
+        "title": "JobEventPage",
+        "type": "object"
+      },
+      "JobPage": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/JobCounts"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/JobSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "minimum": 0.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "offset",
+          "limit",
+          "total",
+          "counts"
+        ],
+        "title": "JobPage",
+        "type": "object"
+      },
+      "JobSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "active_attempt_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Attempt Id"
+          },
+          "automatic_retry_count": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Automatic Retry Count",
+            "type": "integer"
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
+          "cancellation_requested": {
+            "title": "Cancellation Requested",
+            "type": "boolean"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "execution_mode": {
+            "enum": [
+              "reuse_or_execute",
+              "fresh_verification"
+            ],
+            "title": "Execution Mode",
+            "type": "string"
+          },
+          "extractor_id": {
+            "title": "Extractor Id",
+            "type": "string"
+          },
+          "failure_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Class"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "library_id": {
+            "title": "Library Id",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "queue_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Reason"
+          },
+          "queued_at": {
+            "title": "Queued At",
+            "type": "string"
+          },
+          "resource_class": {
+            "enum": [
+              "light",
+              "ocr",
+              "model_heavy"
+            ],
+            "title": "Resource Class",
+            "type": "string"
+          },
+          "result_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Run Id"
+          },
+          "retry_count": {
+            "minimum": 0.0,
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "run_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Key"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "starting",
+              "running",
+              "cancelling",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "interrupted"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "library_id",
+          "batch_id",
+          "document_id",
+          "extractor_id",
+          "settings",
+          "execution_mode",
+          "run_key",
+          "priority",
+          "resource_class",
+          "state",
+          "outcome",
+          "queue_reason",
+          "retry_count",
+          "automatic_retry_count",
+          "cancellation_requested",
+          "active_attempt_id",
+          "result_run_id",
+          "failure_class",
+          "error_summary",
+          "created_at",
+          "queued_at",
+          "started_at",
+          "completed_at",
+          "updated_at"
+        ],
+        "title": "JobSummary",
         "type": "object"
       },
       "KnownLibraryList": {
@@ -2385,6 +3490,580 @@
           }
         ],
         "summary": "Library Runs"
+      }
+    },
+    "/api/v1/libraries/{library_id}/extractors": {
+      "get": {
+        "operationId": "library_extractors_api_v1_libraries__library_id__extractors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractorCapabilityList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Library Extractors"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs": {
+      "get": {
+        "operationId": "jobs_api_v1_libraries__library_id__jobs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Jobs"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/extraction-batches": {
+      "get": {
+        "operationId": "extraction_batches_api_v1_libraries__library_id__jobs_extraction_batches_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobBatchPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Extraction Batches"
+      },
+      "post": {
+        "operationId": "create_extraction_batch_api_v1_libraries__library_id__jobs_extraction_batches_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractionBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobBatchCreationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Extraction Batch"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/extractions": {
+      "post": {
+        "operationId": "create_extraction_job_api_v1_libraries__library_id__jobs_extractions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractionJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobCreationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Extraction Job"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/{job_id}": {
+      "get": {
+        "operationId": "job_api_v1_libraries__library_id__jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Job"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_job_api_v1_libraries__library_id__jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Job"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/events": {
+      "get": {
+        "operationId": "job_events_api_v1_libraries__library_id__jobs__job_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "After",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobEventPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Job Events"
+      }
+    },
+    "/api/v1/libraries/{library_id}/jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_job_api_v1_libraries__library_id__jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "library_id",
+            "required": true,
+            "schema": {
+              "title": "Library Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retry Job"
       }
     },
     "/api/v1/libraries/{library_id}/search": {

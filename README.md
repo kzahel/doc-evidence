@@ -45,8 +45,9 @@ The delivery sequence is deliberate:
    registry, private worker protocol, supervised process trees, validated
    staging, atomic artifact publication, durable queue, scheduler lease,
    bounded resource dispatcher, cancellation, and restart reconciliation are
-   also implemented; API contracts and operational UI continue in Tactical
-   001.
+   also implemented. Authenticated API contracts, generated clients, runtime
+   operations, and confirmed bounded batches are implemented; the document
+   controls and operational UI continue in Tactical 001.
 3. **Following product slice:** durable human review events and portable review
    state, kept separate from regenerable extractor output.
 4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
@@ -101,7 +102,10 @@ canonical content-addressed run. Schema-versioned jobs, attempts, events, and
 batches now live beside the library catalog, with idempotent/coalesced enqueue,
 cache fulfillment, a process-locked per-library scheduler, priority aging,
 resource limits, cancellation, one bounded transient retry, and startup
-reconciliation.
+reconciliation. The library-scoped v1 API and generated React runtime now
+expose capabilities, single-document and confirmed-batch enqueue, activity,
+attempt/event detail, cancellation, and retry without accepting client paths
+or executables.
 
 Read these first:
 

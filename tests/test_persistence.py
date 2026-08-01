@@ -175,14 +175,14 @@ class LibraryPersistenceTest(unittest.TestCase):
             connection = database.connect(readonly=True)
             try:
                 self.assertEqual(
-                    connection.execute("PRAGMA user_version").fetchone()[0], 2
+                    connection.execute("PRAGMA user_version").fetchone()[0], 3
                 )
                 migrations = connection.execute(
                     "SELECT version FROM schema_migrations"
                 ).fetchall()
             finally:
                 connection.close()
-            self.assertEqual([row[0] for row in migrations], [1, 2])
+            self.assertEqual([row[0] for row in migrations], [1, 2, 3])
 
 
 if __name__ == "__main__":

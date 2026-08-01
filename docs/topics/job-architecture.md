@@ -7,8 +7,9 @@ Topic: job-architecture
 **Status:** Tactical 001 implementation in progress. Unified persistence,
 atomic catalog membership generations, extractor registration, supervised
 attempt execution, atomic artifact publication, durable job persistence, and
-the bounded per-library scheduler are implemented; application contracts and
-operational UI remain in progress.
+the bounded per-library scheduler are implemented. Authenticated API,
+generated-client/runtime, and bounded batch operations are implemented;
+document controls and operational UI remain in progress.
 
 ## Purpose
 

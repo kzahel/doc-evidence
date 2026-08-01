@@ -13,6 +13,15 @@ import type {
   KnownLibraryList,
   LibraryDetail,
   LibraryActivation,
+  ExtractorCapabilityList,
+  ExtractionJobRequest,
+  ExtractionBatchRequest,
+  JobCreationResponse,
+  JobBatchCreationResponse,
+  JobPage,
+  JobDetail,
+  JobEventPage,
+  JobBatchPage,
 } from "./runtime";
 
 export interface FixtureRuntimeData {
@@ -27,6 +36,13 @@ export interface FixtureRuntimeData {
   app?: AppSummary;
   libraries?: KnownLibraryList;
   libraryDetails?: Record<string, LibraryDetail>;
+  extractors?: ExtractorCapabilityList;
+  jobs?: JobPage;
+  jobDetails?: Record<string, JobDetail>;
+  jobEvents?: Record<string, JobEventPage>;
+  batches?: JobBatchPage;
+  jobCreation?: JobCreationResponse;
+  batchCreation?: JobBatchCreationResponse;
 }
 
 export function comparisonKey(input: ComparisonRequest): string {
@@ -145,5 +161,59 @@ export class FixtureRuntime implements DocEvidenceRuntime {
   async getDiagnostics(): Promise<Diagnostics> {
     this.check();
     return this.data.diagnostics ?? { schema_version: 1, checks: [], catalog_metadata: {} };
+  }
+
+  async getExtractors(_libraryId: string, documentId?: string): Promise<ExtractorCapabilityList> {
+    this.check();
+    return this.data.extractors ?? { schema_version: 1, document_id: documentId ?? null, items: [] };
+  }
+
+  async createExtraction(_libraryId: string, _input: ExtractionJobRequest): Promise<JobCreationResponse> {
+    this.check();
+    if (!this.data.jobCreation) throw new Error("Fixture job creation not configured");
+    return this.data.jobCreation;
+  }
+
+  async createExtractionBatch(_libraryId: string, _input: ExtractionBatchRequest): Promise<JobBatchCreationResponse> {
+    this.check();
+    if (!this.data.batchCreation) throw new Error("Fixture batch creation not configured");
+    return this.data.batchCreation;
+  }
+
+  async listJobs(): Promise<JobPage> {
+    this.check();
+    return this.data.jobs ?? {
+      schema_version: 1,
+      items: [],
+      offset: 0,
+      limit: 50,
+      total: 0,
+      counts: { queued: 0, active: 0, failed: 0 },
+    };
+  }
+
+  async getJob(_libraryId: string, jobId: string): Promise<JobDetail> {
+    this.check();
+    const value = this.data.jobDetails?.[jobId];
+    if (!value) throw new Error("Fixture job not found");
+    return value;
+  }
+
+  async getJobEvents(_libraryId: string, jobId: string): Promise<JobEventPage> {
+    this.check();
+    return this.data.jobEvents?.[jobId] ?? { schema_version: 1, job_id: jobId, after: 0, items: [] };
+  }
+
+  async cancelJob(_libraryId: string, jobId: string): Promise<JobDetail> {
+    return this.getJob(_libraryId, jobId);
+  }
+
+  async retryJob(_libraryId: string, jobId: string): Promise<JobDetail> {
+    return this.getJob(_libraryId, jobId);
+  }
+
+  async listBatches(): Promise<JobBatchPage> {
+    this.check();
+    return this.data.batches ?? { schema_version: 1, items: [], offset: 0, limit: 50, total: 0 };
   }
 }

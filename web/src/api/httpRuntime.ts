@@ -130,5 +130,81 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
       if (!data) throw failure(error, response);
       return data;
     },
+    async getExtractors(libraryId, documentId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/extractors", {
+        params: { path: { library_id: libraryId }, query: { document_id: documentId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async createExtraction(libraryId, input, idempotencyKey, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/extractions", {
+        params: { path: { library_id: libraryId } },
+        body: input,
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async createExtractionBatch(libraryId, input, idempotencyKey, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/extraction-batches", {
+        params: { path: { library_id: libraryId } },
+        body: input,
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async listJobs(libraryId, state, offset = 0, limit = 50, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs", {
+        params: { path: { library_id: libraryId }, query: { state, offset, limit } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async getJob(libraryId, jobId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs/{job_id}", {
+        params: { path: { library_id: libraryId, job_id: jobId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async getJobEvents(libraryId, jobId, after = 0, limit = 200, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs/{job_id}/events", {
+        params: { path: { library_id: libraryId, job_id: jobId }, query: { after, limit } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async cancelJob(libraryId, jobId, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/{job_id}/cancel", {
+        params: { path: { library_id: libraryId, job_id: jobId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async retryJob(libraryId, jobId, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/{job_id}/retry", {
+        params: { path: { library_id: libraryId, job_id: jobId } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async listBatches(libraryId, offset = 0, limit = 50, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/jobs/extraction-batches", {
+        params: { path: { library_id: libraryId }, query: { offset, limit } },
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
   };
 }

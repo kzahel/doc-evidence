@@ -973,3 +973,33 @@ fresh-worker, event-history, lease release, competing-scheduler lock,
 published-artifact recovery, missing-success integrity, and bounded automatic
 retry tests pass. Application/API contracts, batch creation policy, and
 operational views remain in progress.
+
+### Slice 6 — authenticated job contracts, API, runtime, and batches
+
+Implemented the bounded product surface above the job service:
+
+- corrected the application boundary so framework-independent job records and
+  service protocols no longer import SQLite, filesystem, or adapter modules;
+- schema version 3 many-to-many batch membership, enabling a confirmed batch
+  to reference coalesced work without duplicating the logical job;
+- capability records with dependency/version diagnostics, supported media,
+  resource/deadline/settings declarations, exact document run/cache coverage,
+  and image-only OCR recommendation;
+- authenticated library-scoped routes for capabilities, single extraction,
+  confirmed bounded batch creation/listing, job activity/detail, attempts,
+  bounded ordered events, cancellation, and retry;
+- payload-checked `Idempotency-Key` handling for single and batch mutations,
+  batch preflight before child creation, 200-document/5-extractor/500-request
+  bounds, and no browser-supplied source, destination, executable, command, or
+  environment fields;
+- lazy per-library scheduler startup after enqueue and clean manager shutdown;
+  and
+- regenerated checked OpenAPI/TypeScript wire contracts plus hand-owned HTTP
+  and fixture runtime operations.
+
+Focused API authentication, capability/cache coverage, cache-hit and repeated
+idempotency, activity/detail/events, confirmation rejection, successful batch,
+API-enqueued fresh Poppler execution, batch coalescing membership, schema
+migration, generated-contract drift, TypeScript, Ruff, and Pyright validation
+pass. The document execution panel and global activity/batch UI remain in
+progress.

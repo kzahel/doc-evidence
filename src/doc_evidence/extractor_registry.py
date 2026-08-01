@@ -20,6 +20,7 @@ class DependencySpec:
     executable: str
     version_arguments: tuple[str, ...]
     repo_relative: str | None = None
+    version_sibling: str | None = None
 
     def resolve(self) -> Path | None:
         if self.repo_relative is not None:
@@ -213,8 +214,12 @@ DEFAULT_EXTRACTORS = (
             DependencySpec(
                 "marker_single",
                 "marker_single",
-                ("--help",),
+                (
+                    "-c",
+                    "import importlib.metadata as m; print(m.version('marker-pdf'))",
+                ),
                 repo_relative=".extractors/marker/bin/marker_single",
+                version_sibling="python",
             ),
         ),
         resource_class="model_heavy",
@@ -257,8 +262,13 @@ class ExtractorRegistry:
                     )
                 )
                 continue
+            version_executable = (
+                executable.parent / dependency.version_sibling
+                if dependency.version_sibling is not None
+                else executable
+            )
             version = command_version(
-                [str(executable), *dependency.version_arguments],
+                [str(version_executable), *dependency.version_arguments],
                 timeout_seconds=120,
             )
             dependencies.append(

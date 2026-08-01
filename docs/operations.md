@@ -131,7 +131,7 @@ Use the `doc-evidence` command for FTS queries. A system `sqlite3` shell may be
 linked against a different SQLite build that cannot load the FTS5 table even
 when the Python runtime reported by `doc-evidence doctor` supports it.
 
-## Local Read-only Application
+## Local Application
 
 Build once from the repository root:
 
@@ -165,10 +165,22 @@ captured only in browser memory, removed immediately from visible/history
 state, and required for every API, render, and raw-artifact request. It is not
 printed, persisted, or placed in a query string.
 
-The Tactical 000 interface is read-only. It can search the rebuildable
-catalog, render requested PDF pages into versioned derived cache entries,
-compare existing extractor runs, and preview bounded raw artifacts. It cannot
-edit sources, persist review decisions, or start extraction jobs.
+The document and comparison workspace remains source-read-only. It can search
+the rebuildable catalog, render requested PDF pages into versioned derived
+cache entries, compare existing extractor runs, and preview bounded raw
+artifacts. Tactical 001 also exposes registered extractor availability and
+explicit document or confirmed-batch extraction requests through the
+authenticated application. Merely selecting a document, page, representation,
+or comparison never starts work.
+
+Extraction requests are durable in the selected library's
+`doc-evidence.sqlite`. A validated canonical result is fulfilled immediately
+as a cache hit; identical active work is coalesced. Otherwise a process-locked
+per-library scheduler dispatches a supervised attempt under the configured
+resource limits. Closing the browser does not cancel queued work. Clean server
+shutdown requests cancellation of active local workers while retaining queue
+intent and attempt evidence for restart reconciliation. Source files are never
+modified. Persistent review decisions remain a later slice.
 
 ## Duplicates
 

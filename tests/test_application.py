@@ -5,6 +5,7 @@ import hashlib
 import json
 import shutil
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -151,6 +152,7 @@ class ApplicationIntegrationTest(unittest.TestCase):
         }
 
     def tearDown(self) -> None:
+        self.manager.shutdown()
         self.temporary.cleanup()
 
     def test_library_search_groups_diff_artifacts_and_render_cache(self) -> None:
@@ -291,6 +293,107 @@ class ApplicationIntegrationTest(unittest.TestCase):
         self.assertIn("HTTPBearer", schema["components"]["securitySchemes"])
         self.assertIn("/api/v1/comparisons", schema["paths"])
         self.assertIn("/api/v1/libraries/{library_id}", schema["paths"])
+
+    def test_extractor_job_and_batch_api(self) -> None:
+        prefix = f"/api/v1/libraries/{self.library_id}"
+        capabilities = self.client.get(
+            prefix + "/extractors",
+            params={"document_id": self.document_id},
+            headers=self.headers,
+        )
+        self.assertEqual(capabilities.status_code, 200, capabilities.text)
+        poppler = next(
+            item
+            for item in capabilities.json()["items"]
+            if item["extractor_id"] == "poppler"
+        )
+        self.assertTrue(poppler["available"])
+        self.assertTrue(poppler["document_supported"])
+        self.assertTrue(poppler["cached"])
+        self.assertIsNotNone(poppler["run_key"])
+
+        enqueue_headers = {**self.headers, "Idempotency-Key": "api-cache-hit"}
+        created = self.client.post(
+            prefix + "/jobs/extractions",
+            headers=enqueue_headers,
+            json={
+                "document_id": self.document_id,
+                "extractor_id": "poppler",
+            },
+        )
+        repeated = self.client.post(
+            prefix + "/jobs/extractions",
+            headers=enqueue_headers,
+            json={
+                "document_id": self.document_id,
+                "extractor_id": "poppler",
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        self.assertEqual(created.json()["disposition"], "cache_hit")
+        self.assertEqual(repeated.json()["disposition"], "idempotent")
+        job_id = created.json()["job"]["job_id"]
+
+        listing = self.client.get(prefix + "/jobs", headers=self.headers)
+        detail = self.client.get(prefix + f"/jobs/{job_id}", headers=self.headers)
+        events = self.client.get(
+            prefix + f"/jobs/{job_id}/events", headers=self.headers
+        )
+        self.assertEqual(listing.json()["counts"]["active"], 0)
+        self.assertEqual(detail.json()["attempts"], [])
+        self.assertEqual(events.json()["items"][0]["event_type"], "cache_hit")
+
+        rejected = self.client.post(
+            prefix + "/jobs/extraction-batches",
+            headers=self.headers,
+            json={
+                "document_ids": [self.document_id],
+                "extractor_ids": ["poppler"],
+                "confirmed": False,
+            },
+        )
+        batch = self.client.post(
+            prefix + "/jobs/extraction-batches",
+            headers={**self.headers, "Idempotency-Key": "api-batch"},
+            json={
+                "document_ids": [self.document_id],
+                "extractor_ids": ["poppler"],
+                "confirmed": True,
+            },
+        )
+        self.assertEqual(rejected.status_code, 400)
+        self.assertEqual(batch.status_code, 200, batch.text)
+        self.assertEqual(batch.json()["batch"]["status"], "succeeded")
+        self.assertEqual(batch.json()["batch"]["cache_hit_count"], 1)
+
+        fresh = self.client.post(
+            prefix + "/jobs/extractions",
+            headers=self.headers,
+            json={
+                "document_id": self.document_id,
+                "extractor_id": "poppler",
+                "execution_mode": "fresh_verification",
+            },
+        )
+        self.assertEqual(fresh.status_code, 200, fresh.text)
+        fresh_id = fresh.json()["job"]["job_id"]
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            current = self.client.get(
+                prefix + f"/jobs/{fresh_id}", headers=self.headers
+            )
+            if current.json()["job"]["state"] in {
+                "succeeded",
+                "failed",
+                "cancelled",
+            }:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail("API-enqueued extraction did not complete")
+        self.manager.shutdown()
+        self.assertEqual(current.json()["job"]["state"], "succeeded")
+        self.assertEqual(current.json()["job"]["outcome"], "verified_cache_match")
 
 
 class DependencyDirectionTest(unittest.TestCase):
