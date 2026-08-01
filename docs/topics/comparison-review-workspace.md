@@ -14,6 +14,10 @@ and recording review decisions without confusing agreement with truth.
 It does not own extractor implementation, domain-specific field schemas, or
 downstream tax and accounting conclusions.
 
+[Spatial provenance and regional OCR](spatial-provenance-and-regional-ocr.md)
+owns the coordinate, span, overlay, spatial-diff, and targeted re-extraction
+direction that extends this workspace beyond flattened page text.
+
 ## Representation Vocabulary
 
 Every displayed result must identify which layer it represents:
@@ -80,6 +84,8 @@ normalization-equivalent groups. Exact equality comes first.
   timing.
 - Add coordinate overlays only when provenance is genuinely available; do not
   fabricate locations from plain text.
+- Link selected extraction spans and genuine page regions in both directions,
+  with the exact source or derived page representation clearly labeled.
 
 ### Review semantics
 
@@ -106,7 +112,8 @@ The first version should provide:
 - page identity and one-based page number; and
 - `comparison_algorithm_version`.
 
-Spatial and reading-order diffs follow when normalized block/region contracts
+Spatial and reading-order diffs follow when the normalized contracts proposed
+in [Spatial provenance and regional OCR](spatial-provenance-and-regional-ocr.md)
 retain enough information.
 
 ## Tactical Boundaries
@@ -121,7 +128,10 @@ documents.
 
 ## Known Gaps
 
-- Current normalized Docling and Marker pages flatten block provenance.
+- Current Poppler, OCRmyPDF, Tesseract, Docling, and Marker normalization
+  flattens or fails to expose available spatial provenance. The accepted
+  solution direction and extractor capability inventory are recorded in
+  [Spatial provenance and regional OCR](spatial-provenance-and-regional-ocr.md).
 - No durable workspace review database exists.
 - No generic classification contract identifies hybrid image-background plus
   native-text pages.

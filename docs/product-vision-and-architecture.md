@@ -39,6 +39,9 @@ Desktop library ownership is maintained in
 Product position, adjacent software, intended uses, and the agent/human
 operator model are maintained in
 [Product landscape and use cases](topics/product-landscape-and-use-cases.md).
+Extractor geometry, bidirectional source/text selection, spatial comparison,
+and targeted regional extraction are maintained in
+[Spatial provenance and regional OCR](topics/spatial-provenance-and-regional-ocr.md).
 Bounded implementation plans live under [`tactical/`](tactical/README.md).
 
 ## Product Principles
@@ -466,6 +469,10 @@ This is the first product-defining vertical slice.
 - Distinguish omission, addition, substitution, and ordering differences.
 - Keep numeric discrepancies visible even when surrounded by identical text.
 - Compare against the rendered page and optional bounding-box overlays.
+- Let genuine spatial spans link extraction selections and page regions in
+  both directions, labeling exact, transformed, or approximate mappings.
+- Focus a disagreement region and optionally request bounded regional OCR
+  without overwriting the original run or treating a rerun as reviewed truth.
 - Display exact engine descriptions, versions, options, and representation
   type: native text, OCR, layout parser, or semantic adapter.
 - Show the selected page and total document page count.

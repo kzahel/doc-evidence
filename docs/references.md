@@ -90,6 +90,33 @@ second Rust/Python-only credential for native folder authorization, packages a
 small document-tool pack instead of ML transcription models, and defers all
 heavy extractor packs.
 
+## Extractor Spatial-Output References
+
+The spatial capability inventory in
+[Spatial provenance and regional OCR](topics/spatial-provenance-and-regional-ocr.md)
+was checked on 2026-08-01 against the installed tools and these primary
+references:
+
+- [Tesseract command-line output formats](https://tesseract-ocr.github.io/tessdoc/Command-Line-Usage.html)
+  for TSV hierarchy, word rectangles and confidence, hOCR, and box output;
+- [Poppler `pdftotext` manual](https://manpages.debian.org/testing/poppler-utils/pdftotext.1.en.html)
+  for word/layout bounding boxes, TSV, and page-box behavior;
+- [Docling document-model reference](https://docling-project.github.io/docling/reference/docling_document/)
+  for item provenance, bounding boxes, character spans, origins, and page
+  geometry;
+- [Marker](https://github.com/datalab-to/marker) for JSON block and table-cell
+  boxes and optional retained OCR characters; and
+- [OCRmyPDF cookbook](https://ocrmypdf.readthedocs.io/en/latest/cookbook.html)
+  and [advanced documentation](https://ocrmypdf.readthedocs.io/en/stable/advanced.html)
+  for the text-only sidecar, invisible text layer, renderer choices, and
+  preprocessing transforms.
+
+The adopted lesson is to normalize these different outputs into explicit
+run-bound coordinate spaces and spans while preserving the raw artifacts. The
+project does not assume that boxes measured on an OCR-derived, deskewed page
+align directly with the immutable source page, and does not make the external
+tool formats its public API.
+
 ## Documentation-Structure Siblings
 
 The documentation roles and tactical numbering conventions were compared with

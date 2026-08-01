@@ -86,6 +86,14 @@ coordinates when possible:
 
 The observation must record the coordinate system when a region is present.
 
+The current observation schema permits one rectangular region. The accepted
+future direction adds explicit source/derived/crop coordinate spaces,
+transform chains, extractor-span identities, polygons or multiple regions,
+and normalized-text mappings without discarding the raw tool coordinates.
+[Spatial provenance and regional OCR](topics/spatial-provenance-and-regional-ocr.md)
+owns that proposed contract until a numbered tactical approves a schema
+version and migration.
+
 ## Currency and Units
 
 Keep raw and normalized values separate. A source amount should retain its

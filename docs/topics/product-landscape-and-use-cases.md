@@ -241,6 +241,13 @@ form field
   -> source content hash, page, and region
 ```
 
+The extractor geometry, coordinate transforms, selection behavior, and
+bounded disagreement-region reruns needed to make that interaction honest are
+specified in
+[Spatial provenance and regional OCR](spatial-provenance-and-regional-ocr.md).
+That topic keeps a high-confidence regional rerun distinct from an explicit
+human review decision.
+
 ## Adjacent Product Landscape
 
 No researched product combines all of Doc Evidence's intended boundaries.

@@ -67,6 +67,9 @@ Before substantive work:
    `docs/topics/comparison-review-workspace.md` for application work. Consult
    `docs/topics/maintainer-feature-requests.md` before planning or changing
    the live review interface.
+   Read `docs/topics/spatial-provenance-and-regional-ocr.md` before changing
+   page coordinates, normalized spatial spans, source/text overlays, spatial
+   comparison, regional extraction, or region-linked observations and review.
    Read `docs/topics/product-landscape-and-use-cases.md` before changing
    product positioning, durable review, candidate observations, domain packs,
    source-to-form mapping, agent workflows, or external product integration.
@@ -283,6 +286,12 @@ implementation boundary. It plans a self-contained, unsigned macOS arm64 app
 and baseline extractor pack, but no implementation has started. Signing,
 notarization, DMG/updater work, heavy extractor packs, Windows, and Linux
 remain outside it.
+The maintainer has also selected bidirectional text/page highlighting and
+bounded regional OCR as an accepted product direction. The researched
+extractor capabilities, coordinate-space contract, proposed UI, job identity,
+and machine-versus-human trust boundary live in
+`docs/topics/spatial-provenance-and-regional-ocr.md`; no implementing tactical
+has been authorized.
 
 ## Validation and Commits
 

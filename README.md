@@ -72,6 +72,13 @@ which is ready for review but has not been authorized or started. See
 [Application platform](docs/topics/application-platform.md), and
 [Desktop library management](docs/topics/library-management.md).
 
+The researched direction for mapping extracted text to source-page boxes,
+linking comparison differences to regions, and performing bounded regional
+OCR is recorded in
+[Spatial provenance and regional OCR](docs/topics/spatial-provenance-and-regional-ocr.md).
+It is a shared-product direction, not part of the unstarted Tauri packaging
+tactical and not yet an approved implementation slice.
+
 ## Status
 
 Phases 1 and 2 and the first read-only application slice are implemented. In
@@ -145,14 +152,15 @@ Read these first:
 2. [Master plan](docs/master-plan.md)
 3. [Living topics](docs/topics/README.md)
 4. [Product landscape and use cases](docs/topics/product-landscape-and-use-cases.md)
-5. [Library management](docs/topics/library-management.md)
-6. [Durable job architecture](docs/topics/job-architecture.md)
-7. [Implementation tacticals](docs/tactical/README.md)
-8. [Architecture](docs/architecture.md)
-9. [Data contracts](docs/data-contracts.md)
-10. [Benchmark plan](docs/benchmarking.md)
-11. [References](docs/references.md)
-12. [Operations](docs/operations.md)
+5. [Spatial provenance and regional OCR](docs/topics/spatial-provenance-and-regional-ocr.md)
+6. [Library management](docs/topics/library-management.md)
+7. [Durable job architecture](docs/topics/job-architecture.md)
+8. [Implementation tacticals](docs/tactical/README.md)
+9. [Architecture](docs/architecture.md)
+10. [Data contracts](docs/data-contracts.md)
+11. [Benchmark plan](docs/benchmarking.md)
+12. [References](docs/references.md)
+13. [Operations](docs/operations.md)
 
 ## Core Principles
 

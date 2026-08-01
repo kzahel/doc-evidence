@@ -91,6 +91,8 @@ external case workspace.
   — implemented for read-only review
 - Group equivalent outputs and provide versioned word and numeric diffs.
   — implemented; structural/spatial diff deferred
+- Retain extractor geometry and link selected output to source-page regions.
+  — researched direction; implementation tactical not yet approved
 - Persist human tags and review decisions separately from extractor output.
 - Generate frontend API types from Python-owned contracts. — implemented
 
@@ -130,6 +132,8 @@ Tactical 002 implementation has not been authorized or started.
 - Support deterministic rules and model-assisted adapters.
 - Cache models by exact provider/model/prompt/schema identity.
 - Keep candidates separate from review overlays.
+- Cite normalized spatial spans and exact page representations when available;
+  see [Spatial provenance and regional OCR](topics/spatial-provenance-and-regional-ocr.md).
 
 ### Phase 4 — Downstream adapters
 
@@ -177,8 +181,11 @@ Tactical 002 implementation has not been authorized or started.
 
 - Measure safe default concurrency for light, OCR, and model-heavy resource
   classes rather than inferring it from CPU count alone.
-- Whether the directional v1 token diff should gain a symmetric summary, plus
-  the initial spatial diff contract.
+- Whether the directional v1 token diff should gain a symmetric summary. The
+  initial spatial-diff, overlay, and regional-rerun solution direction is
+  recorded in
+  [Spatial provenance and regional OCR](topics/spatial-provenance-and-regional-ocr.md),
+  but its first tactical and schema choices remain open.
 - Turn the declarative `ocr_when` and `layout_when` policy into explicit,
   resumable catalog-wide routing. Today only Poppler runs during inventory;
   heavy experts require an explicit document action, confirmed bounded OCR

@@ -18,6 +18,26 @@ behavior, and implementation status remain traceable.
 
 ## Open Requests
 
+### Link extracted text to page regions and improve disputed regions
+
+**Status:** RESEARCHED; accepted product direction, but no implementation
+tactical has been authorized.
+
+Selecting OCR or extracted text should highlight its genuine source rectangle,
+and selecting a page rectangle should focus the corresponding extracted text.
+Comparison differences should be able to zoom to their implicated regions. A
+user or bounded automatic policy may then request higher-resolution or varied
+OCR for that region, preserving every attempt and its coordinate transform.
+
+Regional OCR results remain provisional machine candidates. They do not
+overwrite the full-page extraction or source, and a machine-preferred result
+does not become human-confirmed until an explicit review event says so.
+
+[Spatial provenance and regional OCR](spatial-provenance-and-regional-ocr.md)
+records the verified extractor capabilities, proposed spatial contracts,
+bidirectional interaction, regional-job identity, safeguards, validation, and
+possible implementation slices.
+
 ### Remember libraries without repeated command-line configuration
 
 **Status:** IMPLEMENTED in
@@ -164,6 +184,9 @@ extractor without making browsing active.
   collection-scope transitions.
 - [Comparison and review workspace](comparison-review-workspace.md) owns the
   page-centered comparison interaction and extraction presentation.
+- [Spatial provenance and regional OCR](spatial-provenance-and-regional-ocr.md)
+  owns page-region contracts, overlay interaction, spatial diffs, and bounded
+  targeted extraction.
 - [Tactical 000](../tactical/000-read-only-library-comparison.md) remains the
   read-only implementation record and does not authorize UI-triggered jobs.
 
