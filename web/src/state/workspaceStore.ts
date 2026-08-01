@@ -8,6 +8,7 @@ export type ReviewMode = "focused" | "stacked" | "compare";
 export type ComparisonView = "diff" | "raw";
 
 interface WorkspaceState {
+  activeLibraryId: string | null;
   selectedDocumentId: string | null;
   page: number;
   baselineGroupId: string | null;
@@ -24,6 +25,7 @@ interface WorkspaceState {
   libraryCollapsed: boolean;
   sourcePanePercent: number;
   textPresentationMode: TextPresentationMode;
+  selectLibrary: (libraryId: string | null) => void;
   selectDocument: (documentId: string | null, page?: number) => void;
   setPage: (page: number) => void;
   setComparisonGroups: (baseline: string | null, comparison: string | null) => void;
@@ -48,13 +50,16 @@ export function clampSourcePanePercent(percent: number): number {
 }
 
 export function navigationFromSearch(search: string): {
+  libraryId: string | null;
   documentId: string | null;
   page: number;
 } {
   const params = new URLSearchParams(search);
+  const libraryId = params.get("library");
   const documentId = params.get("document");
   const parsedPage = Number(params.get("page") ?? "1");
   return {
+    libraryId: libraryId && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(libraryId) ? libraryId : null,
     documentId: documentId && /^sha256:[0-9a-f]{64}$/.test(documentId) ? documentId : null,
     page: Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
   };
@@ -65,6 +70,7 @@ const initialNavigation = navigationFromSearch(
 );
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
+  activeLibraryId: initialNavigation.libraryId,
   selectedDocumentId: initialNavigation.documentId,
   page: initialNavigation.page,
   baselineGroupId: null,
@@ -81,6 +87,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   libraryCollapsed: false,
   sourcePanePercent: DEFAULT_SOURCE_PANE_PERCENT,
   textPresentationMode: "auto",
+  selectLibrary: (activeLibraryId) =>
+    set({
+      activeLibraryId,
+      selectedDocumentId: null,
+      page: 1,
+      searchQuery: "",
+      documentOffset: 0,
+      baselineGroupId: null,
+      comparisonGroupId: null,
+      activeGroupId: null,
+      numericIndex: 0,
+    }),
   selectDocument: (documentId, page = 1) =>
     set({
       selectedDocumentId: documentId,

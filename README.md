@@ -87,7 +87,10 @@ and [job architecture](docs/topics/job-architecture.md) topics.
 Implementation is in progress. Its landed boundaries provide platform
 app-home resolution, an atomic known-library registry, stable adopted-library
 identity, ordinary startup from the last/default registered library, and one
-schema-versioned SQLite database with atomic inventory generations.
+schema-versioned SQLite database with atomic inventory generations. The
+localhost API, generated client, React runtime, queries, and deep links now
+carry explicit library identity, with known-library selection and collection
+settings in the shared UI.
 
 Read these first:
 

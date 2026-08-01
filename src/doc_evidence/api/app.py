@@ -13,14 +13,19 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
+from doc_evidence.application.libraries import LibraryManager
 from doc_evidence.application.library import LibraryApplication
 from doc_evidence.contracts.api import (
     ApiProblem,
+    AppSummary,
     ComparisonRequest,
     ComparisonResult,
     Diagnostics,
     DocumentDetail,
     DocumentPage,
+    KnownLibraryList,
+    LibraryActivation,
+    LibraryDetail,
     PageGroups,
     PageSummary,
     RunList,
@@ -40,6 +45,7 @@ _bearer = HTTPBearer(auto_error=False)
 def create_app(
     application: LibraryApplication | None,
     *,
+    library_manager: LibraryManager | None = None,
     launch_token: str,
     allowed_origins: set[str] | None = None,
     static_dir: Path | None = None,
@@ -62,6 +68,7 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.application = application
+    app.state.library_manager = library_manager
 
     @app.middleware("http")
     async def origin_and_headers(
@@ -123,7 +130,167 @@ def create_app(
             raise RuntimeError("contract-only application has no service")
         return value
 
+    def manager(request: Request) -> LibraryManager:
+        value = request.app.state.library_manager
+        if value is None:
+            raise RuntimeError("contract-only application has no library manager")
+        return value
+
+    def library_service(request: Request, library_id: str) -> LibraryApplication:
+        return manager(request).application(library_id)
+
     router = APIRouter(prefix="/api/v1", dependencies=[Depends(authorize)])
+
+    @router.get("/app", response_model=AppSummary)
+    def app_summary(request: Request) -> AppSummary:
+        return manager(request).app_summary()
+
+    @router.get("/libraries", response_model=KnownLibraryList)
+    def libraries(request: Request) -> KnownLibraryList:
+        return manager(request).libraries()
+
+    @router.get("/libraries/{library_id}", response_model=LibraryDetail)
+    def library(request: Request, library_id: str) -> LibraryDetail:
+        return manager(request).library(library_id)
+
+    @router.post(
+        "/libraries/{library_id}/activate",
+        response_model=LibraryActivation,
+    )
+    def activate_library(request: Request, library_id: str) -> LibraryActivation:
+        return manager(request).activate(library_id)
+
+    @router.get(
+        "/libraries/{library_id}/workspace",
+        response_model=WorkspaceSummary,
+    )
+    def library_workspace(request: Request, library_id: str) -> WorkspaceSummary:
+        return library_service(request, library_id).workspace()
+
+    @router.get(
+        "/libraries/{library_id}/documents",
+        response_model=DocumentPage,
+    )
+    def library_documents(
+        request: Request,
+        library_id: str,
+        offset: int = 0,
+        limit: int = 40,
+    ) -> DocumentPage:
+        return library_service(request, library_id).documents(
+            offset=offset,
+            limit=limit,
+        )
+
+    @router.get(
+        "/libraries/{library_id}/documents/{document_id}",
+        response_model=DocumentDetail,
+    )
+    def library_document(
+        request: Request,
+        library_id: str,
+        document_id: str,
+    ) -> DocumentDetail:
+        return library_service(request, library_id).document(document_id)
+
+    @router.get(
+        "/libraries/{library_id}/documents/{document_id}/pages/{page}",
+        response_model=PageSummary,
+    )
+    def library_page(
+        request: Request,
+        library_id: str,
+        document_id: str,
+        page: int,
+    ) -> PageSummary:
+        return library_service(request, library_id).page(document_id, page)
+
+    @router.get(
+        "/libraries/{library_id}/documents/{document_id}/runs",
+        response_model=RunList,
+    )
+    def library_runs(
+        request: Request,
+        library_id: str,
+        document_id: str,
+    ) -> RunList:
+        return library_service(request, library_id).runs(document_id)
+
+    @router.get(
+        "/libraries/{library_id}/documents/{document_id}/pages/{page}/groups",
+        response_model=PageGroups,
+    )
+    def library_groups(
+        request: Request,
+        library_id: str,
+        document_id: str,
+        page: int,
+    ) -> PageGroups:
+        return library_service(request, library_id).page_groups(document_id, page)
+
+    @router.get("/libraries/{library_id}/documents/{document_id}/pages/{page}/render")
+    def library_render(
+        request: Request,
+        library_id: str,
+        document_id: str,
+        page: int,
+    ) -> FileResponse:
+        artifact = library_service(request, library_id).render_page(document_id, page)
+        return FileResponse(
+            artifact.path,
+            media_type=artifact.media_type,
+            filename=artifact.filename,
+            content_disposition_type="inline",
+        )
+
+    @router.get(
+        "/libraries/{library_id}/search",
+        response_model=SearchPage,
+    )
+    def library_search(
+        request: Request,
+        library_id: str,
+        query: str,
+        mode: Literal["literal", "fts"] = "literal",
+        limit: int = 40,
+    ) -> SearchPage:
+        return library_service(request, library_id).search(
+            query=query,
+            mode=mode,
+            limit=limit,
+        )
+
+    @router.post(
+        "/libraries/{library_id}/comparisons",
+        response_model=ComparisonResult,
+    )
+    def library_compare(
+        request: Request,
+        library_id: str,
+        body: ComparisonRequest,
+    ) -> ComparisonResult:
+        return library_service(request, library_id).compare(body)
+
+    @router.get("/libraries/{library_id}/artifacts/{artifact_id}")
+    def library_artifact(
+        request: Request,
+        library_id: str,
+        artifact_id: str,
+    ) -> FileResponse:
+        value = library_service(request, library_id).artifact(artifact_id)
+        return FileResponse(
+            value.path,
+            media_type=value.media_type,
+            filename=value.filename,
+            content_disposition_type="inline",
+        )
+
+    @router.get(
+        "/libraries/{library_id}/diagnostics",
+        response_model=Diagnostics,
+    )
+    def library_diagnostics(request: Request, library_id: str) -> Diagnostics:
+        return library_service(request, library_id).diagnostics()
 
     @router.get("/workspace", response_model=WorkspaceSummary)
     def workspace(request: Request) -> WorkspaceSummary:

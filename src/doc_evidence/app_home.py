@@ -374,23 +374,22 @@ class LibraryRegistry:
         self.save(updated)
         return updated
 
-    def selected(self) -> tuple[KnownLibrary, LibraryDescriptor, AppConfig]:
+    def open(
+        self, library_id: str
+    ) -> tuple[KnownLibrary, LibraryDescriptor, AppConfig]:
+        """Resolve one registered identity without changing active selection."""
+
         state = self.load()
-        selected_id = state.last_library_id or state.default_library_id
-        if selected_id is None:
-            raise ApplicationStateError(
-                "no library is registered; run doc-evidence library-register --config PATH"
-            )
         known = next(
             (
                 library
                 for library in state.libraries
-                if library.library_id == selected_id
+                if library.library_id == library_id
             ),
             None,
         )
         if known is None:
-            raise ApplicationStateError("selected library is not registered")
+            raise ApplicationStateError(f"unknown library ID: {library_id}")
         descriptor = self.descriptor(known)
         config = load_config(descriptor.config_path)
         if config.store.resolve() != descriptor.store_path.resolve():
@@ -398,3 +397,12 @@ class LibraryRegistry:
                 "library descriptor and configuration store disagree"
             )
         return known, descriptor, config
+
+    def selected(self) -> tuple[KnownLibrary, LibraryDescriptor, AppConfig]:
+        state = self.load()
+        selected_id = state.last_library_id or state.default_library_id
+        if selected_id is None:
+            raise ApplicationStateError(
+                "no library is registered; run doc-evidence library-register --config PATH"
+            )
+        return self.open(selected_id)

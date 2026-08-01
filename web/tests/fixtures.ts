@@ -12,6 +12,8 @@ export const documentId = `sha256:${"a".repeat(64)}`;
 
 export const workspace: WorkspaceSummary = {
   schema_version: 1,
+  library_id: "fixture-library",
+  library_name: "Fixture Library",
   product_version: "0.4.0",
   config_hash: "fixture",
   catalog_inventory_run_id: "inventory",

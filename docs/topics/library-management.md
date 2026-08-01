@@ -396,3 +396,12 @@ across scope changes. Strong local fingerprints can reuse a prior SHA-256,
 while `inventory --full-hash` bypasses every hint. Parent expansion, legacy
 catalog import without mutation or dual writes, database/descriptor identity,
 and search/inventory reuse are covered by focused integration tests.
+
+The third slice adds a framework-independent explicit-library manager and a
+local registry adapter, resource routes beneath `/api/v1/libraries/{library_id}`,
+checked generated TypeScript, and matching fixture/HTTP runtime operations.
+React restores library identity before document selection, scopes server-state
+queries by library ID, includes it in deep links, lists/selects ready libraries,
+shows unavailable/integrity states, and exposes collection availability plus
+the trusted CLI/native preflight boundary. An empty registry now launches an
+actionable library home instead of failing during server composition.

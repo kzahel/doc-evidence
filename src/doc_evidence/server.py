@@ -11,9 +11,9 @@ from pathlib import Path
 
 import uvicorn
 
-from doc_evidence.adapters.local_workspace import LocalWorkspace
+from doc_evidence.adapters.local_libraries import LocalLibraryManager
 from doc_evidence.api.app import create_app
-from doc_evidence.application.library import LibraryApplication
+from doc_evidence.app_home import LibraryRegistry, legacy_library_id
 from doc_evidence.config import AppConfig
 from doc_evidence.errors import RequestError
 
@@ -27,8 +27,11 @@ def default_frontend_dir() -> Path:
 
 
 def serve_local(
-    config: AppConfig,
+    config: AppConfig | None,
     *,
+    library_registry: LibraryRegistry | None = None,
+    library_id: str | None = None,
+    library_name: str | None = None,
     frontend_dir: Path | None = None,
     open_browser: bool = True,
 ) -> int:
@@ -47,7 +50,23 @@ def serve_local(
     base_url = f"http://127.0.0.1:{port}"
     token = secrets.token_urlsafe(32)
     launch_url = base_url + "/#token=" + urllib.parse.quote(token, safe="")
-    application = LibraryApplication(LocalWorkspace(config))
+    if library_registry is not None:
+        manager = LocalLibraryManager(registry=library_registry)
+        resolved_library_id = library_id
+    else:
+        if config is None:
+            raise RequestError("explicit server composition requires a configuration")
+        resolved_library_id = library_id or legacy_library_id(config.path)
+        manager = LocalLibraryManager(
+            explicit_config=config,
+            explicit_library_id=resolved_library_id,
+            explicit_name=library_name,
+        )
+    application = (
+        manager.application(resolved_library_id)
+        if resolved_library_id is not None
+        else None
+    )
 
     def started() -> None:
         if open_browser:
@@ -59,6 +78,7 @@ def serve_local(
 
     app = create_app(
         application,
+        library_manager=manager,
         launch_token=token,
         allowed_origins={base_url},
         static_dir=static_dir,

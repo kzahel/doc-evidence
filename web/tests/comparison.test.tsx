@@ -57,6 +57,7 @@ function wrapper(children: React.ReactNode) {
 describe("comparison workspace", () => {
   beforeEach(() => {
     useWorkspaceStore.setState({
+      activeLibraryId: workspace.library_id,
       baselineGroupId: "group:native",
       comparisonGroupId: "group:layout",
       diffMode: "differences",

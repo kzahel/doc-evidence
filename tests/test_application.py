@@ -10,6 +10,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from doc_evidence.adapters.local_libraries import LocalLibraryManager
 from doc_evidence.adapters.local_workspace import LocalWorkspace
 from doc_evidence.api.app import create_app, create_contract_app
 from doc_evidence.application.library import LibraryApplication
@@ -131,11 +132,15 @@ class ApplicationIntegrationTest(unittest.TestCase):
         )
         self.workspace = LocalWorkspace(self.config)
         self.application = LibraryApplication(self.workspace)
+        self.manager = LocalLibraryManager(explicit_config=self.config)
+        self.library_id = self.manager.app_summary().active_library_id
+        assert self.library_id is not None
         self.token = "test-token-that-must-never-appear"
         self.origin = "http://127.0.0.1:43111"
         self.client = TestClient(
             create_app(
                 self.application,
+                library_manager=self.manager,
                 launch_token=self.token,
                 allowed_origins={self.origin},
             )
@@ -149,6 +154,20 @@ class ApplicationIntegrationTest(unittest.TestCase):
         self.temporary.cleanup()
 
     def test_library_search_groups_diff_artifacts_and_render_cache(self) -> None:
+        app_summary = self.client.get("/api/v1/app", headers=self.headers)
+        libraries = self.client.get("/api/v1/libraries", headers=self.headers)
+        detail = self.client.get(
+            f"/api/v1/libraries/{self.library_id}", headers=self.headers
+        )
+        scoped_workspace = self.client.get(
+            f"/api/v1/libraries/{self.library_id}/workspace",
+            headers=self.headers,
+        )
+        self.assertEqual(app_summary.json()["active_library_id"], self.library_id)
+        self.assertEqual(libraries.json()["items"][0]["status"], "ready")
+        self.assertEqual(detail.json()["collections"][0]["collection_id"], "sample")
+        self.assertEqual(scoped_workspace.json()["library_id"], self.library_id)
+
         workspace = self.client.get("/api/v1/workspace", headers=self.headers)
         self.assertEqual(workspace.status_code, 200)
         self.assertEqual(workspace.json()["document_count"], 1)
@@ -271,6 +290,7 @@ class ApplicationIntegrationTest(unittest.TestCase):
         schema = create_contract_app().openapi()
         self.assertIn("HTTPBearer", schema["components"]["securitySchemes"])
         self.assertIn("/api/v1/comparisons", schema["paths"])
+        self.assertIn("/api/v1/libraries/{library_id}", schema["paths"])
 
 
 class DependencyDirectionTest(unittest.TestCase):

@@ -13,30 +13,63 @@ function failure(error: unknown, response?: Response): Error {
 export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvidenceRuntime {
   const client = createGeneratedClient(baseUrl, launchToken);
   return {
-    async getWorkspace(signal) {
-      const { data, error, response } = await client.GET("/api/v1/workspace", { signal });
+    async getApp(signal) {
+      const { data, error, response } = await client.GET("/api/v1/app", { signal });
       if (!data) throw failure(error, response);
       return data;
     },
-    async listDocuments(offset, limit, signal) {
-      const { data, error, response } = await client.GET("/api/v1/documents", {
-        params: { query: { offset, limit } },
+    async listLibraries(signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries", { signal });
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async getLibrary(libraryId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}", {
+        params: { path: { library_id: libraryId } },
         signal,
       });
       if (!data) throw failure(error, response);
       return data;
     },
-    async getDocument(documentId, signal) {
-      const { data, error, response } = await client.GET("/api/v1/documents/{document_id}", {
-        params: { path: { document_id: documentId } },
-        signal,
-      });
+    async activateLibrary(libraryId, signal) {
+      const { data, error, response } = await client.POST(
+        "/api/v1/libraries/{library_id}/activate",
+        { params: { path: { library_id: libraryId } }, signal },
+      );
       if (!data) throw failure(error, response);
       return data;
     },
-    async search(input: SearchInput, signal) {
-      const { data, error, response } = await client.GET("/api/v1/search", {
+    async getWorkspace(libraryId, signal) {
+      const { data, error, response } = await client.GET(
+        "/api/v1/libraries/{library_id}/workspace",
+        { params: { path: { library_id: libraryId } }, signal },
+      );
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async listDocuments(libraryId, offset, limit, signal) {
+      const { data, error, response } = await client.GET(
+        "/api/v1/libraries/{library_id}/documents",
+        {
+        params: { path: { library_id: libraryId }, query: { offset, limit } },
+        signal,
+        },
+      );
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async getDocument(libraryId, documentId, signal) {
+      const { data, error, response } = await client.GET(
+        "/api/v1/libraries/{library_id}/documents/{document_id}",
+        { params: { path: { library_id: libraryId, document_id: documentId } }, signal },
+      );
+      if (!data) throw failure(error, response);
+      return data;
+    },
+    async search(libraryId, input: SearchInput, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/search", {
         params: {
+          path: { library_id: libraryId },
           query: { query: input.query, mode: input.mode, limit: input.limit ?? 40 },
         },
         signal,
@@ -44,30 +77,31 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
       if (!data) throw failure(error, response);
       return data;
     },
-    async getPageGroups(documentId, page, signal) {
+    async getPageGroups(libraryId, documentId, page, signal) {
       const { data, error, response } = await client.GET(
-        "/api/v1/documents/{document_id}/pages/{page}/groups",
+        "/api/v1/libraries/{library_id}/documents/{document_id}/pages/{page}/groups",
         {
-          params: { path: { document_id: documentId, page } },
+          params: { path: { library_id: libraryId, document_id: documentId, page } },
           signal,
         },
       );
       if (!data) throw failure(error, response);
       return data;
     },
-    async compare(input, signal) {
-      const { data, error, response } = await client.POST("/api/v1/comparisons", {
+    async compare(libraryId, input, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/comparisons", {
+        params: { path: { library_id: libraryId } },
         body: input,
         signal,
       });
       if (!data) throw failure(error, response);
       return data;
     },
-    async getPageRender(documentId, page, signal) {
+    async getPageRender(libraryId, documentId, page, signal) {
       const { data, error, response } = await client.GET(
-        "/api/v1/documents/{document_id}/pages/{page}/render",
+        "/api/v1/libraries/{library_id}/documents/{document_id}/pages/{page}/render",
         {
-          params: { path: { document_id: documentId, page } },
+          params: { path: { library_id: libraryId, document_id: documentId, page } },
           parseAs: "blob",
           signal,
         },
@@ -75,9 +109,9 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
       if (!(data instanceof Blob)) throw failure(error, response);
       return data;
     },
-    async getArtifact(artifactId, signal) {
-      const { data, error, response } = await client.GET("/api/v1/artifacts/{artifact_id}", {
-        params: { path: { artifact_id: artifactId } },
+    async getArtifact(libraryId, artifactId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/artifacts/{artifact_id}", {
+        params: { path: { library_id: libraryId, artifact_id: artifactId } },
         parseAs: "blob",
         signal,
       });
@@ -89,8 +123,10 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
       if (!(data instanceof Blob)) throw failure(error, response);
       return data;
     },
-    async getDiagnostics(signal) {
-      const { data, error, response } = await client.GET("/api/v1/diagnostics", { signal });
+    async getDiagnostics(libraryId, signal) {
+      const { data, error, response } = await client.GET("/api/v1/libraries/{library_id}/diagnostics", {
+        params: { path: { library_id: libraryId } }, signal,
+      });
       if (!data) throw failure(error, response);
       return data;
     },

@@ -160,6 +160,7 @@ interface Props {
 
 export function ComparisonPanel({ documentId, page, groups }: Props) {
   const runtime = useRuntime();
+  const libraryId = useWorkspaceStore((state) => state.activeLibraryId);
   const baselineId = useWorkspaceStore((state) => state.baselineGroupId);
   const comparisonId = useWorkspaceStore((state) => state.comparisonGroupId);
   const setGroups = useWorkspaceStore((state) => state.setComparisonGroups);
@@ -189,9 +190,9 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
         }
       : null;
   const query = useQuery({
-    queryKey: ["comparison", request],
-    queryFn: ({ signal }) => runtime.compare(request!, signal),
-    enabled: request !== null && comparisonView === "diff",
+    queryKey: ["library", libraryId, "comparison", request],
+    queryFn: ({ signal }) => runtime.compare(libraryId!, request!, signal),
+    enabled: request !== null && comparisonView === "diff" && libraryId !== null,
   });
 
   useEffect(() => {

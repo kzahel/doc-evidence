@@ -24,6 +24,7 @@ const categoryLabels = {
 
 function ArtifactButton({ artifactId, label }: { artifactId: string; label: string }) {
   const runtime = useRuntime();
+  const libraryId = useWorkspaceStore((state) => state.activeLibraryId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ mediaType: string; url: string } | null>(null);
@@ -36,7 +37,8 @@ function ArtifactButton({ artifactId, label }: { artifactId: string; label: stri
     setBusy(true);
     setError(null);
     try {
-      const blob = await runtime.getArtifact(artifactId);
+      if (!libraryId) throw new Error("No active library");
+      const blob = await runtime.getArtifact(libraryId, artifactId);
       const url = URL.createObjectURL(blob);
       setPreview({ mediaType: blob.type || "application/octet-stream", url });
     } catch (caught) {

@@ -230,6 +230,9 @@ ordinary launch from the last/default library are the first landed boundary.
 The unified per-library database, stable content/run/page/FTS projections,
 atomic inventory generations, incremental/full hashing, legacy catalog import,
 and collection preflight are the second landed boundary.
+Explicit library-scoped API resources, generated/runtime operations, query
+keys, deep links, empty-home behavior, selection UI, and collection settings
+are the third landed boundary.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits

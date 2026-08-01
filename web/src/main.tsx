@@ -8,7 +8,6 @@ import { createHttpRuntime } from "./api/httpRuntime";
 import { RuntimeProvider } from "./api/RuntimeProvider";
 import { FailureState } from "./components/AsyncState";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { useWorkspaceStore } from "./state/workspaceStore";
 import "./styles/global.css";
 
 const container = document.getElementById("root");
@@ -17,10 +16,6 @@ const root = createRoot(container);
 
 try {
   const launchToken = consumeLaunchToken();
-  const url = new URL(window.location.href);
-  const selected = url.searchParams.get("document");
-  const page = Number(url.searchParams.get("page") ?? "1");
-  if (selected) useWorkspaceStore.getState().selectDocument(selected, page >= 1 ? page : 1);
   const runtime = createHttpRuntime(window.location.origin, launchToken);
   const queryClient = new QueryClient({
     defaultOptions: {

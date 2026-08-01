@@ -33,11 +33,13 @@ describe("contracts and component boundaries", () => {
 
   it("parses bounded direct document links", () => {
     const documentId = `sha256:${"a".repeat(64)}`;
-    expect(navigationFromSearch(`?document=${documentId}&page=7`)).toEqual({
+    expect(navigationFromSearch(`?library=fixture-library&document=${documentId}&page=7`)).toEqual({
+      libraryId: "fixture-library",
       documentId,
       page: 7,
     });
     expect(navigationFromSearch("?document=../../private&page=-2")).toEqual({
+      libraryId: null,
       documentId: null,
       page: 1,
     });

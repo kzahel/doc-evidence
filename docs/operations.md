@@ -145,6 +145,20 @@ Then launch against an existing configured/cataloged workspace:
 uv run doc-evidence serve --config /path/to/case.yaml
 ```
 
+Or register once and use ordinary desktop-shaped startup thereafter:
+
+```sh
+uv run doc-evidence library-register --config /path/to/case.yaml --name "My Library"
+uv run doc-evidence serve
+```
+
+Ordinary startup opens the last/default library. If no library is registered,
+the application still launches and shows the exact registration action rather
+than failing before the library home appears. The shared UI lists known
+libraries, scopes every new API request and query key by stable library ID,
+shows collection availability, and retains that identity in document/page
+deep links.
+
 The server binds an ephemeral `127.0.0.1` port and opens the exact launch URL.
 The credential is generated for that process, delivered in a URL fragment,
 captured only in browser memory, removed immediately from visible/history

@@ -887,3 +887,26 @@ Focused inventory, migration metadata, identity mismatch, legacy import,
 scope-expansion reuse, atomic-generation interruption, collection preflight,
 application integration, Ruff, and Pyright validation pass. Library-scoped
 UI/API, jobs, supervised workers, and operational views remain in progress.
+
+### Slice 3 — library-scoped API, runtime, and selection UI
+
+Implemented the desktop-shaped library entry and identity boundary:
+
+- framework-independent explicit-library resolution with local registry and
+  registry-neutral explicit-config adapters;
+- authenticated app, known-library, detail, activation, and library-scoped
+  workspace/document/search/comparison/render/artifact/diagnostic routes;
+- checked OpenAPI and generated TypeScript client updates with a hand-owned
+  runtime that requires library identity for document operations;
+- TanStack Query keys and Zustand selection scoped by stable library ID;
+- library-aware document/page deep links restored before document selection;
+- known-library selection, active-library naming, collection availability and
+  preflight explanation, unavailable/integrity states, and an actionable empty
+  library home; and
+- compatibility aliases for Tactical 000's unscoped read routes while new
+  work uses explicit library resources.
+
+Focused multi-library isolation, scoped API, authentication, empty-home,
+selection, settings, deep-link, generated-contract, TypeScript, 22 component,
+production-build, Ruff, and Pyright validation pass. Durable jobs, supervised
+workers, and operational views remain in progress.

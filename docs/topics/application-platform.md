@@ -3,7 +3,8 @@
 Topic: application-platform
 
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
-is in progress; its application-home and known-library foundation has landed.
+is in progress; app-home, known libraries, unified persistence, explicit
+library API/runtime identity, and shared library selection UI have landed.
 
 ## Scope
 
@@ -163,11 +164,8 @@ tactical.
 
 ## Known Gaps
 
-- The unified-database and migration direction is approved but not yet
-  implemented.
-- Application-home resolution, `DOC_EVIDENCE_HOME`, known-library registry,
-  explicit library identity, and non-overlapping collection management are
-  approved but not implemented.
+- Durable extraction jobs, scheduler/worker recovery, and operational controls
+  are not yet implemented.
 - Tactical 001 starts with bounded polling for job updates. A later event
   stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and optional extractor-pack
@@ -198,6 +196,14 @@ wrapper descriptors for adopted legacy configurations, stable library IDs,
 last/default activation, and ordinary `serve` startup without a repeated
 configuration path. Explicit `--config` launch remains a registry-neutral
 compatibility path.
+
+The next landed boundaries replace catalog-file swapping with stable unified
+projections and atomic membership generations, then carry explicit library ID
+through Python application resolution, authenticated resource routes,
+generated TypeScript, the hand-owned runtime, TanStack Query keys, Zustand
+selection, and document/page deep links. The shared UI provides an actionable
+empty-library home, stable-ID library selection, active-library naming, and
+collection availability/settings without accepting a browser-supplied path.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

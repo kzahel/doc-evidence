@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -26,6 +26,7 @@ function renderApp(runtime: FixtureRuntime) {
 describe("application states", () => {
   beforeEach(() => {
     useWorkspaceStore.setState({
+      activeLibraryId: null,
       selectedDocumentId: null,
       page: 1,
       searchQuery: "",
@@ -50,9 +51,76 @@ describe("application states", () => {
     expect(screen.getByText(/Select a document/)).toBeInTheDocument();
   });
 
+  it("shows an actionable library home when no library is registered", async () => {
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents,
+        app: {
+          schema_version: 1,
+          active_library_id: null,
+          default_library_id: null,
+          last_library_id: null,
+        },
+        libraries: { schema_version: 1, items: [] },
+      }),
+    );
+    expect(await screen.findByText(/No libraries are registered/)).toBeInTheDocument();
+    expect(screen.getByText(/doc-evidence library-register --config PATH/)).toBeInTheDocument();
+  });
+
+  it("switches explicit library identity and exposes collection settings", async () => {
+    const user = userEvent.setup();
+    const secondLibrary = {
+      library_id: "second-library",
+      name: "Second Library",
+      store_mode: "managed" as const,
+      collection_count: 1,
+      last_opened_at: null,
+      status: "ready" as const,
+      status_detail: null,
+      is_default: false,
+      is_active: false,
+    };
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents,
+        details: { [documentId]: detail },
+        groups: { [`${documentId}|1`]: pageGroups },
+        libraries: {
+          schema_version: 1,
+          items: [
+            {
+              library_id: workspace.library_id,
+              name: workspace.library_name,
+              store_mode: "adopted",
+              collection_count: 1,
+              last_opened_at: null,
+              status: "ready",
+              status_detail: null,
+              is_default: true,
+              is_active: true,
+            },
+            secondLibrary,
+          ],
+        },
+      }),
+    );
+    const selector = await screen.findByRole("combobox", { name: "Active library" });
+    await user.selectOptions(selector, secondLibrary.library_id);
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Active library" })).toHaveValue(
+        secondLibrary.library_id,
+      ),
+    );
+    expect(await screen.findByText("Library settings · 1 collection(s)")).toBeInTheDocument();
+    expect(window.location.search).toContain("library=second-library");
+  });
+
   it("shows a bounded workspace failure", async () => {
     renderApp(new FixtureRuntime({ workspace, documents, error: new Error("catalog unavailable") }));
-    expect(await screen.findByText("Workspace unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("Application state unavailable")).toBeInTheDocument();
     expect(screen.getByText("catalog unavailable")).toBeInTheDocument();
   });
 

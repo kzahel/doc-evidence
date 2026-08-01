@@ -543,10 +543,25 @@ def main(argv: Sequence[str] | None = None) -> int:
 
             if args.config is not None:
                 config = load_config(args.config)
+                registry = None
+                library_id = None
+                library_name = None
             else:
-                _known, _descriptor, config = _registry().selected()
+                registry = _registry()
+                state = registry.load()
+                if state.libraries:
+                    known, _descriptor, config = registry.selected()
+                    library_id = known.library_id
+                    library_name = known.name
+                else:
+                    config = None
+                    library_id = None
+                    library_name = None
             return serve_local(
                 config,
+                library_registry=registry,
+                library_id=library_id,
+                library_name=library_name,
                 frontend_dir=args.frontend_dir,
                 open_browser=not args.no_open,
             )

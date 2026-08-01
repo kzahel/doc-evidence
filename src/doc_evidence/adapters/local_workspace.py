@@ -36,9 +36,17 @@ from doc_evidence.util import hash_file, hash_json
 
 
 class LocalWorkspace:
-    def __init__(self, config: AppConfig, library_id: str | None = None):
+    def __init__(
+        self,
+        config: AppConfig,
+        library_id: str | None = None,
+        library_name: str | None = None,
+    ):
         self.config = config
         self.library_id = library_id or legacy_library_id(config.path)
+        self.library_name = (
+            library_name or config.path.parent.name or "Document Library"
+        )
         self.store = config.store.resolve()
         self.catalog_path = ensure_library_database(
             config,
@@ -162,6 +170,8 @@ class LocalWorkspace:
         finally:
             connection.close()
         return WorkspaceSummary(
+            library_id=self.library_id,
+            library_name=self.library_name,
             product_version=__version__,
             config_hash=self.config.config_hash,
             catalog_inventory_run_id=metadata.get("inventory_run_id"),

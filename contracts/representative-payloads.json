@@ -1,6 +1,8 @@
 {
   "workspace": {
     "schema_version": 1,
+    "library_id": "fixture-library",
+    "library_name": "Fixture Library",
     "product_version": "0.4.0",
     "config_hash": "fixture-config",
     "catalog_inventory_run_id": "fixture-inventory",

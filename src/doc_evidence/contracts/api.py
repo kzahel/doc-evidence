@@ -21,8 +21,53 @@ class CollectionSummary(ContractModel):
     source_label: str
 
 
+class AppSummary(ContractModel):
+    schema_version: Literal[1] = 1
+    active_library_id: str | None
+    default_library_id: str | None
+    last_library_id: str | None
+
+
+class KnownLibrarySummary(ContractModel):
+    library_id: str
+    name: str
+    store_mode: Literal["managed", "adopted"]
+    collection_count: int = Field(ge=0)
+    last_opened_at: str | None
+    status: Literal["ready", "unavailable", "integrity_error"]
+    status_detail: str | None
+    is_default: bool
+    is_active: bool
+
+
+class KnownLibraryList(ContractModel):
+    schema_version: Literal[1] = 1
+    items: list[KnownLibrarySummary]
+
+
+class LibraryCollection(ContractModel):
+    collection_id: str
+    source_label: str
+    available: bool
+
+
+class LibraryDetail(ContractModel):
+    schema_version: Literal[1] = 1
+    library: KnownLibrarySummary
+    collections: list[LibraryCollection]
+    collection_selection: Literal["trusted_cli_or_native"] = "trusted_cli_or_native"
+    collection_preflight_kinds: list[str]
+
+
+class LibraryActivation(ContractModel):
+    schema_version: Literal[1] = 1
+    active_library_id: str
+
+
 class WorkspaceSummary(ContractModel):
     schema_version: Literal[1] = 1
+    library_id: str
+    library_name: str
     product_version: str
     config_hash: str
     catalog_inventory_run_id: str | None
