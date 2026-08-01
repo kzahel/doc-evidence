@@ -238,7 +238,8 @@ formula recipes, embedded Python-wheel SBOMs, manifests, and build recipes.
 Formula resolution is explicit because it reads bounded public Homebrew/GitHub
 metadata and then reuses a verified ignored cache. The report currently keeps
 `release_ready: false`: do not publish until every listed native-wheel,
-Rust/Node, source-archive, and reviewed-license blocker is closed.
+supplemental crate-license, source-archive, and reviewed-license blocker is
+closed.
 
 Register an external case configuration once, then launch the selected
 last/default library:

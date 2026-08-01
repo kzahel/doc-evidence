@@ -298,8 +298,11 @@ hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
 recipes are reusable from an ignored cache. The preflight remains fail-closed
 for publication: pypdfium2 needs a reviewed composite SPDX conclusion; 77
 Python-wheel Mach-O objects need flattened component/source reconciliation;
-Rust and Node locks need license/notices integration; and required
-copyleft/MPL source archives need embedding.
+19 Rust crates need repository-level license texts that their published crate
+archives omit; and required copyleft/MPL source archives need embedding. The
+aggregate SPDX already includes all 253 target-resolved Rust dependencies and
+11 conservative production Node dependencies, with 426 available license
+files and exact registry source checksums.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

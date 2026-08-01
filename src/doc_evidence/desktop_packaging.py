@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -16,6 +17,7 @@ import stat
 import subprocess
 import tarfile
 import tempfile
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -40,7 +42,7 @@ SYSTEM_LOAD_PREFIXES = ("/System/Library/", "/usr/lib/")
 HOMEBREW_BUILD_PREFIX = b"/opt/homebrew"
 NEUTRAL_BUILD_PREFIX = b"/__doc_evid__"
 MAX_READY_BYTES = 64 * 1024
-_LICENSE_NAMES = ("license", "copying", "notice")
+_LICENSE_NAMES = ("license", "licence", "copying", "notice")
 _SPDX_LICENSE_NORMALIZATION = {
     "Apache License 2.0": "Apache-2.0",
     "OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)": ("LGPL-3.0-only"),
@@ -2329,6 +2331,262 @@ def _homebrew_component_provenance(
     return records, blockers
 
 
+def _dependency_license_files(root: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in root.iterdir()
+        if path.is_file()
+        and any(
+            path.name.casefold() == name
+            or path.name.casefold().startswith(f"{name}.")
+            or path.name.casefold().startswith(f"{name}-")
+            or path.name.casefold().startswith(f"{name}_")
+            for name in _LICENSE_NAMES
+        )
+    )
+
+
+def _rust_license_expression(value: str) -> str:
+    return {
+        "Apache-2.0 / MIT": "Apache-2.0 OR MIT",
+        "BSD-3-Clause/MIT": "BSD-3-Clause OR MIT",
+        "MIT/Apache-2.0": "MIT OR Apache-2.0",
+    }.get(value, value)
+
+
+def _cargo_dependency_inventory(
+    repository: Path,
+    output: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, str]], list[str]]:
+    manifest = repository / "desktop" / "src-tauri" / "Cargo.toml"
+    metadata = json.loads(
+        _run(
+            [
+                "cargo",
+                "metadata",
+                "--manifest-path",
+                str(manifest),
+                "--locked",
+                "--format-version",
+                "1",
+                "--filter-platform",
+                "aarch64-apple-darwin",
+            ],
+            capture_output=True,
+        ).stdout
+    )
+    packages = metadata.get("packages")
+    if not isinstance(packages, list):
+        raise TypeError("Cargo metadata package list is invalid")
+    lock = tomllib.loads(
+        (repository / "desktop" / "src-tauri" / "Cargo.lock").read_text(
+            encoding="utf-8"
+        )
+    )
+    lock_packages = lock.get("package")
+    if not isinstance(lock_packages, list):
+        raise TypeError("Cargo lock package list is invalid")
+    checksums = {
+        (item.get("name"), str(item.get("version")), item.get("source")): item.get(
+            "checksum"
+        )
+        for item in lock_packages
+        if isinstance(item, Mapping)
+    }
+    records = []
+    spdx_packages = []
+    relationships = []
+    missing_license_texts = []
+    for package in sorted(
+        (
+            item
+            for item in packages
+            if isinstance(item, Mapping) and item.get("source") is not None
+        ),
+        key=lambda item: (str(item.get("name")), str(item.get("version"))),
+    ):
+        name = str(package.get("name"))
+        version = str(package.get("version"))
+        source = package.get("source")
+        license_value = package.get("license")
+        manifest_path = package.get("manifest_path")
+        if not isinstance(source, str) or not source.startswith("registry+"):
+            raise RuntimeError(f"unsupported Cargo dependency source: {name} {version}")
+        if not isinstance(license_value, str) or not license_value:
+            raise RuntimeError(f"Cargo dependency lacks a license: {name} {version}")
+        if not isinstance(manifest_path, str):
+            raise TypeError(f"Cargo dependency manifest is invalid: {name} {version}")
+        checksum = checksums.get((name, version, source))
+        if not isinstance(checksum, str) or not _is_lower_hex(checksum, 64):
+            raise RuntimeError(f"Cargo dependency lacks a checksum: {name} {version}")
+        package_root = Path(manifest_path).parent
+        if not package_root.is_dir():
+            raise RuntimeError(f"Cargo dependency source is absent: {name} {version}")
+        license_sources = _dependency_license_files(package_root)
+        declared_license_file = package.get("license_file")
+        if isinstance(declared_license_file, str):
+            declared = Path(declared_license_file)
+            if declared.is_file() and declared not in license_sources:
+                license_sources.append(declared)
+        license_paths = []
+        package_destination = (
+            output / "dependency-licenses" / "rust" / f"{name}-{version}"
+        )
+        for source_path in sorted(license_sources):
+            copied = package_destination / source_path.name
+            _copy_compliance_file(source_path, copied)
+            license_paths.append(copied.relative_to(output).as_posix())
+        if not license_paths:
+            missing_license_texts.append(f"{name} {version}")
+        license_expression = _rust_license_expression(license_value)
+        source_url = f"https://crates.io/api/v1/crates/{name}/{version}/download"
+        spdx_id = _spdx_id(f"Package-rust-{name}-{version}")
+        record = {
+            "name": name,
+            "version": version,
+            "license_declared": license_expression,
+            "license_declared_raw": license_value,
+            "source_url": source_url,
+            "source_sha256": checksum,
+            "license_files": license_paths,
+        }
+        records.append(record)
+        spdx_packages.append(
+            {
+                "SPDXID": spdx_id,
+                "name": name,
+                "versionInfo": version,
+                "downloadLocation": source_url,
+                "checksums": [{"algorithm": "SHA256", "checksumValue": checksum}],
+                "filesAnalyzed": False,
+                "licenseConcluded": license_expression,
+                "licenseDeclared": license_expression,
+                "copyrightText": "NOASSERTION",
+            }
+        )
+        relationships.append(
+            {
+                "spdxElementId": "SPDXRef-Package-Doc-Evidence",
+                "relationshipType": "CONTAINS",
+                "relatedSpdxElement": spdx_id,
+            }
+        )
+    return records, spdx_packages, relationships, missing_license_texts
+
+
+def _npm_dependency_inventory(
+    repository: Path,
+    output: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, str]]]:
+    lock = json.loads(
+        (repository / "web" / "package-lock.json").read_text(encoding="utf-8")
+    )
+    packages = lock.get("packages")
+    if not isinstance(packages, Mapping):
+        raise TypeError("Node lock package inventory is invalid")
+    records = []
+    spdx_packages = []
+    relationships = []
+    for package_path, package in sorted(packages.items()):
+        if not package_path or not isinstance(package, Mapping) or package.get("dev"):
+            continue
+        name = str(package_path).rsplit("node_modules/", 1)[-1]
+        version = package.get("version")
+        license_value = package.get("license")
+        resolved = package.get("resolved")
+        integrity = package.get("integrity")
+        if (
+            not isinstance(version, str)
+            or not isinstance(license_value, str)
+            or not isinstance(resolved, str)
+            or not resolved.startswith("https://registry.npmjs.org/")
+            or not isinstance(integrity, str)
+            or not integrity.startswith("sha512-")
+        ):
+            raise RuntimeError(f"Node dependency metadata is invalid: {name}")
+        try:
+            checksum = base64.b64decode(
+                integrity.removeprefix("sha512-"), validate=True
+            )
+        except ValueError as error:
+            raise RuntimeError(
+                f"Node dependency checksum is invalid: {name}"
+            ) from error
+        if len(checksum) != 64:
+            raise RuntimeError(f"Node dependency checksum is invalid: {name}")
+        source_root = repository / "web" / str(package_path)
+        if not source_root.is_dir():
+            raise RuntimeError(f"Node dependency source is absent: {name} {version}")
+        license_sources = _dependency_license_files(source_root)
+        if not license_sources:
+            raise RuntimeError(f"Node dependency lacks license text: {name} {version}")
+        safe_name = name.replace("/", "-").removeprefix("@")
+        license_paths = []
+        for source_path in license_sources:
+            copied = (
+                output
+                / "dependency-licenses"
+                / "node"
+                / f"{safe_name}-{version}"
+                / source_path.name
+            )
+            _copy_compliance_file(source_path, copied)
+            license_paths.append(copied.relative_to(output).as_posix())
+        checksum_hex = checksum.hex()
+        spdx_id = _spdx_id(f"Package-node-{safe_name}-{version}")
+        record = {
+            "name": name,
+            "version": version,
+            "license_declared": license_value,
+            "source_url": resolved,
+            "source_sha512": checksum_hex,
+            "license_files": license_paths,
+        }
+        records.append(record)
+        spdx_packages.append(
+            {
+                "SPDXID": spdx_id,
+                "name": name,
+                "versionInfo": version,
+                "downloadLocation": resolved,
+                "checksums": [{"algorithm": "SHA512", "checksumValue": checksum_hex}],
+                "filesAnalyzed": False,
+                "licenseConcluded": license_value,
+                "licenseDeclared": license_value,
+                "copyrightText": "NOASSERTION",
+            }
+        )
+        relationships.append(
+            {
+                "spdxElementId": "SPDXRef-Package-Doc-Evidence",
+                "relationshipType": "CONTAINS",
+                "relatedSpdxElement": spdx_id,
+            }
+        )
+    return records, spdx_packages, relationships
+
+
+def _write_dependency_notices(
+    destination: Path,
+    rust: Sequence[Mapping[str, Any]],
+    node: Sequence[Mapping[str, Any]],
+) -> None:
+    lines = [
+        "Doc Evidence compiled and frontend dependency inventory",
+        "",
+        "Exact license texts are retained under dependency-licenses/.",
+        "Source archive checksums are recorded in the aggregate SPDX document.",
+    ]
+    for heading, records in (("Rust", rust), ("Node", node)):
+        lines.extend(("", heading, "-" * len(heading)))
+        for record in records:
+            lines.append(
+                f"{record['name']} {record['version']} — "
+                f"{record['license_declared']} — {record['source_url']}"
+            )
+    destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def generate_compliance_preflight(
     app: Path,
     destination: Path,
@@ -2483,6 +2741,35 @@ def generate_compliance_preflight(
                 )
             _write_json(staged / "python-embedded-sboms.json", embedded_python_sboms)
 
+            rust_records, rust_packages, rust_relationships, missing_rust_licenses = (
+                _cargo_dependency_inventory(repo, staged)
+            )
+            node_records, node_packages, node_relationships = _npm_dependency_inventory(
+                repo, staged
+            )
+            spdx_packages.extend(rust_packages)
+            spdx_packages.extend(node_packages)
+            relationships.extend(rust_relationships)
+            relationships.extend(node_relationships)
+            _write_json(staged / "rust-dependencies.json", rust_records)
+            _write_json(staged / "node-dependencies.json", node_records)
+            _write_dependency_notices(
+                staged / "RUST_NODE_THIRD_PARTY_NOTICES.txt",
+                rust_records,
+                node_records,
+            )
+            if missing_rust_licenses:
+                blockers.append(
+                    {
+                        "code": "missing-rust-license-texts",
+                        "detail": (
+                            f"{len(missing_rust_licenses)} crates declare a license "
+                            "but omit its text from the published crate: "
+                            + ", ".join(missing_rust_licenses)
+                        ),
+                    }
+                )
+
             recipe_paths = (
                 "scripts/build-macos-desktop",
                 "desktop/packaging/macos-arm64.json",
@@ -2536,13 +2823,6 @@ def generate_compliance_preflight(
                         ),
                     },
                     {
-                        "code": "missing-rust-node-license-inventory",
-                        "detail": (
-                            "Rust and Node production dependencies are locked but not "
-                            "yet mapped into application notices and this SBOM"
-                        ),
-                    },
-                    {
                         "code": "source-archives-not-embedded",
                         "detail": (
                             "Exact source records exist, but required copyleft/MPL "
@@ -2572,6 +2852,9 @@ def generate_compliance_preflight(
                 "homebrew_source_record_count": len(homebrew_records),
                 "embedded_python_sbom_count": len(embedded_python_sboms),
                 "python_native_object_count": len(python_native),
+                "rust_dependency_count": len(rust_records),
+                "node_dependency_count": len(node_records),
+                "rust_missing_license_text_count": len(missing_rust_licenses),
                 "blockers": blockers,
             }
             _write_json(staged / "compliance-preflight.json", report)

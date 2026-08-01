@@ -1097,18 +1097,27 @@ It now reports four substantive release blockers:
   conclusion rather than `NOASSERTION`;
 - 77 Mach-O objects owned by Python wheels need their embedded third-party
   components, versions, licenses, and source offers flattened and reconciled;
-- locked Rust and Node production dependencies need to enter the shipped
-  notices and aggregate SBOM;
+- 19 Rust crates need repository-level license texts that their published
+  crate archives omit; and
 - required GPL/LGPL/MPL source archives and source-form offers are not yet
   embedded in the compliance output.
+
+The broad compiled/frontend dependency gap is otherwise closed. Target-filtered
+Cargo metadata and `Cargo.lock` contribute 253 exact crates; the conservative
+production projection from `web/package-lock.json` contributes 11 Node
+packages. Their registry URLs and SHA-256/SHA-512 checksums enter the aggregate
+335-package SPDX document, and 426 available license/notice files plus a human
+inventory are retained. The remaining 19-crate blocker is explicit because
+those crates declare a license but omit its text from their published archive;
+the preflight does not silently substitute an unreviewed generic template.
 
 This is a deliberately blocked preflight, not legal clearance. It confirms
 that signing credentials are not the next immediate dependency: the component
 and source record must become release-complete before a signed public artifact
 would be acceptable.
 
-The generated preflight archive measures 725,309 bytes with SHA-256
-`e060fac7d072e9151692d633f8b28909e60ba7feef1c123c7e325785ef3293c2`.
+The generated preflight archive measures 920,670 bytes with SHA-256
+`204cc65e3e57b887ce0db8104cb7bf25ea96d8ce72cd7df7804215885477887d`.
 It describes application tree
 `64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`
 and bundle manifest

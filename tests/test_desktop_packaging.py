@@ -10,9 +10,11 @@ from doc_evidence.desktop_packaging import (
     BUILD_INPUTS_SCHEMA,
     _archive_path,
     _audit_symlinks,
+    _dependency_license_files,
     _files_containing,
     _installed_homebrew_bottle,
     _load_inputs,
+    _rust_license_expression,
     _spdx_license,
     compliance_root,
     create_unsigned_dmg,
@@ -202,6 +204,24 @@ class DesktopPackagingTest(unittest.TestCase):
                 receipt=receipt,
             )
         )
+
+    def test_dependency_license_discovery_and_rust_normalization(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            (root / "LICENCE").write_text("British spelling", encoding="utf-8")
+            (root / "LICENSE-MIT").write_text("MIT", encoding="utf-8")
+            (root / "README.md").write_text("Not a license", encoding="utf-8")
+
+            self.assertEqual(
+                [path.name for path in _dependency_license_files(root)],
+                ["LICENCE", "LICENSE-MIT"],
+            )
+
+        self.assertEqual(
+            _rust_license_expression("MIT/Apache-2.0"),
+            "MIT OR Apache-2.0",
+        )
+        self.assertEqual(_rust_license_expression("MPL-2.0"), "MPL-2.0")
 
 
 if __name__ == "__main__":
