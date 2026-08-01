@@ -26,7 +26,7 @@ from doc_evidence.util import (
 )
 
 ATTEMPT_SCHEMA_VERSION = 1
-WORKER_PROTOCOL_VERSION = 1
+WORKER_PROTOCOL_VERSION = 2
 DEFAULT_LOG_LIMIT_BYTES = 1_000_000
 DEFAULT_MINIMUM_FREE_BYTES = 64 * 1024 * 1024
 
@@ -45,6 +45,8 @@ AttemptOutcome = Literal[
 class AttemptPlan:
     attempt_id: str
     execution: ExtractorExecution
+    expected_run_id: str
+    expected_run_key: str
     source_path: Path
     source_sha256: str
     expected_size_bytes: int
@@ -343,6 +345,8 @@ class AttemptSupervisor:
                 "protocol_version": WORKER_PROTOCOL_VERSION,
                 "attempt_id": plan.attempt_id,
                 "extractor_id": plan.execution.extractor_id,
+                "expected_run_id": plan.expected_run_id,
+                "expected_run_key": plan.expected_run_key,
                 "settings": plan.execution.settings,
                 "timeout_seconds": plan.execution.timeout_seconds,
                 "source_path": str(plan.source_path.resolve()),
@@ -510,8 +514,17 @@ class AttemptSupervisor:
                         :1_000
                     ]
                 else:
-                    run_id = str(response["run_id"])
-                    run_key = str(response["run_key"])
+                    response_run_id = str(response["run_id"])
+                    response_run_key = str(response["run_key"])
+                    if (
+                        response_run_id != plan.expected_run_id
+                        or response_run_key != plan.expected_run_key
+                    ):
+                        raise ValueError(
+                            "worker result identity disagrees with the planned run"
+                        )
+                    run_id = response_run_id
+                    run_key = response_run_key
                     staged = (
                         attempt_dir / "runs" / plan.execution.extractor_id / run_key
                     )

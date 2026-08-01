@@ -33,6 +33,7 @@ def _plan(
     fresh: bool = False,
     extractor_id: str = "fixture-extractor",
     timeout: int = 10,
+    expected_run_key: str | None = None,
 ) -> AttemptPlan:
     source = root / "source.txt"
     if not source.exists():
@@ -42,6 +43,9 @@ def _plan(
     store.mkdir(exist_ok=True)
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
     blob = store / "blobs" / digest[:2] / digest
+    planned_run_key = expected_run_key or str(
+        settings.get("run_key", "fixture-run-key")
+    )
     return AttemptPlan(
         attempt_id=attempt_id,
         execution=ExtractorExecution(
@@ -51,6 +55,8 @@ def _plan(
             resource_class="light",
             deterministic=True,
         ),
+        expected_run_id=f"{extractor_id}:{planned_run_key}",
+        expected_run_key=planned_run_key,
         source_path=source,
         source_sha256=digest,
         expected_size_bytes=stat.st_size,
@@ -136,6 +142,33 @@ class AttemptSupervisorTest(unittest.TestCase):
                 (
                     plan.blob_dir / "runs" / "fixture-extractor" / "fixture-run-key"
                 ).exists()
+            )
+
+    def test_unplanned_worker_identity_is_not_published(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            plan = _plan(
+                root,
+                attempt_id="wrong-identity",
+                settings={"run_key": "worker-selected-key"},
+                expected_run_key="planned-key",
+            )
+
+            result = self.supervisor().execute(plan)
+
+            self.assertEqual(result.outcome, "failed")
+            self.assertEqual(result.failure_class, "validation_or_publication")
+            self.assertIn("planned run", result.message or "")
+            self.assertFalse((plan.blob_dir / "runs").exists())
+            self.assertTrue(
+                (
+                    plan.blob_dir
+                    / "attempts"
+                    / "wrong-identity"
+                    / "runs"
+                    / "fixture-extractor"
+                    / "worker-selected-key"
+                ).is_dir()
             )
 
     def test_crash_incomplete_timeout_and_write_failure_are_bounded(self) -> None:
@@ -226,15 +259,18 @@ class AttemptSupervisorTest(unittest.TestCase):
             store = root / "store"
             store.mkdir()
             blob = store / "blobs" / digest[:2] / digest
-            execution = ExtractorRegistry().execution(
+            prepared = ExtractorRegistry().prepare(
                 extractor_id="poppler",
                 media_type="application/pdf",
                 settings={},
+                extraction_config_hash="fixture-config",
             )
             write_minimal_pdf(source, "changed source")
             plan = AttemptPlan(
                 attempt_id="changed-source",
-                execution=execution,
+                execution=prepared.execution,
+                expected_run_id=prepared.run_id,
+                expected_run_key=prepared.run_key,
                 source_path=source,
                 source_sha256=digest,
                 expected_size_bytes=stat.st_size,
@@ -370,14 +406,17 @@ class AttemptSupervisorTest(unittest.TestCase):
             store = root / "store"
             blob = store / "blobs" / digest[:2] / digest
             store.mkdir()
-            execution = ExtractorRegistry().execution(
+            prepared = ExtractorRegistry().prepare(
                 extractor_id="poppler",
                 media_type="application/pdf",
                 settings={},
+                extraction_config_hash="fixture-config",
             )
             plan = AttemptPlan(
                 attempt_id="poppler-worker",
-                execution=execution,
+                execution=prepared.execution,
+                expected_run_id=prepared.run_id,
+                expected_run_key=prepared.run_key,
                 source_path=source,
                 source_sha256=digest,
                 expected_size_bytes=stat.st_size,

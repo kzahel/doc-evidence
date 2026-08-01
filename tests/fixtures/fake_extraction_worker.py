@@ -97,7 +97,7 @@ def main() -> int:
     response_path.write_text(
         json.dumps(
             {
-                "protocol_version": 1,
+                "protocol_version": request["protocol_version"],
                 "status": "ok",
                 "extractor_id": extractor_id,
                 "run_id": run_id,

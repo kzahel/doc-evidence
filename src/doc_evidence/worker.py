@@ -16,7 +16,7 @@ from doc_evidence.poppler import PopplerExtractor
 from doc_evidence.tesseract_raster_adapter import TesseractRasterExtractor
 from doc_evidence.util import atomic_write_json, hash_file
 
-WORKER_PROTOCOL_VERSION = 1
+WORKER_PROTOCOL_VERSION = 2
 
 
 def _mapping(value: object, field: str) -> dict[str, Any]:
@@ -117,6 +117,10 @@ def _execute(request: dict[str, Any]) -> dict[str, object]:
         )
     else:
         raise ValueError("worker extractor is not registered")
+    if result.run_id != _required_string(
+        request, "expected_run_id"
+    ) or result.run_key != _required_string(request, "expected_run_key"):
+        raise ValueError("extractor result identity disagrees with the planned run")
     return {
         "protocol_version": WORKER_PROTOCOL_VERSION,
         "status": result.status,

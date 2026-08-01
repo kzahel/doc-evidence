@@ -291,7 +291,9 @@ class LocalExtractionJobs:
         source = self.source(job.document_id)
         payload = job.execution
         if (
-            payload.get("run_key") != job.run_key
+            job.run_key is None
+            or payload.get("run_key") != job.run_key
+            or payload.get("run_id") != f"{job.extractor_id}:{job.run_key}"
             or payload.get("extractor_id") != job.extractor_id
             or source.content_sha256 != job.content_sha256
         ):
@@ -312,6 +314,8 @@ class LocalExtractionJobs:
         plan = AttemptPlan(
             attempt_id=claimed.attempt_id,
             execution=execution,
+            expected_run_id=str(payload["run_id"]),
+            expected_run_key=job.run_key,
             source_path=source.path,
             source_sha256=source.content_sha256,
             expected_size_bytes=source.size_bytes,
