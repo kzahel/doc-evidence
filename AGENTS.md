@@ -100,6 +100,17 @@ Before substantive work:
 - For frontend changes, run TypeScript, component, production-build, and
   relevant rendered-browser validation established by the active tactical.
 
+## Browser Automation
+
+- Do not use the built-in interactive browser or control the maintainer's
+  browser for application inspection or validation; doing so interferes with
+  their use of the computer.
+- Use Playwright in a separate background/headless browser process instead.
+  Start and stop any required local application server without opening a
+  visible browser window.
+- Only use the maintainer's interactive browser when they explicitly request
+  it or when a task expressly depends on its existing authenticated state.
+
 ## Documentation Ownership
 
 - `README.md` is the product and maintainer entry point.
