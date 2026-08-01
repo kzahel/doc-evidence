@@ -2,8 +2,9 @@
 
 Topic: application-platform
 
-**Status:** Tactical 000 implemented and validated; awaiting maintainer live
-acceptance before any write-enabled tactical.
+**Status:** Tactical 000 implemented and validated. The maintainer selected
+and approved Tactical 001 as the next write-enabled plan; implementation has
+not started.
 
 ## Scope
 
@@ -100,16 +101,21 @@ author `doc-evidence` contracts for its own domain.
 
 ## State and Persistence Boundary
 
-The application must distinguish:
+The application distinguishes:
 
 - rebuildable catalog projections;
 - immutable derived artifacts;
 - durable user-authored tags, notes, policies, and review events; and
 - exported portable review/evidence records.
 
-Tactical 000 is read-only and can use the existing `catalog.sqlite` directly
-through application queries. The first write-enabled tactical must choose and
-migrate a durable workspace store before saving review decisions.
+Tactical 000 is read-only and uses the existing `catalog.sqlite` directly
+through application queries. The approved
+[durable job architecture](job-architecture.md) chooses one active
+`doc-evidence.sqlite` for catalog generations, operational job state, and
+future durable review state. These remain logically separate by table group
+and retention policy while avoiding multiple active databases. Tactical 001
+owns the migration from whole-file catalog replacement to atomic catalog
+generations inside that database.
 
 ## API and Runtime Direction
 
@@ -142,9 +148,10 @@ tactical.
 
 ## Known Gaps
 
-- The physical split and migration policy for durable workspace state remains
-  undecided.
-- The exact job event transport is deferred until the UI can start work.
+- The unified-database and migration direction is approved but not yet
+  implemented.
+- Tactical 001 starts with bounded polling for job updates. A later event
+  stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and optional extractor-pack
   discovery have not been prototyped.
 - The source checkout serves a separately built `web/dist`; self-contained
@@ -194,9 +201,8 @@ record is in
 
 ## Recommended Next Work
 
-Use the [maintainer feature-request backlog](maintainer-feature-requests.md) to
-complete the live-review gate for
-[Tactical 000](../tactical/000-read-only-library-comparison.md). The next
-tactical may focus on explicit extraction execution if that is now more
-valuable than durable review events; either path must define its write and
-persistence boundaries before implementation.
+Implement [Tactical 001](../tactical/001-durable-extraction-jobs.md) only after
+the maintainer explicitly asks to proceed. Its write, persistence, worker,
+artifact, recovery, and UI boundaries are frozen in the
+[durable job architecture](job-architecture.md). Durable review events remain
+the likely following tactical.

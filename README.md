@@ -20,9 +20,9 @@ and generate a local human-calibration review pack and scorecard.
 The repository now includes a Python-backed authenticated localhost
 application with a React/TypeScript interface for browsing and searching the
 cached library, opening rendered pages, grouping exact extractor output, and
-reviewing versioned word/numeric comparisons. The next product boundary is
-durable human review state; the same contracts should support future offline
-Tauri packaging.
+reviewing versioned word/numeric comparisons. The approved next product
+boundary is durable extraction jobs, atomic artifact publication, recovery,
+and operational UI; durable human review state follows as a separate slice.
 
 The implemented slice is
 [Tactical 000: read-only library and extractor comparison](docs/tactical/000-read-only-library-comparison.md).
@@ -30,17 +30,23 @@ Its automated and private integration gates pass, but it remains open until
 the maintainer explicitly accepts the live interaction. It stops before
 durable review writes, pipeline execution, and desktop packaging.
 
+The approved implementation plan for the next boundary is
+[Tactical 001: durable extraction jobs and operational UI](docs/tactical/001-durable-extraction-jobs.md),
+owned by the living [job architecture topic](docs/topics/job-architecture.md).
+Implementation has not started.
+
 Read these first:
 
 1. [Product vision and application architecture](docs/product-vision-and-architecture.md)
 2. [Master plan](docs/master-plan.md)
 3. [Living topics](docs/topics/README.md)
-4. [Implementation tacticals](docs/tactical/README.md)
-5. [Architecture](docs/architecture.md)
-6. [Data contracts](docs/data-contracts.md)
-7. [Benchmark plan](docs/benchmarking.md)
-8. [References](docs/references.md)
-9. [Operations](docs/operations.md)
+4. [Durable job architecture](docs/topics/job-architecture.md)
+5. [Implementation tacticals](docs/tactical/README.md)
+6. [Architecture](docs/architecture.md)
+7. [Data contracts](docs/data-contracts.md)
+8. [Benchmark plan](docs/benchmarking.md)
+9. [References](docs/references.md)
+10. [Operations](docs/operations.md)
 
 ## Core Principles
 
@@ -49,7 +55,8 @@ Read these first:
 - Extraction outputs are derived, versioned, and reproducible.
 - Candidate observations retain document and page provenance.
 - Automated observations are never silently promoted to accepted facts.
-- SQLite is a rebuildable catalog, not the sole home of review decisions.
+- Catalog projections remain rebuildable while job and future review state
+  have separate durability policies inside one active workspace database.
 - Extractors are adapters behind a stable contract.
 - Use a fast deterministic baseline and escalate only difficult documents.
 - Keep private datasets outside the Git repository.

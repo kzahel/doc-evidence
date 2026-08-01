@@ -4,14 +4,15 @@ Start with:
 
 1. [Product vision and application architecture](product-vision-and-architecture.md)
 2. [Living topics](topics/README.md)
-3. [Implementation tacticals](tactical/README.md)
-4. [Master plan](master-plan.md)
-5. [Architecture](architecture.md)
-6. [Data contracts](data-contracts.md)
-7. [Benchmarking](benchmarking.md)
-8. [References](references.md)
-9. [Development](development.md)
-10. [Phase 1 operations](operations.md)
+3. [Durable job architecture](topics/job-architecture.md)
+4. [Implementation tacticals](tactical/README.md)
+5. [Master plan](master-plan.md)
+6. [Architecture](architecture.md)
+7. [Data contracts](data-contracts.md)
+8. [Benchmarking](benchmarking.md)
+9. [References](references.md)
+10. [Development](development.md)
+11. [Phase 1 operations](operations.md)
 
 The documents are deliberately explicit about source immutability,
 provenance, cache versioning, and review boundaries. Those constraints are

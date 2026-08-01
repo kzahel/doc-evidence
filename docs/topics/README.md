@@ -32,6 +32,9 @@ Do not create one topic per small change. A topic should normally include:
   boundary, generated TypeScript contracts, React runtime ownership,
   localhost/Tauri deployment direction, and lessons from the sibling
   `atpiano` implementation.
+- [Durable job architecture](job-architecture.md) — unified SQLite job state,
+  worker supervision, resource-bounded scheduling, atomic artifact
+  publication, cancellation, restart recovery, and operational UI.
 - [Comparison and review workspace](comparison-review-workspace.md) — document
   representation labels, equivalent-output grouping, versioned diffs,
   numeric discrepancy priority, review semantics, and the path from the

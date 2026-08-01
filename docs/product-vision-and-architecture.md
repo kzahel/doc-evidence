@@ -1,8 +1,8 @@
 # Product Vision and Application Architecture
 
 **Last updated:** 2026-08-01  
-**Status:** Approved direction; first read-only application slice implemented,
-awaiting maintainer interaction acceptance
+**Status:** Approved direction; first read-only application slice implemented;
+durable extraction-job architecture approved and planned
 
 ## Product Statement
 
@@ -247,7 +247,7 @@ Large binaries, page renders, raw model output, and normalized sidecars remain
 in the content-addressed artifact store. SQLite stores indexed metadata and
 relationships rather than opaque copies of every artifact.
 
-Two durability classes must be explicit:
+Durability classes must be explicit:
 
 - **Rebuildable catalog data** — source occurrences, extraction projections,
   full-text indexes, and derived comparison indexes.
@@ -255,17 +255,22 @@ Two durability classes must be explicit:
   corrections, accepted observations, pipeline policies, and user-authored
   notes.
 
-These may use separate SQLite files so a catalog rebuild cannot destroy human
-work:
+The approved local composition uses one active SQLite database with separate
+table groups and lifecycle policies rather than multiple active files:
 
 ```text
-catalog.sqlite    # rebuildable from sources and artifact sidecars
-workspace.sqlite  # migrated, backed up, and never automatically rebuilt
+doc-evidence.sqlite
+  catalog generations       # rebuildable projections
+  jobs/attempts/events       # restartable bounded operational state
+  future review state       # migrated and never automatically rebuilt
 ```
 
+Catalog refresh builds and validates an inactive generation, then atomically
+switches the active-generation pointer without replacing the database file.
 Durable review and observation data must also support explicit portable
 export. References use content hashes and run identities so they survive path
-changes and catalog regeneration.
+changes and catalog regeneration. The complete decision is in
+[Durable job architecture](topics/job-architecture.md).
 
 ## Application Components
 
@@ -575,15 +580,20 @@ desktop packaging follow this milestone.
 - Frontend API types are generated from Python-owned contracts.
 - The existing CLI, artifact store, and Python extractors are retained.
 - The comparison and review workspace is the first defining vertical slice.
+- One active `doc-evidence.sqlite` contains logically distinct catalog
+  generations, operational job state, and future durable review state.
+- The first job executor is a bounded local scheduler over supervised
+  subprocesses, not Celery or an external broker.
 
 ### Open implementation decisions
 
-- Choose the durable-workspace persistence library before the first
-  write-enabled slice. Tactical 000 validated the FastAPI/Pydantic adapter.
+- Tactical 001 must implement and validate the approved unified SQLite
+  migrations and catalog-generation mechanism. Tactical 000 validated the
+  FastAPI/Pydantic adapter.
 - Tactical 000 validated the Vite, React, TanStack Query, narrow Zustand, and
   CSS Modules frontend composition; the maintainer interaction gate remains.
-- Whether catalog and durable workspace state begin in separate database files
-  or separate logical stores with a tested split path.
+- Measured default concurrency for light, OCR, and model-heavy resource
+  classes on supported local environments.
 - The first diff algorithms and alignment libraries.
 - Polling, explicit refresh, or filesystem watching for collection changes.
 - The initial plugin discovery and isolation mechanism for domain packs.

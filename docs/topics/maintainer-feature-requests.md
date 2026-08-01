@@ -3,7 +3,7 @@
 Topic: maintainer-feature-requests
 
 **Status:** Review-workspace revisions implemented; UI-triggered extraction
-execution remains the next distinct product discussion.
+execution is approved and planned in Tactical 001 but not yet implemented.
 
 ## Purpose
 
@@ -18,7 +18,8 @@ behavior, and implementation status remain traceable.
 
 ### Trigger and monitor extraction from the application
 
-**Status:** OPEN — requires a new tactical.
+**Status:** PLANNED — approved in
+[Tactical 001](../tactical/001-durable-extraction-jobs.md).
 
 The application should let the user request missing extraction work and
 revisit prior work without leaving the document view.
@@ -133,7 +134,9 @@ now labels cached-run coverage and this image-only limitation.
 - [Tactical 000](../tactical/000-read-only-library-comparison.md) remains the
   read-only implementation record and does not authorize UI-triggered jobs.
 
-The next tactical should be chosen after live review. Extraction execution can
-be a focused tactical before durable review events if it is now the higher
-priority, but its job-state, cache, cancellation, and security contracts must
-be designed explicitly.
+After live review, the maintainer selected extraction execution before durable
+review events on 2026-08-01. Its job-state, cache, cancellation, security, and
+recovery contracts now live in
+[Durable job architecture](job-architecture.md), and Tactical 001 defines
+their first end-to-end implementation. This topic remains the record of the
+originating request until acceptance evidence closes it.

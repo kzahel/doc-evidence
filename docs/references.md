@@ -35,6 +35,11 @@ Read these before implementing the corresponding `doc-evidence` boundary:
 - [Framework-independent Python core](https://github.com/kzahel/atpiano/blob/87b77e9b0679f770a5f55e69546c7a1cb72fde46/docs/tactical/017-python-application-core.md)
   — inward application services and thin filesystem, SQLite, HTTP, CLI, and
   worker adapters.
+- [Durable worker isolation](https://github.com/kzahel/atpiano/blob/87b77e9b0679f770a5f55e69546c7a1cb72fde46/docs/tactical/022-durable-capture-worker-isolation.md)
+  — bounded scheduler state, spawned worker isolation, prompt cancellation
+  boundaries, explicit interruption, and restart-visible recovery. Tactical
+  001 adopts those failure lessons for discrete document extraction jobs, not
+  the sibling's streaming audio horizons or model lanes.
 - [Early Tauri sidecar boundary](https://github.com/kzahel/atpiano/blob/87b77e9b0679f770a5f55e69546c7a1cb72fde46/docs/tactical/030-early-tauri-sidecar-boundary.md)
   — ephemeral loopback port, launch secret, exact-origin policy, authenticated
   handshake, thin Rust lifecycle ownership, and Python sidecar supervision.
@@ -67,4 +72,3 @@ common vocabulary is:
 - `docs/topics/` for living focused truth; and
 - `docs/tactical/` for numbered bounded implementation slices and execution
   records.
-

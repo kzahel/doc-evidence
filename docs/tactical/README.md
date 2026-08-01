@@ -44,3 +44,8 @@ action, new external service, or significant expansion beyond the tactical.
   maintainer interaction acceptance: Python API, generated
   TypeScript client, React library/document workspace, exact output grouping,
   and word/numeric diff over existing cached artifacts.
+- [001 — Durable extraction jobs and operational UI](001-durable-extraction-jobs.md)
+  — approved implementation plan, not started: unified SQLite state, durable
+  jobs and attempts, supervised subprocesses, atomic artifact publication,
+  recovery, document execution controls, activity center, bounded batch, and
+  concurrency/debug UI.

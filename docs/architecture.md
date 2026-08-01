@@ -25,7 +25,8 @@ inventory -> extractor adapters -> normalized artifacts -> observations
                               v
                  content-addressed file store
                               +
-                   rebuildable SQLite catalog
+                  unified workspace SQLite
+                  with catalog generations
                               |
                               v
                    external review overlays
@@ -43,8 +44,9 @@ React + TypeScript UI
         v
 Python localhost API and job service
         |
-        +-- durable workspace state
-        +-- rebuildable catalog
+        +-- one active workspace database
+        |     +-- durable operational/review state
+        |     +-- rebuildable catalog generations
         +-- content-addressed artifacts
         +-- configured read-only collections
         +-- isolated extraction subprocesses
@@ -79,14 +81,19 @@ comparisons.
 ## Storage
 
 The artifact store contains inspectable immutable successful run outputs under
-`blobs/<hash-prefix>/<sha256>/runs/<extractor>/<run-key>/`. A SQLite catalog
-projects those artifacts into convenient metadata, relationships, and
-full-text tables. The database may be deleted and rebuilt from the source
-collections and artifact sidecars.
+`blobs/<hash-prefix>/<sha256>/runs/<extractor>/<run-key>/`. Catalog tables in
+the active `doc-evidence.sqlite` project those artifacts into convenient
+metadata, relationships, and full-text indexes. Catalog generations are
+rebuildable from source collections and artifact sidecars, but the database
+file also contains operational and future user-authored state and therefore is
+not deleted to rebuild the catalog.
 
 Human review decisions are not extractor artifacts. They belong in a durable
-review overlay that can refer to observations and source hashes while
-surviving re-extraction.
+logical workspace store that can refer to observations and source hashes while
+surviving re-extraction. Durable jobs and worker attempts use separate tables
+and retention policy in the same active database. The complete worker,
+artifact-publication, and recovery boundary is maintained in
+[Durable job architecture](topics/job-architecture.md).
 
 Private benchmark reports and reviews live below
 `benchmarks/<suite-id>/runs/<benchmark-run-id>/` in the external artifact store.
@@ -145,10 +152,12 @@ It does not accept its own candidates. Promotion is a separate review action.
 Start with exact text and SQLite FTS. Search results must identify the matching
 document, page, extractor run, and text offsets when available.
 
-The Phase 1 catalog is an atomic snapshot of the collections selected by the
-latest inventory invocation. Running an inventory for a subset intentionally
-replaces the searchable catalog snapshot, while prior content-addressed
-artifacts and timestamped manifests remain available.
+The Phase 1 implementation uses an atomic whole-file catalog snapshot of the
+collections selected by the latest inventory invocation. Tactical 001 replaces
+that mechanism with generation-scoped catalog rows and an atomic active
+generation pointer inside the unified database. Running an inventory for a
+subset still intentionally replaces the active searchable projection, while
+prior content-addressed artifacts and timestamped manifests remain available.
 
 ### Downstream adapters
 

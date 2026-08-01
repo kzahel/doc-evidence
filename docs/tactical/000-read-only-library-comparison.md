@@ -347,10 +347,11 @@ gates, the private calibration integration works without source changes or
 network access, and the maintainer explicitly accepts the live library and
 comparison interaction.
 
-The expected Tactical 001 adds durable review events, correction history, and
-portable review export over the accepted comparison workspace. It does not
-begin automatically if the interaction review identifies a different product
-shape.
+The original expected next slice was durable review events. Subsequent
+maintainer review instead prioritized explicit extraction execution. That
+direction is now the approved
+[Tactical 001](001-durable-extraction-jobs.md); durable review events remain a
+later slice.
 
 ## Execution Record
 
@@ -432,11 +433,12 @@ state being written but not restored.
 
 ### Remaining gate
 
-The code and integration gates are complete. Tactical 000 remains open only
-for the maintainer's explicit live acceptance of the information hierarchy,
-terminology, diff density, and page/output split. That review determines
-whether the next tactical should add durable review events or first revise the
-read-only interaction.
+The code and integration gates are complete. Tactical 000 retains its explicit
+live-acceptance gate for the information hierarchy, terminology, diff density,
+and page/output split. After the layout follow-ups, the maintainer separately
+selected durable extraction jobs as the next priority and approved Tactical
+001's design; that sequencing does not retroactively erase this execution
+record's acceptance wording.
 
 ### Maintainer review follow-up
 

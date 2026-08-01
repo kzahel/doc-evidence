@@ -28,9 +28,14 @@ Before substantive work:
    `docs/topics/comparison-review-workspace.md` for application work. Consult
    `docs/topics/maintainer-feature-requests.md` before planning or changing
    the live review interface.
+   Read `docs/topics/job-architecture.md` before changing job persistence,
+   scheduling, workers, extraction execution, artifact publication,
+   cancellation, recovery, or operational UI.
 4. Read the active tactical under `docs/tactical/` before implementing its
-   scope. The current implemented slice awaiting maintainer acceptance is
-   `docs/tactical/000-read-only-library-comparison.md`.
+   scope. `docs/tactical/000-read-only-library-comparison.md` is the implemented
+   read-only execution record. The approved next implementation plan is
+   `docs/tactical/001-durable-extraction-jobs.md`; implementation has not
+   started.
 5. Read `docs/master-plan.md`, `docs/architecture.md`, and
    `docs/data-contracts.md` for the affected core boundary.
 6. Read `docs/benchmarking.md` for extractor/evaluation work and
@@ -171,13 +176,14 @@ score.
 
 The Python-owned localhost API and React/TypeScript read-only library and
 extractor-comparison slice are implemented and pass automated/private
-integration gates. Tactical 000 remains open until the maintainer explicitly
-accepts the live interaction.
+integration gates. Tactical 000 retains its explicit maintainer-acceptance
+record, while the maintainer has selected durable extraction execution as the
+next product priority.
 
-`docs/tactical/000-read-only-library-comparison.md` is the active execution
-record. Do not begin persistent review writes, UI-triggered extraction jobs,
-or Tauri packaging under its authority. A new tactical is required after the
-manual acceptance decision.
+`docs/tactical/001-durable-extraction-jobs.md` is the approved next scope but
+has not been started. Do not begin its implementation until the maintainer
+explicitly asks to proceed. Persistent review writes and Tauri packaging
+remain outside both implemented Tactical 000 and planned Tactical 001.
 
 ## Validation and Commits
 

@@ -105,6 +105,13 @@ See [Product vision and application architecture](product-vision-and-architectur
 The bounded first implementation plan is
 [Tactical 000](tactical/000-read-only-library-comparison.md).
 
+The maintainer selected durable extraction execution before durable review
+writes as the next product priority. The approved architecture is
+[Durable job architecture](topics/job-architecture.md), and its bounded
+implementation plan is
+[Tactical 001](tactical/001-durable-extraction-jobs.md). Implementation has not
+started.
+
 ### Phase 3 — Candidate understanding
 
 - Add versioned document-type and observation schemas.
@@ -144,14 +151,15 @@ The bounded first implementation plan is
 9. Local application foundation and read-only library. — implemented
 10. First-class comparison workspace. — read-only interaction implemented;
     durable review pending
-11. Observation and downstream-promotion workflows.
+11. Durable extraction jobs and operational UI. — approved plan; not started
+12. Observation and downstream-promotion workflows.
 
 ## Open Implementation Decisions
 
-- Choose the durable-workspace persistence library and migration boundary
-  before the first write-enabled slice.
-- The physical split between rebuildable catalog data and durable workspace
-  state.
+- Implement and validate the approved unified `doc-evidence.sqlite`, catalog
+  generation, job migration, and retention design in Tactical 001.
+- Measure safe default concurrency for light, OCR, and model-heavy resource
+  classes rather than inferring it from CPU count alone.
 - Whether the directional v1 token diff should gain a symmetric summary, plus
   the initial spatial diff contract.
 - Turn the declarative `ocr_when` and `layout_when` policy into explicit,
