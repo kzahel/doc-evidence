@@ -100,6 +100,11 @@ class AttemptSupervisorTest(unittest.TestCase):
             nondeterministic = self.supervisor().execute(nondeterministic_plan)
 
             self.assertEqual(first.outcome, "executed")
+            self.assertTrue(
+                (
+                    first_plan.blob_dir / "attempts" / "first" / "publication.json"
+                ).is_file()
+            )
             self.assertEqual(concurrent.outcome, "concurrent_cache_win")
             self.assertEqual(nondeterministic.outcome, "nondeterministic")
             self.assertEqual((canonical / "normalized.json").read_bytes(), before)

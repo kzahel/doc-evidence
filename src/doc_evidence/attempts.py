@@ -357,6 +357,7 @@ class AttemptSupervisor:
             },
         )
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+        process: subprocess.Popen[bytes] | None = None
         try:
             process = subprocess.Popen(
                 [*self.worker_command, str(request_path), str(response_path)],
@@ -365,7 +366,24 @@ class AttemptSupervisor:
                 start_new_session=os.name == "posix",
                 creationflags=flags,
             )
+            atomic_write_json(
+                attempt_dir / "worker.json",
+                {
+                    "schema_version": 1,
+                    "attempt_id": plan.attempt_id,
+                    "worker_pid": process.pid,
+                    "process_group_id": process.pid if os.name == "posix" else None,
+                    "started_at": started_at,
+                },
+            )
         except OSError as error:
+            if process is not None:
+                _signal_tree(process, force=True)
+                process.wait(timeout=10)
+                if process.stdout is not None:
+                    process.stdout.close()
+                if process.stderr is not None:
+                    process.stderr.close()
             completed_at = isoformat_z()
             result = AttemptResult(
                 attempt_id=plan.attempt_id,
@@ -375,8 +393,10 @@ class AttemptSupervisor:
                 run_key=None,
                 canonical_artifact_path=None,
                 attempt_path=attempt_dir.relative_to(plan.store_root).as_posix(),
-                worker_pid=None,
-                process_group_id=None,
+                worker_pid=process.pid if process is not None else None,
+                process_group_id=(
+                    process.pid if process is not None and os.name == "posix" else None
+                ),
                 exit_code=None,
                 started_at=started_at,
                 completed_at=completed_at,
@@ -398,6 +418,7 @@ class AttemptSupervisor:
                     )
                 )
             return result
+        assert process is not None
         assert process.stdout is not None
         assert process.stderr is not None
         stdout_state = _DrainState()
@@ -571,6 +592,26 @@ class AttemptSupervisor:
                 failure_class = "validation_or_publication"
                 message = str(error)[:1_000]
         completed_at = isoformat_z()
+        if canonical_path is not None and outcome in {
+            "executed",
+            "concurrent_cache_win",
+            "verified_cache_match",
+        }:
+            try:
+                atomic_write_json(
+                    attempt_dir / "publication.json",
+                    {
+                        "schema_version": 1,
+                        "attempt_id": plan.attempt_id,
+                        "outcome": outcome,
+                        "run_id": run_id,
+                        "run_key": run_key,
+                        "canonical_artifact_path": canonical_path,
+                        "completed_at": completed_at,
+                    },
+                )
+            except OSError:
+                pass
         result = AttemptResult(
             attempt_id=plan.attempt_id,
             extractor_id=plan.execution.extractor_id,

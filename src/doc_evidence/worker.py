@@ -56,6 +56,15 @@ def _execute(request: dict[str, Any]) -> dict[str, object]:
         store_root
     ):
         raise ValueError("worker attempt paths are outside the artifact store")
+    atomic_write_json(
+        attempt_dir / "worker.json",
+        {
+            "schema_version": 1,
+            "attempt_id": _required_string(request, "attempt_id"),
+            "worker_pid": os.getpid(),
+            "process_group_id": os.getpid() if os.name == "posix" else None,
+        },
+    )
     before = source_path.stat()
     if (before.st_size, before.st_mtime_ns) != (
         expected_size_bytes,

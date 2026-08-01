@@ -182,6 +182,45 @@ shutdown requests cancellation of active local workers while retaining queue
 intent and attempt evidence for restart reconciliation. Source files are never
 modified. Persistent review decisions remain a later slice.
 
+The header activity center shows active, queued, and failed counts. Its
+expanded view can pause or resume claims, cancel or retry one job, preflight a
+bounded image-only/missing-OCR batch, and cancel pending batch children with a
+separate confirmation before cancelling running children. Advanced detail
+keeps process liveness, heartbeat age, and absolute deadline distinct and
+shows only server-bounded log tails and safe environment versions—never source
+paths, arbitrary commands, the complete environment, or the launch token.
+
+A `published_projection_failed` job means the canonical artifact passed
+validation and remains immutable, but its SQLite run/page projection did not
+finish. Use **Repair catalog projection** from the selected job; the server
+revalidates the exact artifact before rebuilding its projection. Do not delete
+the run directory or retry extraction merely to repair this condition.
+
+To stop cleanly, use Ctrl-C in the serving terminal. The scheduler stops new
+claims, requests cancellation for local active workers, waits for their
+process groups, releases its library lease, and leaves queued intent durable.
+After an unclean exit, launch the same registered library normally. Startup
+uses both persisted attempt PIDs and the attempt-owned `worker.json` fallback
+to terminate a process group that outlived its backend, then reconciles active
+rows. A valid artifact produced after a cache miss wins; a fresh-verification
+job whose canonical artifact already predated the attempt requires explicit
+attempt publication evidence and is otherwise marked interrupted rather than
+falsely successful.
+
+Run the production-like browser gate from the repository root:
+
+```sh
+npm run test:e2e --prefix web
+```
+
+It builds the frontend, creates a fresh temporary `DOC_EVIDENCE_HOME`,
+registers two synthetic libraries, starts the authenticated Python host, and
+runs headless Chromium through success, exact-cache reuse, cancellation,
+timeout/retry, diagnostics, deep links, and library isolation. It verifies its
+source hashes and the default production registry before removing the entire
+temporary home. Install the matching Chromium binary after dependency setup
+with `npm exec --prefix web playwright install chromium` when needed.
+
 ## Duplicates
 
 ```sh

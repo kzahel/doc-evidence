@@ -849,7 +849,7 @@ class JobRepository:
                 WHERE attempt_id = ? AND job_id = ?
                 """,
                 (
-                    next_state,
+                    "running",
                     worker_pid,
                     process_group_id,
                     heartbeat_at,

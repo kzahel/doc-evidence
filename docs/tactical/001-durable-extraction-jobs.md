@@ -1053,3 +1053,40 @@ write failure, cooperative and ignored cancellation, descendants, and bounded
 logs. Generated-contract drift, Pyright, TypeScript, 25 component tests, and a
 production frontend build pass. Full restart-boundary, isolated Playwright,
 private integration, and maintainer acceptance evidence remain in progress.
+
+### Slice 9 — fault, restart, and isolated browser validation
+
+Implemented the deterministic production-like validation harness and closed
+two failures it exposed:
+
+- current Playwright Test with a Chromium-only, single-worker, headless
+  configuration and a Python runner that creates a temporary
+  `DOC_EVIDENCE_HOME`, two synthetic registered libraries, and a real
+  authenticated FastAPI/static-host composition;
+- test-only registered fake extractors behind the normal job/runtime/UI
+  boundaries for success, ignored cancellation with a descendant, and
+  absolute timeout with the one permitted automatic retry;
+- browser assertions for passive opening, stable deep links, library
+  selection/isolation, explicit execution, representation refresh, exact
+  cache fulfillment, activity filters, cancellation, timeout, liveness,
+  attempt/event diagnostics, and relaunch from the same durable state with no
+  browser console errors;
+- before/after source hashes and byte comparison of the platform-default
+  production registry, followed by complete removal of the temporary app
+  home;
+- a cancellation regression in which the transient job state `cancelling`
+  was incorrectly written into the narrower attempt-state constraint; the
+  attempt now remains `running` until its terminal `cancelled` result while
+  the job independently exposes `cancelling`; and
+- attempt-owned `worker.json` identity written by both supervisor and worker,
+  allowing startup to terminate a process group even when the backend died
+  after spawn but before the SQLite PID update.
+
+Restart tests now distinguish a newly published canonical artifact from a
+canonical run that already existed before fresh verification. The former
+reconciles to success; the latter requires attempt-owned publication evidence
+or becomes explicitly interrupted. Claimed-before-spawn, spawned-before-PID,
+published-before-final-state, invalid-success, projection-failure, timeout,
+cancellation, descendant, log-bound, disk-space, write-failure, malformed
+output, nondeterminism, and temporary SQLite-contention lanes pass. Private tax
+library integration and explicit maintainer acceptance remain open.

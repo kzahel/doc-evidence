@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import os
 import shutil
+import signal
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -16,6 +20,7 @@ from doc_evidence.errors import CatalogError, RequestError
 from doc_evidence.inventory import run_inventory
 from doc_evidence.persistence import ensure_library_database
 from doc_evidence.scheduler import LibraryScheduler, ResourceLimits
+from doc_evidence.util import atomic_write_json, isoformat_z
 from tests.helpers import write_minimal_pdf
 
 
@@ -157,10 +162,23 @@ class ExtractionJobApplicationTest(unittest.TestCase):
             application, document_id, _source = self.application(
                 Path(temporary_directory)
             )
+            source, prepared = application.prepare(
+                document_id=document_id, extractor_id="poppler", settings={}
+            )
+            run_dir = (
+                application.config.store
+                / "blobs"
+                / source.content_sha256[:2]
+                / source.content_sha256
+                / "runs"
+                / "poppler"
+                / prepared.run_key
+            )
+            hidden = run_dir.with_name(run_dir.name + ".before-publication")
+            run_dir.rename(hidden)
             fresh = application.enqueue(
                 document_id=document_id,
                 extractor_id="poppler",
-                execution_mode="fresh_verification",
             )
             repository = application.repository
             self.assertTrue(
@@ -172,6 +190,7 @@ class ExtractionJobApplicationTest(unittest.TestCase):
             )
             self.assertIsNotNone(claimed)
             repository.release_lease("lost-scheduler")
+            hidden.rename(run_dir)
 
             recovered = application.reconcile()
 
@@ -182,12 +201,12 @@ class ExtractionJobApplicationTest(unittest.TestCase):
 
             assert job.result_artifact_path is not None
             run_dir = application.config.store / job.result_artifact_path
-            hidden = run_dir.with_name(run_dir.name + ".hidden")
-            run_dir.rename(hidden)
+            missing = run_dir.with_name(run_dir.name + ".hidden")
+            run_dir.rename(missing)
             try:
                 application.reconcile()
             finally:
-                hidden.rename(run_dir)
+                missing.rename(run_dir)
             failed = application.get(job.job_id)
             self.assertEqual(failed.state, "failed")
             self.assertEqual(failed.outcome, "integrity_failed")
@@ -292,6 +311,46 @@ class ExtractionJobApplicationTest(unittest.TestCase):
             finally:
                 scheduler.stop()
             self.assertEqual(job.state, "succeeded")
+
+    def test_cancelling_job_keeps_attempt_in_running_schema_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, document_id, _source = self.application(
+                Path(temporary_directory)
+            )
+            created = application.enqueue(
+                document_id=document_id,
+                extractor_id="poppler",
+                execution_mode="fresh_verification",
+            )
+            repository = application.repository
+            self.assertTrue(
+                repository.acquire_lease("cancel-test", stale_after_seconds=0)
+            )
+            try:
+                claimed = repository.claim_next(
+                    scheduler_instance_id="cancel-test",
+                    resource_classes={"light"},
+                )
+                assert claimed is not None
+                repository.request_cancel(created.job.job_id)
+                repository.attempt_update(
+                    job_id=created.job.job_id,
+                    attempt_id=claimed.attempt_id,
+                    worker_pid=123,
+                    process_group_id=123,
+                    heartbeat_at=isoformat_z(),
+                    stage="running",
+                )
+                self.assertEqual(
+                    application.get(created.job.job_id).state, "cancelling"
+                )
+                self.assertEqual(
+                    application.attempts(created.job.job_id)[0].state,
+                    "running",
+                )
+            finally:
+                repository.interrupt(created.job.job_id, detail="test cleanup")
+                repository.release_lease("cancel-test")
 
     def test_image_only_ocr_batch_preflight_is_bounded(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -455,6 +514,66 @@ class ExtractionJobApplicationTest(unittest.TestCase):
             self.assertFalse(thread.is_alive())
             self.assertEqual(failures, [])
             self.assertEqual(results, ["succeeded"])
+
+    @unittest.skipUnless(os.name == "posix", "process-group recovery is POSIX")
+    def test_restart_kills_worker_recorded_before_database_pid_update(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, document_id, _source = self.application(
+                Path(temporary_directory)
+            )
+            created = application.enqueue(
+                document_id=document_id,
+                extractor_id="poppler",
+                execution_mode="fresh_verification",
+            )
+            repository = application.repository
+            self.assertTrue(
+                repository.acquire_lease("crashed-owner", stale_after_seconds=0)
+            )
+            claimed = repository.claim_next(
+                scheduler_instance_id="crashed-owner",
+                resource_classes={"light"},
+            )
+            assert claimed is not None
+            process = subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(120)"],
+                start_new_session=True,
+            )
+            attempt_dir = (
+                application.config.store
+                / "blobs"
+                / created.job.content_sha256[:2]
+                / created.job.content_sha256
+                / "attempts"
+                / claimed.attempt_id
+            )
+            atomic_write_json(
+                attempt_dir / "worker.json",
+                {
+                    "schema_version": 1,
+                    "attempt_id": claimed.attempt_id,
+                    "worker_pid": process.pid,
+                    "process_group_id": process.pid,
+                },
+            )
+            repository.release_lease("crashed-owner")
+            scheduler = LibraryScheduler(
+                application,
+                poll_seconds=0.02,
+                heartbeat_seconds=0.05,
+            )
+            try:
+                self.assertTrue(scheduler.start())
+                process.wait(timeout=5)
+                self.assertEqual(
+                    application.get(created.job.job_id).state, "interrupted"
+                )
+                self.assertFalse(LibraryScheduler._group_alive(process.pid))
+            finally:
+                scheduler.stop()
+                if process.poll() is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=5)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,8 @@ dist/
 web/node_modules/
 web/dist/
 web/coverage/
+web/playwright-report/
+web/test-results/
 
 # Generated document stores, databases, models, and benchmark runs.
 .doc-evidence-data/

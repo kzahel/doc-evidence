@@ -202,7 +202,10 @@ class LocalExtractionJobs:
 
     @staticmethod
     def _execution_payload(
-        source: SourceSnapshot, prepared: PreparedExtraction
+        source: SourceSnapshot,
+        prepared: PreparedExtraction,
+        *,
+        canonical_present_at_enqueue: bool,
     ) -> dict[str, Any]:
         execution = prepared.execution
         return {
@@ -214,6 +217,7 @@ class LocalExtractionJobs:
             "descriptor": prepared.descriptor,
             "run_key": prepared.run_key,
             "run_id": prepared.run_id,
+            "canonical_present_at_enqueue": canonical_present_at_enqueue,
             "source": {
                 "collection_id": source.collection_id,
                 "relative_path": source.relative_path,
@@ -252,11 +256,8 @@ class LocalExtractionJobs:
                 "run_key": prepared.run_key,
             }
         )
-        cached = (
-            self._cached(source=source, prepared=prepared)
-            if execution_mode == "reuse_or_execute"
-            else None
-        )
+        observed_cached = self._cached(source=source, prepared=prepared)
+        cached = observed_cached if execution_mode == "reuse_or_execute" else None
         return self.repository.create(
             JobSpec(
                 library_id=self.library_id,
@@ -265,7 +266,11 @@ class LocalExtractionJobs:
                 extractor_id=extractor_id,
                 cache_key=cache_key,
                 settings=prepared.execution.settings,
-                execution=self._execution_payload(source, prepared),
+                execution=self._execution_payload(
+                    source,
+                    prepared,
+                    canonical_present_at_enqueue=observed_cached is not None,
+                ),
                 execution_mode=execution_mode,
                 run_key=prepared.run_key,
                 priority=priority,
@@ -826,6 +831,25 @@ class LocalExtractionJobs:
                 except (OSError, ValueError):
                     pass
                 else:
+                    canonical_predated_attempt = bool(
+                        job.execution.get(
+                            "canonical_present_at_enqueue",
+                            job.execution_mode == "fresh_verification",
+                        )
+                    )
+                    if canonical_predated_attempt and not self._publication_evidence(
+                        job
+                    ):
+                        recovered.append(
+                            self.repository.interrupt(
+                                job.job_id,
+                                detail=(
+                                    "scheduler disappeared before the fresh attempt "
+                                    "recorded publication evidence"
+                                ),
+                            )
+                        )
+                        continue
                     run_id = str(job.execution["run_id"])
                     artifact_path = run_dir.relative_to(self.config.store).as_posix()
                     projection_failure: str | None = None
@@ -878,3 +902,65 @@ class LocalExtractionJobs:
                     )
                 )
         return recovered
+
+    def _publication_evidence(self, job: JobRecord) -> bool:
+        if job.active_attempt_id is None or job.run_key is None:
+            return False
+        attempt_dir = (
+            self.config.store
+            / "blobs"
+            / job.content_sha256[:2]
+            / job.content_sha256
+            / "attempts"
+            / job.active_attempt_id
+        )
+        for name in ("publication.json", "attempt.json"):
+            try:
+                value = json.loads((attempt_dir / name).read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(value, dict):
+                continue
+            if (
+                value.get("attempt_id") == job.active_attempt_id
+                and value.get("run_id") == job.execution.get("run_id")
+                and value.get("run_key") == job.run_key
+                and value.get("outcome")
+                in {"executed", "concurrent_cache_win", "verified_cache_match"}
+            ):
+                return True
+        return False
+
+    def recovered_process_groups(self) -> set[int]:
+        """Recover process groups even when a crash preceded the SQLite PID update."""
+
+        groups: set[int] = set()
+        root = self.config.store.resolve()
+        for job in self.repository.active_jobs():
+            if job.active_attempt_id is None:
+                continue
+            identity_path = (
+                root
+                / "blobs"
+                / job.content_sha256[:2]
+                / job.content_sha256
+                / "attempts"
+                / job.active_attempt_id
+                / "worker.json"
+            ).resolve()
+            if not identity_path.is_relative_to(root):
+                continue
+            try:
+                if identity_path.stat().st_size > 4_096:
+                    continue
+                value = json.loads(identity_path.read_text(encoding="utf-8"))
+                if not isinstance(value, dict):
+                    continue
+                if value.get("attempt_id") != job.active_attempt_id:
+                    continue
+                process_group_id = value.get("process_group_id")
+                if isinstance(process_group_id, int) and process_group_id > 1:
+                    groups.add(process_group_id)
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+        return groups

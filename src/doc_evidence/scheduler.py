@@ -164,10 +164,11 @@ class LibraryScheduler:
             for item in self.repository.active_attempts()
             if item.process_group_id is not None
         }
+        groups.update(self.application.recovered_process_groups())
         for group in groups:
             try:
                 os.killpg(group, signal.SIGTERM)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
                 continue
         deadline = time.monotonic() + 1.0
         while groups and time.monotonic() < deadline:
@@ -177,7 +178,7 @@ class LibraryScheduler:
         for group in groups:
             try:
                 os.killpg(group, signal.SIGKILL)
-            except ProcessLookupError:
+            except (ProcessLookupError, PermissionError):
                 continue
 
     def _free_classes(self) -> set[ResourceClass]:
