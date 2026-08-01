@@ -51,13 +51,11 @@ immutability, exact duplicates, normalized-text duplicates, image-only
 classification, artifact-cache reuse, schema-valid manifests, literal search,
 and SQLite FTS5 search.
 
-On 2026-08-01, the first private-corpus run reconciled exactly to its independent
-file/page baseline: 81 source files, 79 PDF paths, and 421 PDF source pages. It
-produced 80 unique content hashes, 78 unique PDFs, 10 unique image-only PDFs,
-one exact-byte duplicate group, two distinct-byte normalized-text duplicate
-groups, and no path or extraction errors. A second run reused all 78 unique PDF
-extractions. Private filenames and extracted content remain in the external
-case workspace.
+The first authorized external-corpus run reconciled exactly to its independent
+file/page baseline, including document identities, page counts, duplicates,
+and image-only classification, without path or extraction errors. A second run
+reused every unchanged PDF extraction. Private filenames and extracted content
+remain in the external case workspace.
 
 ### Phase 2 — OCR and parser comparison — implemented
 
@@ -76,12 +74,11 @@ and generates a local review UI. Human review is scored per extractor and
 document class. Agreement is a triage signal, not correctness, and scorecards
 never change or retire an extractor automatically.
 
-The first private five-document, seven-review-page run completed 20/20 expert
-runs successfully. Across ten sparse visually checked assertions per expert,
-Poppler passed 6, OCRmyPDF/Tesseract 9, Docling 8, and Marker 8. The run emitted
-52 pairwise review flags. A repeat run reused all 20 expert artifacts in under
-seven seconds. These are smoke-test results, not extractor rankings; human
-page-level calibration remains pending in the external case workspace.
+The first bounded external benchmark completed every expert run successfully,
+checked sparse visually verified assertions, and emitted pairwise review flags.
+A repeat run reused every expert artifact. These are smoke-test results, not
+extractor rankings; human page-level calibration remains pending in the
+external case workspace.
 
 ### Application milestone — read-only slice implemented
 

@@ -24,7 +24,7 @@ The product should help a person answer:
 - What remains missing, conflicting, or unreviewed?
 - Can every derived artifact and decision be reproduced or audited later?
 
-The initial private tax collection is a demanding real-world integration, not
+The initial external collection is a demanding real-world integration, not
 the product boundary. The core must remain useful for financial,
 administrative, legal, research, and personal-record collections without
 embedding tax rules.

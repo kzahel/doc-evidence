@@ -10,9 +10,8 @@ provenance and keep automated candidate observations distinct from reviewed
 facts.
 
 This repository contains generic code and public/synthetic fixtures only. Its
-first downstream integration is the private tax workspace at
-`/Users/kgraehl/Documents/taxes`, whose current case-side plan is
-`docs/topics/document-evidence-pipeline.md` in that workspace.
+first downstream integration is an external tax-document workspace whose
+case-side plan remains in that private workspace.
 
 Never copy, move, rename, commit, upload, or modify private source documents as
 part of generic-tool development. Read an external collection only when the
@@ -219,7 +218,7 @@ Phases 1 and 2 implement the read-only Poppler-backed inventory,
 content-addressed artifacts, duplicate detection, SQLite/FTS catalog, search,
 OCRmyPDF/Tesseract, Docling and Marker adapters, private benchmark suites,
 disagreement flags, local review packs, and per-class human scorecards. Phase 1
-reconciled against the initial private 2023 tax corpus on 2026-08-01. Phase 2
+reconciled against an authorized external corpus. Phase 2
 calibration is now accumulating reviewed evidence. Do not select or retire a
 heavyweight expert from agreement metrics or an under-supported aggregate
 score.
@@ -257,12 +256,10 @@ refresh are the seventh landed boundary. The global activity center, bounded
 OCR batch preflight, queue control, batch cancellation, resource/liveness
 diagnostics, bounded logs, and catalog-projection repair are the eighth landed
 boundary. Deterministic crash/restart and isolated headless-browser gates pass.
-The authorized default-home integration against
-`/Users/kgraehl/Documents/taxes/.doc-evidence.yaml` also passes: one missing
-configured-language OCR run executed, exact OCR and Docling cache reuse worked,
-broad OCR stayed at preflight, all 81 source occurrences retained the same
-aggregate SHA-256, and registry bytes were unchanged. Only explicit maintainer
-interaction acceptance remains.
+The authorized default-home integration also passes: one missing configured-
+language OCR run executed, exact OCR and layout cache reuse worked, broad OCR
+stayed at preflight, and source and registry integrity checks remained
+unchanged. Only explicit maintainer interaction acceptance remains.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits

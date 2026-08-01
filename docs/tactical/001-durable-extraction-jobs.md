@@ -113,8 +113,9 @@ session or streaming model.
   and one database/artifact store. Multiple collections in the same library
   never create additional databases.
 - New desktop-created libraries default to a managed store below application
-  home. Tactical 001 may adopt the existing external tax configuration/store
-  in place; it must not copy private documents or rerun successful artifacts.
+  home. Tactical 001 may adopt an explicitly authorized external configuration
+  and store in place; it must not copy private documents or rerun successful
+  artifacts.
 - Preserve explicit `--config` as an automation/compatibility override and add
   a bounded CLI/development registration path. Ordinary startup uses the
   known-library registry and last/default library.
@@ -675,13 +676,13 @@ attempt accumulation.
 
 ### External private integration
 
-Run against the configured private tax workspace without copying or modifying
-source documents:
+Run against an explicitly authorized external workspace without copying or
+modifying source documents:
 
-- use the already registered tax configuration/store in the platform-default
+- use the already registered external configuration/store in the platform-default
   application home, as explicitly authorized for this bring-up, while refusing
   to run if the selected configuration is not the expected path;
-- confirm ordinary startup selects the registered tax library without a
+- confirm ordinary startup selects the registered external library without a
   repeated `--config` argument and displays its identity/collections;
 - record a full source hash baseline before and after;
 - enqueue one missing OCR extraction for an image-only PDF through the UI;
@@ -1093,7 +1094,7 @@ published-before-final-state, invalid-success, projection-failure, timeout,
 cancellation, descendant, log-bound, disk-space, write-failure, malformed
 output, nondeterminism, and temporary SQLite-contention lanes pass.
 
-### Slice 10 — configured defaults and private acceptance
+### Slice 10 — configured defaults and external acceptance
 
 Completed the authorized production-library integration and fixed the exact
 identity defect it exposed:
@@ -1101,7 +1102,7 @@ identity defect it exposed:
 - extractor capabilities now return Python-resolved `default_settings` through
   Pydantic/OpenAPI/generated TypeScript, so React displays and submits the
   precise settings used to calculate the advertised run key;
-- the tax library's configured `eng` and `deu` OCR languages are no longer
+- the external library's configured OCR languages are no longer
   replaced by a UI-only `eng` default, and a component test locks that request
   identity across the runtime boundary;
 - `scripts/run-private-integration.py` refuses any default selected library
@@ -1115,22 +1116,17 @@ identity defect it exposed:
 - the private harness verifies that preflight gains exactly one cache hit and
   loses exactly one execution, while the candidate population is unchanged.
 
-The final authorized run used the default registered library backed by
-`/Users/kgraehl/Documents/taxes/.doc-evidence.yaml`. It completed in 29.66
-seconds with OCR outcomes `executed` and `cache_hit`, a cached
-`docling-standard` outcome, 10 image-only candidates changing from 3 cache
-hits/7 executions to 4 cache hits/6 executions, and zero browser console
-errors. All 81 discovered source occurrences retained aggregate SHA-256
-`9d22a2df7d3e6d4bc7c0a1580441b9941aab3c256202a16a43d024d58b2637b1`;
-discovery warnings remained zero and the default registry was byte-for-byte
+The final authorized run used the expected default registered library. It
+completed the planned OCR execution and cache-hit lanes, reused an existing
+layout artifact, exercised bounded batch preflight, and produced zero browser
+console errors. Aggregate source integrity and the default registry remained
 unchanged.
 
 An earlier private gate attempt had already published one other valid default-
-language OCR artifact before its final assertion encountered two legitimate
-cache-hit rows. The assertion was scoped to the intended extractor and the
-repeatable harness was tightened; the published artifact remained valid and
-accounts for the increase from the original two private cache hits to the
-final preflight's four.
+language OCR artifact before its final assertion encountered multiple
+legitimate cache-hit rows. The assertion was scoped to the intended extractor
+and the repeatable harness was tightened; the published artifact remained
+valid.
 
 Before the resolved-default defect was corrected, the diagnostic UI run also
 published one valid `eng`-only OCR artifact and recorded its exact cache reuse.

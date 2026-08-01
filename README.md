@@ -5,7 +5,7 @@ extractors, preserving provenance, and promoting reviewed observations into
 downstream structured-data systems.
 
 The project is intentionally domain-neutral. Its first real downstream case is
-a private U.S.–Swiss tax workspace, but private documents and case-specific
+an external tax-document workspace, but private documents and case-specific
 facts do not belong in this Git repository.
 
 ## Product Direction
@@ -114,13 +114,11 @@ actions and representation refresh; the application header provides a polling
 activity center with resource lanes, liveness/deadline detail, batch preflight,
 and cancellation.
 
-The private acceptance harness used the already registered tax library in the
-platform-default application home, as explicitly authorized. It executed one
-missing configured-language OCR identity, reused that OCR and an existing
-Docling artifact from exact cache, stopped at broad-batch preflight, preserved
-all 81 discovered source occurrences byte-for-byte, and left the application
-registry unchanged. Synthetic automation continues to use a fresh temporary
-`DOC_EVIDENCE_HOME`.
+The external acceptance harness used an explicitly authorized registered
+library in the platform-default application home. It exercised a missing OCR
+identity, exact OCR and layout cache reuse, and bounded batch preflight while
+verifying that source bytes and the application registry remained unchanged.
+Synthetic automation continues to use a fresh temporary `DOC_EVIDENCE_HOME`.
 
 Read these first:
 
@@ -272,6 +270,6 @@ Phase 2 adds extractor-specific runs below each content blob and private review
 runs below `benchmarks/<suite-id>/runs/<benchmark-run-id>/`. The generated
 `review.html` embeds its selected page renders, works as a self-contained local
 file or constrained preview, and exports a JSON review overlay.
-An unchanged five-document/four-expert private benchmark reuses all 20 cached
-expert artifacts and completes in seconds; the initial model-backed pass takes
-minutes and is intended only for a small representative suite.
+An unchanged small multi-extractor benchmark reuses all cached expert artifacts
+and completes in seconds; the initial model-backed pass takes minutes and is
+intended only for a representative suite.

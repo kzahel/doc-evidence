@@ -40,8 +40,8 @@ Reuse their boundary lessons; do not copy their audio/session domain.
 
 - Phases 1 and 2 produce a content-addressed artifact store, rebuildable
   SQLite/FTS catalog, page-normalized extractor outputs, and a private
-  five-document/four-extractor benchmark.
-- An unchanged benchmark reuses all 20 cached extractor runs.
+  bounded multi-extractor benchmark.
+- An unchanged benchmark reuses all cached extractor runs.
 - The current calibration review exposed two concrete UX failures: identical
   output columns are difficult to distinguish, and representation/grading
   semantics are unclear.
@@ -395,17 +395,18 @@ slices:
 
 ### External private integration evidence
 
-The production build was exercised locally against the external 2023 tax
-configuration without copying private data into this repository:
+The production build was exercised locally against an explicitly authorized
+external configuration without copying private data into this repository:
 
-- the library reported 80 unique documents and 81 source occurrences;
-- all seven selected calibration pages across five documents rendered,
+- the library's document and source-occurrence totals reconciled to the
+  independent external baseline;
+- all selected calibration pages rendered,
   exposed extractor groups, accepted direct document/page links, and opened a
   comparison workspace without browser-console errors;
-- a known hybrid form collapsed the Poppler and skip-existing-text OCR runs
+- a known hybrid document collapsed the Poppler and skip-existing-text OCR runs
   into one exact-equivalence group while keeping the layout-parser output
   separate;
-- a representative literal query returned 14 page-level matches;
+- a representative literal query returned the expected page-level matches;
 - differences-only/full switching, numeric navigation, baseline/comparison
   swapping, and the narrow stacked layout passed in headless Playwright;
 - the final headless Playwright layout pass confirmed that collapsing the
@@ -423,7 +424,7 @@ configuration without copying private data into this repository:
 - raw artifacts, including a valid zero-byte stderr artifact, opened in a
   bounded sandboxed preview with a download option; and
 - an aggregate SHA-256 digest over every configured private source file was
-  identical before and after the seven-page integration run.
+  identical before and after the integration run.
 
 The integration pass found and fixed four concrete issues before handoff: an
 unsupported Word document being chosen before the first renderable PDF,
@@ -456,7 +457,7 @@ expectation gap:
   launch missing extractors, and explains image-only PDFs.
 
 The underlying gap is recorded rather than hidden: inventory currently runs
-Poppler for PDFs only. The four-expert outputs exist for the five-document
+Poppler for PDFs only. The multi-extractor outputs exist for the bounded
 private benchmark suite, not the full catalog, and standalone images are only
 inventoried. Turning the declared OCR/layout policy into resumable broad
 execution remains outside Tactical 000's read-only UI scope.

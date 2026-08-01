@@ -52,7 +52,7 @@ Doc Evidence
 
 Libraries
 +--------------------------------+
-| Graehl Tax Documents           |
+| Tax Documents                  |
 | 4 collections · last opened now|
 +--------------------------------+
 
@@ -193,7 +193,7 @@ rollback evidence belongs to Tactical 001.
 A library may contain several non-overlapping sibling collections:
 
 ```text
-Graehl Tax Documents
+Tax Documents
   taxes-2023 -> /.../taxes/taxes2023
   taxes-2024 -> /.../taxes/taxes2024
   taxes-2025 -> /.../taxes/taxes2025

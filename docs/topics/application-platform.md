@@ -236,7 +236,7 @@ catalog and document-detail contract provide the reverse mapping to every
 renames and correctly represents one content identity observed at multiple
 paths.
 
-The external private integration opened all seven calibration pages while an
+The external private integration opened all selected calibration pages while an
 aggregate source digest remained unchanged. The complete command and test
 record is in
 [Tactical 000](../tactical/000-read-only-library-comparison.md#execution-record).
