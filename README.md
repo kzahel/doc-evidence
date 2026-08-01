@@ -16,13 +16,19 @@ search, the tool can run OCRmyPDF/Tesseract, Docling, and Marker as isolated
 experts; preserve each raw output; flag page- and number-level disagreements;
 and generate a local human-calibration review pack and scorecard.
 
+The next product milestone is a Python-backed localhost application with a
+React/TypeScript interface for browsing the cached library, comparing
+extractor output, and preserving durable human review decisions. The same
+contracts should support future offline Tauri packaging.
+
 Read these first:
 
-1. [Master plan](docs/master-plan.md)
-2. [Architecture](docs/architecture.md)
-3. [Data contracts](docs/data-contracts.md)
-4. [Benchmark plan](docs/benchmarking.md)
-5. [Operations](docs/operations.md)
+1. [Product vision and application architecture](docs/product-vision-and-architecture.md)
+2. [Master plan](docs/master-plan.md)
+3. [Architecture](docs/architecture.md)
+4. [Data contracts](docs/data-contracts.md)
+5. [Benchmark plan](docs/benchmarking.md)
+6. [Operations](docs/operations.md)
 
 ## Core Principles
 

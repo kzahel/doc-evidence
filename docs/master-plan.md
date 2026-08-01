@@ -1,7 +1,7 @@
 # Master Plan
 
 **Last updated:** 2026-08-01
-**Status:** Phase 2 implemented; private calibration started
+**Status:** Phase 2 implemented; local application direction approved
 
 ## Objective
 
@@ -82,6 +82,23 @@ Poppler passed 6, OCRmyPDF/Tesseract 9, Docling 8, and Marker 8. The run emitted
 seven seconds. These are smoke-test results, not extractor rankings; human
 page-level calibration remains pending in the external case workspace.
 
+### Application milestone — planned next
+
+- Add a Python-owned localhost API over the existing catalog and artifact
+  store.
+- Add a React/TypeScript application for browsing and searching the cached
+  library.
+- Make extractor comparison and discrepancy review a first-class workspace.
+- Group equivalent outputs and provide versioned word, numeric, and structural
+  diffs.
+- Persist human tags and review decisions separately from extractor output.
+- Generate frontend API types from Python-owned contracts.
+
+The milestone is intentionally read-oriented at first. Running arbitrary new
+pipelines, structured candidate observations, domain packs, and Tauri
+packaging follow after the library and comparison vertical slice is useful.
+See [Product vision and application architecture](product-vision-and-architecture.md).
+
 ### Phase 3 — Candidate understanding
 
 - Add versioned document-type and observation schemas.
@@ -103,7 +120,9 @@ page-level calibration remains pending in the external case workspace.
 - Incremental updates and interrupted-run recovery.
 - Database and schema migrations.
 - Diagnostics and artifact garbage-collection planning.
-- Optional local review UI if CLI/HTML reports are insufficient.
+- Mature the local application, workspace backup, and review-data migration.
+- Package the same local application contracts in a Tauri desktop shell after
+  a Python-sidecar prototype succeeds.
 - Evaluate semantic retrieval only if measured needs justify it.
 
 ## Initial Implementation Order
@@ -116,12 +135,17 @@ page-level calibration remains pending in the external case workspace.
 6. Duplicate analysis.
 7. Benchmark runner. — complete
 8. OCR and advanced parser adapters. — complete
-9. Observation and review workflows.
+9. Local application foundation and read-only library.
+10. First-class comparison and durable review workflow.
+11. Observation and downstream-promotion workflows.
 
-## Deferred Decisions
+## Open Implementation Decisions
 
-- Whether the generated local HTML review pack should become a persistent app.
-- The exact boundary between JSON sidecars and SQLite projections.
+- The exact Python ASGI framework and persistence library.
+- The physical split between rebuildable catalog data and durable workspace
+  state.
+- The initial versioned text, numeric, and spatial diff implementations.
+- Python and heavyweight-extractor packaging under a future Tauri shell.
 - Whether a vector index ever provides enough benefit to maintain.
 - Which advanced extractor becomes the preferred table/layout parser.
 - Which model-assisted observation adapters are worth supporting.

@@ -1,5 +1,10 @@
 # Architecture
 
+This document describes the existing extraction and evidence core. The
+approved application direction, user experience, deployment path, and
+Python/React boundary are defined in
+[Product vision and application architecture](product-vision-and-architecture.md).
+
 ## System Boundary
 
 `doc-evidence` reads explicitly configured external collections and writes only
@@ -23,8 +28,28 @@ inventory -> extractor adapters -> normalized artifacts -> observations
                    external review overlays
                               |
                               v
-                    downstream domain adapters
+                   downstream domain adapters
 ```
+
+The first-class application adds a local interface without changing the
+source or artifact boundaries:
+
+```text
+React + TypeScript UI
+        |
+        v
+Python localhost API and job service
+        |
+        +-- durable workspace state
+        +-- rebuildable catalog
+        +-- content-addressed artifacts
+        +-- configured read-only collections
+        +-- isolated extraction subprocesses
+```
+
+Frontend request and response types are generated from Python-owned API
+contracts. A future Tauri shell should launch and supervise the same local API
+rather than introduce a separate desktop data model.
 
 ## Content Identity
 

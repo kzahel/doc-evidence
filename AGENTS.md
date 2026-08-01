@@ -23,11 +23,12 @@ task and an explicit configuration path place it in scope.
 Before substantive work:
 
 1. Read `README.md`.
-2. Read `docs/master-plan.md`.
-3. Read `docs/architecture.md`.
-4. Read `docs/data-contracts.md`.
-5. Read `docs/benchmarking.md` for extractor or evaluation work.
-6. Check the current Git status and preserve unrelated changes.
+2. Read `docs/product-vision-and-architecture.md`.
+3. Read `docs/master-plan.md`.
+4. Read `docs/architecture.md`.
+5. Read `docs/data-contracts.md`.
+6. Read `docs/benchmarking.md` for extractor or evaluation work.
+7. Check the current Git status and preserve unrelated changes.
 
 ## Architectural Rules
 
@@ -81,3 +82,8 @@ reconciled against the initial private 2023 tax corpus on 2026-08-01. Phase 2
 calibration is now accumulating reviewed evidence. Do not select or retire a
 heavyweight expert from agreement metrics or an under-supported aggregate
 score.
+
+The next approved product milestone is a Python-owned localhost API and
+React/TypeScript interface for the cached library and first-class extractor
+comparison. Preserve the CLI and existing artifact contracts while building a
+vertical slice; do not mechanically reorganize the package first.
