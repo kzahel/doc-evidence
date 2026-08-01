@@ -4,11 +4,12 @@ Topic: library-management
 
 **Last updated:** 2026-08-01
 
-**Status:** Tactical 001 implementation in progress. Application-home,
+**Status:** Tactical 001 implementation complete. Application-home,
 known-library registry, adopted descriptors, CLI activation, unified library
 persistence, inventory generations, and collection preflight are implemented.
-UI selection remains in progress. Native Tauri folder selection, packaging,
-and store relocation remain later tacticals.
+Shared UI selection and explicit library-scoped job identity are implemented;
+explicit maintainer interaction acceptance remains. Native Tauri folder
+selection, packaging, and store relocation remain later tacticals.
 
 ## Purpose
 
@@ -176,8 +177,8 @@ than silently opening the wrong documents.
 
 New desktop-created libraries put `library.yaml` in their managed app-home
 directory by default. The existing `.doc-evidence.yaml` contract remains an
-import/automation format. Tactical 001 must support registering or adopting
-the current external tax configuration and store without modifying source
+import/automation format. Tactical 001 supports registering or adopting the
+current external tax configuration and store without modifying source
 documents, copying private documents, or rerunning existing successful
 artifacts.
 
@@ -303,7 +304,7 @@ Library identity is explicit in application operations, API resources, job
 targets, scheduler leases, deep links, and TanStack Query keys. Selecting a
 different library cannot retarget an already created job or document request.
 
-The shared runtime eventually supports:
+The shared runtime supports:
 
 - list known libraries;
 - report the last/default and active library;
@@ -313,8 +314,8 @@ The shared runtime eventually supports:
   development adapter; and
 - preflight collection addition/replacement without performing extraction.
 
-Tactical 001's localhost implementation must provide the platform-neutral
-registry, selection, identity, and known-library UI. It may use an explicit
+Tactical 001's localhost implementation provides the platform-neutral
+registry, selection, identity, and known-library UI. It uses an explicit
 CLI/development bootstrap to register external paths because an ordinary web
 page cannot safely provide a native filesystem grant. It must not add an API
 that accepts arbitrary browser-supplied paths. A future Tauri adapter supplies

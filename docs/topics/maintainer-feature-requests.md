@@ -3,9 +3,9 @@
 Topic: maintainer-feature-requests
 
 **Status:** Review-workspace revisions, desktop library management, and
-UI-triggered durable extraction operations are implemented. Tactical 001
-fault/restart, private-integration, and maintainer acceptance remain in
-progress.
+UI-triggered durable extraction operations are implemented. Tactical 001's
+automated and private-integration gates pass; explicit maintainer interaction
+acceptance remains.
 
 ## Purpose
 
@@ -145,13 +145,15 @@ mapping to collection and relative paths.
 
 ### Extraction coverage is not automatic execution
 
-**Status:** CLARIFIED; execution remains open above.
+**Status:** IMPLEMENTED in Tactical 001; automatic inventory routing remains
+separate.
 
 The current ordinary inventory creates the native Poppler extraction only.
 The four-extractor calibration coverage was run only for the bounded benchmark
 set. Image-only PDFs can therefore have an empty native-text result and no OCR
 representation until OCR has been explicitly run and cached. The current UI
-now labels cached-run coverage and this image-only limitation.
+labels exact cached-run coverage and can explicitly enqueue the registered OCR
+extractor without making browsing active.
 
 ## Planning Relationships
 
@@ -169,5 +171,6 @@ After live review, the maintainer selected extraction execution before durable
 review events on 2026-08-01. Its job-state, cache, cancellation, security, and
 recovery contracts now live in
 [Durable job architecture](job-architecture.md), and Tactical 001 defines
-their first end-to-end implementation. This topic remains the record of the
-originating request until acceptance evidence closes it.
+their first end-to-end implementation. Its machine-verifiable gates now pass;
+this topic remains the record of the originating request until explicit
+maintainer interaction acceptance closes it.

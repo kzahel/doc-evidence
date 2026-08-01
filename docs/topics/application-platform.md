@@ -3,8 +3,8 @@
 Topic: application-platform
 
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
-is in progress; app-home, known libraries, unified persistence, explicit
-library API/runtime identity, and shared library selection UI have landed.
+is complete; automated, isolated-browser, and authorized private-library gates
+pass, with explicit maintainer interaction acceptance remaining.
 
 ## Scope
 
@@ -164,9 +164,9 @@ tactical.
 
 ## Known Gaps
 
-- Tactical 001 job, recovery, and operational controls are implemented; its
-  production-like restart, headless-browser, private-integration, and explicit
-  maintainer acceptance gates remain open.
+- Tactical 001 job, recovery, operational controls, production-like restart,
+  headless-browser, and authorized private-integration gates pass; explicit
+  maintainer interaction acceptance remains open.
 - Tactical 001 starts with bounded polling for job updates. A later event
   stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and optional extractor-pack
@@ -243,7 +243,6 @@ record is in
 
 ## Recommended Next Work
 
-Complete the remaining fault/restart, isolated headless-browser, private tax
-library, and maintainer acceptance evidence in
+Complete the explicit maintainer interaction acceptance in
 [Tactical 001](../tactical/001-durable-extraction-jobs.md). Durable review
-events remain the likely following tactical.
+events remain the likely following tactical and are not yet authorized.

@@ -171,10 +171,10 @@ It does not accept its own candidates. Promotion is a separate review action.
 Start with exact text and SQLite FTS. Search results must identify the matching
 document, page, extractor run, and text offsets when available.
 
-The Phase 1 implementation uses an atomic whole-file catalog snapshot of the
-collections selected by the latest inventory invocation. Tactical 001 replaces
-that mechanism with generation-independent content, extraction, page, and FTS
-rows plus generation-scoped occurrence and collection-membership rows. An
+The legacy Phase 1 implementation used an atomic whole-file catalog snapshot
+of the collections selected by the latest inventory invocation. Tactical 001
+replaced that mechanism with generation-independent content, extraction, page,
+and FTS rows plus generation-scoped occurrence and collection-membership rows. An
 atomic active-generation pointer selects the visible membership without
 discarding reusable content-addressed artifacts.
 

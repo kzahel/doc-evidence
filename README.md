@@ -40,15 +40,15 @@ The delivery sequence is deliberate:
 
 1. **Implemented:** deterministic inventory, content-addressed extraction and
    benchmarking, plus the read-only localhost library/comparison application.
-2. **In progress:** desktop-style application home, remembered libraries, and
-   unified per-library persistence are implemented. The typed extractor
-   registry, private worker protocol, supervised process trees, validated
-   staging, atomic artifact publication, durable queue, scheduler lease,
+2. **Implemented; awaiting maintainer acceptance:** desktop-style application
+   home, remembered libraries, and unified per-library persistence. The typed
+   extractor registry, private worker protocol, supervised process trees,
+   validated staging, atomic artifact publication, durable queue, scheduler lease,
    bounded resource dispatcher, cancellation, and restart reconciliation are
    also implemented. Authenticated API contracts, generated clients, document
    extraction controls, bounded batches, and the global operational activity
-   and diagnostics UI are implemented. Fault/restart and production-like
-   acceptance validation continues in Tactical 001.
+   and diagnostics UI are implemented. Fault/restart, isolated-browser, and
+   authorized private-integration gates pass for Tactical 001.
 3. **Following product slice:** durable human review events and portable review
    state, kept separate from regenerable extractor output.
 4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
@@ -74,11 +74,11 @@ and generate a local human-calibration review pack and scorecard.
 The repository now includes a Python-backed authenticated localhost
 application with a React/TypeScript interface for browsing and searching the
 cached library, opening rendered pages, grouping exact extractor output, and
-reviewing versioned word/numeric comparisons. The approved next product
-boundary establishes desktop-first library management and isolated app-home
+reviewing versioned word/numeric comparisons. The next implemented product
+boundary adds desktop-first library management and isolated app-home
 configuration together with durable extraction jobs, atomic artifact
 publication, recovery, and operational UI. Durable human review state follows
-as a separate slice.
+as a separate slice after explicit maintainer acceptance.
 
 The implemented slice is
 [Tactical 000: read-only library and extractor comparison](docs/tactical/000-read-only-library-comparison.md).
@@ -86,11 +86,13 @@ Its automated and private integration gates pass, but it remains open until
 the maintainer explicitly accepts the live interaction. It stops before
 durable review writes, pipeline execution, and desktop packaging.
 
-The approved implementation plan for the next boundary is
+The implementation and execution record for that boundary is
 [Tactical 001: durable extraction jobs and operational UI](docs/tactical/001-durable-extraction-jobs.md),
 owned by the living [library management](docs/topics/library-management.md)
 and [job architecture](docs/topics/job-architecture.md) topics.
-Implementation is in progress. Its landed boundaries provide platform
+Implementation is complete and its automated, isolated-browser, and authorized
+private-library gates pass; explicit maintainer interaction acceptance remains.
+Its landed boundaries provide platform
 app-home resolution, an atomic known-library registry, stable adopted-library
 identity, ordinary startup from the last/default registered library, and one
 schema-versioned SQLite database with atomic inventory generations. The
@@ -111,6 +113,14 @@ executables. The document workspace provides explicit cache/fresh extraction
 actions and representation refresh; the application header provides a polling
 activity center with resource lanes, liveness/deadline detail, batch preflight,
 and cancellation.
+
+The private acceptance harness used the already registered tax library in the
+platform-default application home, as explicitly authorized. It executed one
+missing configured-language OCR identity, reused that OCR and an existing
+Docling artifact from exact cache, stopped at broad-batch preflight, preserved
+all 81 discovered source occurrences byte-for-byte, and left the application
+registry unchanged. Synthetic automation continues to use a fresh temporary
+`DOC_EVIDENCE_HOME`.
 
 Read these first:
 
@@ -209,12 +219,13 @@ doc-evidence benchmark-score --report PATH --review PATH
 invokes only the experts named by a private suite. It never treats agreement
 as truth or changes a production extraction policy automatically.
 
-Current routing limitation: ordinary inventory runs Poppler only for PDFs.
-The configured `ocr_when` and `layout_when` values are validated and included
-in cache/config identity, but they do not yet schedule OCR or layout jobs.
-OCRmyPDF/Tesseract, Docling, and Marker outputs appear only for documents
-explicitly processed by a benchmark suite. Standalone image files are indexed
-but are not yet rendered or extracted by the read-only application.
+Current routing limitation: ordinary inventory still runs Poppler only for
+PDFs. The configured `ocr_when` and `layout_when` values are validated and
+included in cache/config identity, but they do not automatically schedule OCR
+or layout jobs. OCRmyPDF/Tesseract, Tesseract raster OCR, Docling, and Marker
+can now be requested explicitly through the authenticated application job
+surface; benchmark suites remain a separate explicit path. Standalone image
+rendering and automatic catalog-wide routing remain later work.
 
 ## Configuration
 

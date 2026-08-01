@@ -8,8 +8,9 @@ Topic: application-platform
 
 Topic: maintainer-feature-requests
 
-**Status:** Implementation in progress; product slices 1–8 implemented and
-final validation/acceptance in progress.
+**Status:** Implementation complete; automated, isolated-browser, and
+authorized private-library gates pass; explicit maintainer interaction
+acceptance remains.
 
 ## Motivation and User-Visible Outcome
 
@@ -677,8 +678,9 @@ attempt accumulation.
 Run against the configured private tax workspace without copying or modifying
 source documents:
 
-- create a temporary `DOC_EVIDENCE_HOME` and register/adopt the existing tax
-  configuration/store without modifying the production app registry;
+- use the already registered tax configuration/store in the platform-default
+  application home, as explicitly authorized for this bring-up, while refusing
+  to run if the selected configuration is not the expected path;
 - confirm ordinary startup selects the registered tax library without a
   repeated `--config` argument and displays its identity/collections;
 - record a full source hash baseline before and after;
@@ -688,8 +690,8 @@ source documents:
 - run or reuse one selected layout extractor where dependencies are available;
 - preflight the image-only/missing-OCR batch without automatically confirming
   broad work; and
-- confirm the production app-home registry remains absent or byte-for-byte
-  unchanged; then
+- confirm the production app-home registry remains byte-for-byte unchanged;
+  then
 - record only counts, versions, timings, states, safe diagnostics, and
   non-sensitive UI evidence in this repository.
 
@@ -1051,8 +1053,9 @@ temporary SQLite contention, projection failure/repair, diagnostics, worker
 crash, incomplete output, timeout, insufficient space, simulated publication
 write failure, cooperative and ignored cancellation, descendants, and bounded
 logs. Generated-contract drift, Pyright, TypeScript, 25 component tests, and a
-production frontend build pass. Full restart-boundary, isolated Playwright,
-private integration, and maintainer acceptance evidence remain in progress.
+production frontend build pass. Restart-boundary, isolated Playwright, and
+private integration evidence subsequently landed in slices 9 and 10; explicit
+maintainer interaction acceptance remains.
 
 ### Slice 9 — fault, restart, and isolated browser validation
 
@@ -1088,5 +1091,78 @@ reconciles to success; the latter requires attempt-owned publication evidence
 or becomes explicitly interrupted. Claimed-before-spawn, spawned-before-PID,
 published-before-final-state, invalid-success, projection-failure, timeout,
 cancellation, descendant, log-bound, disk-space, write-failure, malformed
-output, nondeterminism, and temporary SQLite-contention lanes pass. Private tax
-library integration and explicit maintainer acceptance remain open.
+output, nondeterminism, and temporary SQLite-contention lanes pass.
+
+### Slice 10 — configured defaults and private acceptance
+
+Completed the authorized production-library integration and fixed the exact
+identity defect it exposed:
+
+- extractor capabilities now return Python-resolved `default_settings` through
+  Pydantic/OpenAPI/generated TypeScript, so React displays and submits the
+  precise settings used to calculate the advertised run key;
+- the tax library's configured `eng` and `deu` OCR languages are no longer
+  replaced by a UI-only `eng` default, and a component test locks that request
+  identity across the runtime boundary;
+- `scripts/run-private-integration.py` refuses any default selected library
+  whose configuration differs from `--expected-config`, hashes every source
+  occurrence before and after, snapshots registry bytes, launches a known-token
+  production composition, and records only safe aggregate evidence;
+- the headless private browser flow explicitly runs one missing OCR identity,
+  waits for document capability refresh, reuses it from exact cache, reuses one
+  existing layout run, and opens broad OCR preflight without confirming it;
+  and
+- the private harness verifies that preflight gains exactly one cache hit and
+  loses exactly one execution, while the candidate population is unchanged.
+
+The final authorized run used the default registered library backed by
+`/Users/kgraehl/Documents/taxes/.doc-evidence.yaml`. It completed in 29.66
+seconds with OCR outcomes `executed` and `cache_hit`, a cached
+`docling-standard` outcome, 10 image-only candidates changing from 3 cache
+hits/7 executions to 4 cache hits/6 executions, and zero browser console
+errors. All 81 discovered source occurrences retained aggregate SHA-256
+`9d22a2df7d3e6d4bc7c0a1580441b9941aab3c256202a16a43d024d58b2637b1`;
+discovery warnings remained zero and the default registry was byte-for-byte
+unchanged.
+
+An earlier private gate attempt had already published one other valid default-
+language OCR artifact before its final assertion encountered two legitimate
+cache-hit rows. The assertion was scoped to the intended extractor and the
+repeatable harness was tightened; the published artifact remained valid and
+accounts for the increase from the original two private cache hits to the
+final preflight's four.
+
+### Slice 11 — planned worker identity enforcement
+
+A final publication-boundary audit found that a worker's returned run was
+validated for internal consistency but was not compared to the run identity
+precomputed when the job was enqueued. Closed that latent false-success path:
+
+- private worker protocol v2 carries the expected run ID and run key;
+- the shipped worker rejects an adapter result that disagrees with that plan;
+- the supervisor independently checks the response before validating or
+  publishing its staged directory;
+- persisted job execution checks now require the same non-null key and run ID;
+  and
+- a fault worker returning a self-consistent but unplanned identity fails with
+  retained attempt evidence and creates no canonical artifact.
+
+Final repository validation after this hardening passed:
+
+- Ruff format and lint across `src`, `tests`, and `scripts` (62 formatted
+  files);
+- all 59 Python unit/integration/fault/restart tests, including a real shipped
+  Poppler worker using protocol v2;
+- Pyright with zero errors or warnings and `uv build` for both sdist and wheel;
+- checked OpenAPI/generated-TypeScript drift and TypeScript typechecking;
+- all 26 Vitest component/boundary tests and the Vite production build;
+- isolated headless Playwright with two temporary libraries, one passing
+  deterministic scenario and the private scenario correctly skipped; and
+- the separately authorized one-test private Playwright run described in slice
+  10, which exercised the configured-language OCR and layout-cache path before
+  the defense-in-depth protocol hardening.
+
+All implementation and machine-verifiable gates are now satisfied. The
+falsifiable stopping condition remains open only for the explicit maintainer
+interaction review listed above; durable review writes and desktop packaging
+remain out of scope until separately authorized.

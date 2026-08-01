@@ -4,13 +4,14 @@ Topic: job-architecture
 
 **Last updated:** 2026-08-01
 
-**Status:** Tactical 001 implementation in progress. Unified persistence,
+**Status:** Tactical 001 implementation complete. Unified persistence,
 atomic catalog membership generations, extractor registration, supervised
 attempt execution, atomic artifact publication, durable job persistence,
 bounded per-library scheduling, authenticated API/runtime operations, document
 execution controls, bounded batches, and the global activity/debug UI are
-implemented. Final fault/restart, browser, private-integration, and maintainer
-acceptance evidence remains in progress.
+implemented. Fault/restart, isolated-browser, and authorized
+private-integration gates pass; explicit maintainer interaction acceptance
+remains.
 
 ## Purpose
 
@@ -76,6 +77,12 @@ is written beneath an attempt workspace, contract-validated, hashed and
 fsynced, then renamed on the same filesystem into the canonical run location.
 Malformed or conflicting output is retained as attempt evidence and is never
 shown as canonical success.
+
+Private worker protocol v2 also carries the exact run ID and run key planned at
+enqueue. The worker checks its adapter result against that identity and the
+supervisor independently repeats the check before publication. A
+self-consistent staged run under any other key remains failed-attempt evidence;
+it cannot become a canonical result for the job.
 
 The implemented scheduler retains only active thread/cancellation handles in
 memory. Queue intent, immutable execution snapshots, attempts, outcomes, and
@@ -373,8 +380,8 @@ POST /api/v1/libraries/{library_id}/jobs/{job_id}/cancel
 POST /api/v1/libraries/{library_id}/jobs/{job_id}/retry
 ```
 
-Exact route spelling may tighten in Tactical 001, but the runtime operations
-and security semantics remain stable. Extractor IDs and settings are resolved
+These route and runtime operations are implemented, and their security
+semantics remain stable. Extractor IDs and settings are resolved
 through a server-owned typed registry. Client-provided executable paths,
 commands, output paths, environment variables, and unbounded options are
 rejected.
@@ -453,7 +460,7 @@ changing artifact identity, extraction semantics, or the React runtime.
 
 ## Reliability Validation
 
-Deterministic fake extractors and integration harnesses must cover:
+Deterministic fake extractors and integration harnesses cover:
 
 - isolated application homes and explicit library/job identity;
 - selected-library changes that cannot retarget queued or running work;
@@ -478,7 +485,9 @@ The core recovery invariant is:
 
 ## Known Gaps and Later Work
 
-- Tactical 001 must measure reasonable resource defaults on supported local
+- Explicit maintainer interaction acceptance remains for Tactical 001; its
+  machine-verifiable implementation gates pass.
+- Resource defaults still need broader measurement on supported local
   environments; CPU count alone does not establish safe model concurrency.
 - Cross-platform descendant cleanup must be revalidated when Tauri/Windows
   packaging begins.

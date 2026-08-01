@@ -1,9 +1,9 @@
 # Product Vision and Application Architecture
 
 **Last updated:** 2026-08-01  
-**Status:** Approved direction; first read-only application slice implemented;
-desktop library-management and durable extraction-job architectures approved
-and planned
+**Status:** Approved direction; read-only application, desktop library
+management, and durable extraction-job implementation landed; Tactical 001
+maintainer acceptance pending
 
 ## Product Statement
 
@@ -645,12 +645,15 @@ desktop packaging follow this milestone.
 - The first job executor is a bounded local scheduler over supervised
   subprocesses, not Celery or an external broker.
 
+### Implemented application foundation
+
+Tactical 001 implemented and validated the unified SQLite migrations, reusable
+content/membership-generation split, application-home resolver, library
+registry, durable jobs, supervised workers, and operational UI. Explicit
+maintainer interaction acceptance remains.
+
 ### Open implementation decisions
 
-- Tactical 001 must implement and validate the approved unified SQLite
-  migrations, reusable content/membership-generation split, application-home
-  resolver, and library registry. Tactical 000 validated the FastAPI/Pydantic
-  adapter.
 - Tactical 000 validated the Vite, React, TanStack Query, narrow Zustand, and
   CSS Modules frontend composition; the maintainer interaction gate remains.
 - Measured default concurrency for light, OCR, and model-heavy resource

@@ -221,6 +221,23 @@ source hashes and the default production registry before removing the entire
 temporary home. Install the matching Chromium binary after dependency setup
 with `npm exec --prefix web playwright install chromium` when needed.
 
+For an explicitly authorized real-library acceptance run, use the bounded
+harness and name the configuration that must already be selected in the
+platform-default registry:
+
+```sh
+uv run python scripts/run-private-integration.py \
+  --expected-config /path/to/case/.doc-evidence.yaml
+```
+
+This command deliberately removes `DOC_EVIDENCE_HOME` from its child
+environment. It refuses a different selected configuration, records aggregate
+source hashes and registry bytes before and after, executes one missing OCR
+identity through the UI, checks exact OCR and layout cache reuse, and stops at
+broad OCR preflight without confirming it. Use it only when access to that
+external collection and its derived store is explicitly in scope; ordinary
+automated and development runs remain isolated under a fresh temporary home.
+
 ## Duplicates
 
 ```sh

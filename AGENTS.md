@@ -39,10 +39,11 @@ implementation decisions:
   database, one artifact store, and one or more explicit read-only source
   collections. App-wide known/default/last-library state is bounded metadata
   beneath the platform application-data directory.
-- Tactical 001 is the desktop foundation as well as the durable-job slice: it
+- Tactical 001 is the implemented desktop foundation and durable-job slice: it
   adds application-home isolation, remembered libraries, unified per-library
-  persistence, durable execution, recovery, and operational UI. Durable human
-  review state follows separately.
+  persistence, durable execution, recovery, and operational UI. Its automated
+  and private-integration gates pass; explicit maintainer interaction
+  acceptance remains. Durable human review state follows separately.
 - Native folder pickers, Tauri packaging, Python runtime bundling, optional
   heavyweight-extractor packs, installers, signing, updating, and
   cross-platform distribution require a later prototype and approved tactical.
@@ -70,8 +71,9 @@ Before substantive work:
    overlap behavior.
 4. Read the active tactical under `docs/tactical/` before implementing its
    scope. `docs/tactical/000-read-only-library-comparison.md` is the implemented
-   read-only execution record. The active implementation plan is
-   `docs/tactical/001-durable-extraction-jobs.md`.
+   read-only execution record. `docs/tactical/001-durable-extraction-jobs.md`
+   is implementation-complete and awaiting explicit maintainer acceptance; do
+   not assume its likely durable-review successor is authorized.
 5. Read `docs/master-plan.md`, `docs/architecture.md`, and
    `docs/data-contracts.md` for the affected core boundary.
 6. Read `docs/benchmarking.md` for extractor/evaluation work and
@@ -130,6 +132,11 @@ Before substantive work:
   or beneath `DOC_EVIDENCE_HOME` when that explicit override is set. Tests and
   isolated development runs must use a fresh temporary override and must not
   touch the maintainer's main application state.
+- The authorized private acceptance lane is the deliberate exception to the
+  previous sentence: it uses the already registered default-home library only
+  through `scripts/run-private-integration.py --expected-config PATH`, verifies
+  the selected configuration, and compares source hashes and registry bytes
+  before and after. Do not generalize that authority to other external data.
 
 ## Development Rules
 
@@ -219,12 +226,12 @@ score.
 
 The Python-owned localhost API and React/TypeScript read-only library and
 extractor-comparison slice are implemented and pass automated/private
-integration gates. Tactical 000 retains its explicit maintainer-acceptance
-record, while the maintainer has selected durable extraction execution as the
-next product priority.
+integration gates. Tactical 000 retains its own explicit acceptance status,
+while the maintainer selected durable extraction execution as the next product
+priority.
 
-`docs/tactical/001-durable-extraction-jobs.md` is in implementation after the
-maintainer explicitly authorized end-to-end execution. Application-home
+`docs/tactical/001-durable-extraction-jobs.md` is implementation-complete after
+the maintainer explicitly authorized end-to-end execution. Application-home
 resolution, an atomic known-library registry, legacy-config adoption, and
 ordinary launch from the last/default library are the first landed boundary.
 The unified per-library database, stable content/run/page/FTS projections,
@@ -235,7 +242,9 @@ keys, deep links, empty-home behavior, selection UI, and collection settings
 are the third landed boundary.
 The typed extractor registry, private supervised worker protocol, exact-source
 recheck, bounded process-tree execution, staged validation, and atomic
-canonical artifact publication are the fourth landed boundary.
+canonical artifact publication are the fourth landed boundary. Worker protocol
+v2 binds adapter output to the run ID/key planned at enqueue in both worker and
+supervisor, so a self-consistent but unplanned staged run cannot be published.
 Schema-versioned jobs/attempts/events, exact cache fulfillment, idempotent and
 coalesced enqueue, process-locked scheduler leasing, priority aging, bounded
 resource dispatch, cancellation, one transient retry, and restart/integrity
@@ -247,8 +256,13 @@ Explicit document extraction controls and post-publication representation
 refresh are the seventh landed boundary. The global activity center, bounded
 OCR batch preflight, queue control, batch cancellation, resource/liveness
 diagnostics, bounded logs, and catalog-projection repair are the eighth landed
-boundary. Fault/restart, headless browser, private integration, and maintainer
-acceptance evidence remain in progress.
+boundary. Deterministic crash/restart and isolated headless-browser gates pass.
+The authorized default-home integration against
+`/Users/kgraehl/Documents/taxes/.doc-evidence.yaml` also passes: one missing
+configured-language OCR run executed, exact OCR and Docling cache reuse worked,
+broad OCR stayed at preflight, all 81 source occurrences retained the same
+aggregate SHA-256, and registry bytes were unchanged. Only explicit maintainer
+interaction acceptance remains.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits
