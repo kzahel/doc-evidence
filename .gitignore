@@ -1,0 +1,43 @@
+.DS_Store
+.idea/
+.vscode/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Generated document stores, databases, models, and benchmark runs.
+.doc-evidence-data/
+artifacts/
+datasets/
+models/
+runs/
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+
+# Private/local configuration.
+.doc-evidence.yaml
+.doc-evidence.local.yaml
+.env
+.env.*
+
+# Private documents do not belong in this repository. Public fixtures must be
+# explicitly unignored by filename when they are intentionally added.
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.jpg
+*.jpeg
+*.png
+*.tif
+*.tiff
+*.zip

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/doc-evidence/config.schema.json",
+  "title": "doc-evidence configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "collections", "store"],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "collections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "source"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9_-]*$"
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "include": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "exclude": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "store": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z]{3}$"
+      },
+      "uniqueItems": true
+    },
+    "extraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseline": { "type": "string" },
+        "ocr_when": {
+          "enum": ["never", "image_only", "low_text", "always"]
+        },
+        "layout_when": {
+          "enum": ["never", "complex", "always"]
+        },
+        "normalized_text_duplicates": { "type": "boolean" }
+      }
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sqlite_fts": { "type": "boolean" },
+        "vector_index": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+schema_version: 1
+
+collections:
+  - id: example-documents
+    source: ../example-private-workspace/documents
+    include:
+      - "**/*"
+    exclude:
+      - "**/.DS_Store"
+
+store:
+  path: ../example-private-workspace/working/document-index
+
+languages:
+  - eng
+  - deu
+
+extraction:
+  baseline: poppler
+  ocr_when: image_only
+  layout_when: complex
+  normalized_text_duplicates: true
+
+search:
+  sqlite_fts: true
+  vector_index: false

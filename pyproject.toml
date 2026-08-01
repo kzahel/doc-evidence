@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doc-evidence"
+version = "0.1.0"
+description = "Local-first document evidence indexing and extraction pipeline"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+authors = [
+  { name = "Kyle Graehl" },
+]
+dependencies = []
+
+[project.scripts]
+doc-evidence = "doc_evidence.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
