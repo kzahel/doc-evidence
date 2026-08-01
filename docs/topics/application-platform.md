@@ -292,11 +292,14 @@ evidence, not a release artifact.
 
 The first compliance preflight accounts for 70 top-level staged components,
 all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
-and five embedded Python-wheel SBOMs. It remains fail-closed for publication:
-pypdfium2 needs a reviewed composite SPDX conclusion; 77 Python-wheel Mach-O
-objects need flattened component/source reconciliation; Rust and Node locks
-need license/notices integration; exact Homebrew formula recipe revisions need
-pinning; and required copyleft/MPL source archives need embedding.
+24 exact historical Homebrew formula revisions, and five embedded Python-wheel
+SBOMs. Formula selection is bound to the installed package version, source
+hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
+recipes are reusable from an ignored cache. The preflight remains fail-closed
+for publication: pypdfium2 needs a reviewed composite SPDX conclusion; 77
+Python-wheel Mach-O objects need flattened component/source reconciliation;
+Rust and Node locks need license/notices integration; and required
+copyleft/MPL source archives need embedding.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

@@ -11,6 +11,7 @@ from doc_evidence.desktop_packaging import (
     _archive_path,
     _audit_symlinks,
     _files_containing,
+    _installed_homebrew_bottle,
     _load_inputs,
     _spdx_license,
     compliance_root,
@@ -150,6 +151,56 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertEqual(
             _spdx_license("BSD-3-Clause, dependency licenses"),
             ("NOASSERTION", True),
+        )
+
+    def test_homebrew_bottle_requires_exact_version_and_platform(self) -> None:
+        info = {
+            "formulae": [
+                {
+                    "versions": {"stable": "2.0.0"},
+                    "revision": 1,
+                    "bottle": {
+                        "stable": {
+                            "files": {
+                                "arm64_tahoe": {
+                                    "url": "https://ghcr.io/v2/example",
+                                    "sha256": "a" * 64,
+                                },
+                                "sonoma": {
+                                    "url": "https://ghcr.io/v2/wrong-arch",
+                                    "sha256": "b" * 64,
+                                },
+                            }
+                        }
+                    },
+                }
+            ]
+        }
+        receipt = {
+            "arch": "arm64",
+            "source": {"path": "/cache/internal/packages.arm64_tahoe.jws.json"},
+        }
+
+        self.assertEqual(
+            _installed_homebrew_bottle(
+                info,
+                name="example",
+                version="2.0.0_1",
+                receipt=receipt,
+            ),
+            {
+                "bottle_tag": "arm64_tahoe",
+                "bottle_url": "https://ghcr.io/v2/example",
+                "bottle_sha256": "a" * 64,
+            },
+        )
+        self.assertIsNone(
+            _installed_homebrew_bottle(
+                info,
+                name="example",
+                version="2.0.0",
+                receipt=receipt,
+            )
         )
 
 

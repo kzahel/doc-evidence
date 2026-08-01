@@ -215,7 +215,7 @@ npm ci --prefix desktop
 ./scripts/build-macos-desktop review
 ./scripts/build-macos-desktop dmg
 ./scripts/build-macos-desktop review-dmg
-./scripts/build-macos-desktop compliance-preflight
+./scripts/build-macos-desktop compliance-preflight --resolve-formulas
 ```
 
 The resulting application is
@@ -233,11 +233,12 @@ audits the mounted application, and detaches it. Its ignored output is under
 for the eventual signed and notarized release image.
 
 `compliance-preflight` emits an ignored preliminary SPDX 2.3 document,
-licenses/notices, exact Homebrew source and bottle SBOMs, embedded Python-wheel
-SBOMs, manifests, and build recipes. It currently reports `release_ready:
-false` intentionally: do not publish until every listed native-wheel,
-Rust/Node, formula-recipe, source-archive, and reviewed-license blocker is
-closed.
+licenses/notices, exact Homebrew source and bottle SBOMs, exact historical
+formula recipes, embedded Python-wheel SBOMs, manifests, and build recipes.
+Formula resolution is explicit because it reads bounded public Homebrew/GitHub
+metadata and then reuses a verified ignored cache. The report currently keeps
+`release_ready: false`: do not publish until every listed native-wheel,
+Rust/Node, source-archive, and reviewed-license blocker is closed.
 
 Register an external case configuration once, then launch the selected
 last/default library:

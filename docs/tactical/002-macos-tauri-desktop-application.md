@@ -1086,7 +1086,12 @@ is unresolved.
 
 The current preflight reconciles 70 top-level staged components and all 3,835
 runtime-manifest files. It closes the easy missing-license and Homebrew package-
-revision gaps, then reports five substantive release blockers:
+revision gaps. A follow-up pass also resolves all 24 exact historical formula
+revisions by requiring the installed package version, upstream source hash,
+bottle hash, architecture/OS bottle tag, and matching formula bytes in the
+same Homebrew Core commit. Formula metadata and recipes are retained in the
+preflight, while a hash-validated ignored cache prevents repeat API use.
+It now reports four substantive release blockers:
 
 - pypdfium2's aggregate license metadata still needs a reviewed SPDX
   conclusion rather than `NOASSERTION`;
@@ -1094,8 +1099,6 @@ revision gaps, then reports five substantive release blockers:
   components, versions, licenses, and source offers flattened and reconciled;
 - locked Rust and Node production dependencies need to enter the shipped
   notices and aggregate SBOM;
-- exact Homebrew formula recipe revisions must accompany the already preserved
-  upstream-source and bottle records; and
 - required GPL/LGPL/MPL source archives and source-form offers are not yet
   embedded in the compliance output.
 
@@ -1104,8 +1107,8 @@ that signing credentials are not the next immediate dependency: the component
 and source record must become release-complete before a signed public artifact
 would be acceptable.
 
-The generated preflight archive measures 679,727 bytes with SHA-256
-`aca24bb41896be932b4a1ce4e018ea7311952010612739bcb404ad4b7910e8d9`.
+The generated preflight archive measures 725,309 bytes with SHA-256
+`e060fac7d072e9151692d633f8b28909e60ba7feef1c123c7e325785ef3293c2`.
 It describes application tree
 `64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`
 and bundle manifest

@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 from collections import deque
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -1958,9 +1958,203 @@ def _copy_compliance_file(source: Path, destination: Path) -> None:
     shutil.copy2(source, destination)
 
 
+def _download_bounded(url: str, *, maximum_bytes: int = 4 * 1024 * 1024) -> bytes:
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": f"doc-evidence/{__version__} compliance-preflight"},
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:
+        content = response.read(maximum_bytes + 1)
+    if len(content) > maximum_bytes:
+        raise RuntimeError(f"compliance metadata exceeded its size bound: {url}")
+    return content
+
+
+def _resolve_homebrew_formula(
+    *,
+    name: str,
+    version: str,
+    prefix: Path,
+    source_sha256: str,
+    bottle_sha256: str,
+    destination: Path,
+    cache: Path,
+) -> dict[str, str]:
+    cache_key = f"{name}-{version}-{source_sha256[:12]}-{bottle_sha256[:12]}"
+    cached_formula = cache / f"{cache_key}.rb"
+    cached_record = cache / f"{cache_key}.json"
+    if cached_formula.is_file() and cached_record.is_file():
+        record = json.loads(cached_record.read_text(encoding="utf-8"))
+        if (
+            record.get("name") == name
+            and record.get("version") == version
+            and record.get("source_sha256") == source_sha256
+            and record.get("bottle_sha256") == bottle_sha256
+            and record.get("formula_sha256") == sha256_file(cached_formula)
+        ):
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(cached_formula, destination)
+            return {
+                "formula_revision": str(record["formula_revision"]),
+                "formula_url": str(record["formula_url"]),
+                "formula_path": destination.as_posix(),
+                "formula_sha256": sha256_file(destination),
+            }
+    sbom = json.loads((prefix / "sbom.spdx.json").read_text(encoding="utf-8"))
+    created_value = (sbom.get("creationInfo") or {}).get("created")
+    if not isinstance(created_value, str):
+        raise TypeError(f"Homebrew SBOM creation time is invalid: {name} {version}")
+    try:
+        created = datetime.fromisoformat(created_value)
+    except ValueError as error:
+        raise RuntimeError(
+            f"Homebrew SBOM creation time is invalid: {name} {version}"
+        ) from error
+    if created.tzinfo is None:
+        raise RuntimeError(f"Homebrew SBOM creation time is invalid: {name} {version}")
+    info = json.loads(
+        _run(
+            ["brew", "info", "--json=v2", name],
+            capture_output=True,
+        ).stdout
+    )
+    formulae = info.get("formulae")
+    if not isinstance(formulae, list) or len(formulae) != 1:
+        raise RuntimeError(f"Homebrew formula metadata is invalid: {name}")
+    formula_path = formulae[0].get("ruby_source_path")
+    if not isinstance(formula_path, str) or not formula_path.endswith(".rb"):
+        raise RuntimeError(f"Homebrew formula path is invalid: {name}")
+    until = created.astimezone(UTC) + timedelta(days=1)
+    query = urllib.parse.urlencode(
+        {
+            "path": formula_path,
+            "until": until.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "per_page": 100,
+        }
+    )
+    commits = json.loads(
+        _download_bounded(
+            f"https://api.github.com/repos/Homebrew/homebrew-core/commits?{query}"
+        )
+    )
+    if not isinstance(commits, list):
+        raise TypeError(f"Homebrew formula history is invalid: {name}")
+    for commit in commits:
+        revision = commit.get("sha") if isinstance(commit, dict) else None
+        if not isinstance(revision, str) or not _is_lower_hex(revision, 40):
+            continue
+        raw_url = (
+            "https://raw.githubusercontent.com/Homebrew/homebrew-core/"
+            f"{revision}/{formula_path}"
+        )
+        formula = _download_bounded(raw_url)
+        if (
+            source_sha256.encode() not in formula
+            or bottle_sha256.encode() not in formula
+        ):
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(formula)
+        result = {
+            "formula_revision": revision,
+            "formula_url": (
+                "https://github.com/Homebrew/homebrew-core/blob/"
+                f"{revision}/{formula_path}"
+            ),
+            "formula_path": destination.as_posix(),
+            "formula_sha256": sha256_file(destination),
+        }
+        cache.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(destination, cached_formula)
+        _write_json(
+            cached_record,
+            {
+                "name": name,
+                "version": version,
+                "source_sha256": source_sha256,
+                "bottle_sha256": bottle_sha256,
+                **result,
+            },
+        )
+        return result
+    raise RuntimeError(
+        f"exact Homebrew formula revision was not found: {name} {version}"
+    )
+
+
+def _is_lower_hex(value: str, length: int) -> bool:
+    return len(value) == length and all(
+        character in "0123456789abcdef" for character in value
+    )
+
+
+def _installed_homebrew_bottle(
+    info: Mapping[str, Any],
+    *,
+    name: str,
+    version: str,
+    receipt: Mapping[str, Any],
+) -> dict[str, str] | None:
+    formulae = info.get("formulae")
+    if not isinstance(formulae, list) or len(formulae) != 1:
+        return None
+    formula = formulae[0]
+    if not isinstance(formula, Mapping):
+        return None
+    versions = formula.get("versions")
+    if not isinstance(versions, Mapping):
+        return None
+    stable = versions.get("stable")
+    revision = formula.get("revision", 0)
+    if not isinstance(stable, str) or not isinstance(revision, int) or revision < 0:
+        return None
+    package_version = stable if revision == 0 else f"{stable}_{revision}"
+    if package_version != version:
+        return None
+    files = ((formula.get("bottle") or {}).get("stable") or {}).get("files")
+    if not isinstance(files, Mapping):
+        return None
+    source = receipt.get("source")
+    source_path = source.get("path") if isinstance(source, Mapping) else None
+    tag = None
+    if isinstance(source_path, str):
+        match = re.search(r"packages\.([a-z0-9_]+)\.jws\.json$", source_path)
+        if match is not None:
+            tag = match.group(1)
+    arch = receipt.get("arch")
+    candidates = [
+        (str(key), value)
+        for key, value in files.items()
+        if isinstance(value, Mapping)
+        and (not isinstance(arch, str) or str(key).startswith(f"{arch}_"))
+    ]
+    if tag is not None:
+        candidates = [item for item in candidates if item[0] == tag]
+    if len(candidates) != 1:
+        return None
+    bottle_tag, bottle = candidates[0]
+    bottle_url = bottle.get("url")
+    bottle_sha256 = bottle.get("sha256")
+    if (
+        not isinstance(bottle_url, str)
+        or not bottle_url.startswith("https://ghcr.io/")
+        or not isinstance(bottle_sha256, str)
+        or not _is_lower_hex(bottle_sha256, 64)
+    ):
+        return None
+    return {
+        "bottle_tag": bottle_tag,
+        "bottle_url": bottle_url,
+        "bottle_sha256": bottle_sha256,
+    }
+
+
 def _homebrew_component_provenance(
     components: Sequence[Mapping[str, Any]],
     destination: Path,
+    *,
+    resolve_formulas: bool,
+    formula_cache: Path,
 ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     records = []
     blockers = []
@@ -2033,34 +2227,105 @@ def _homebrew_component_provenance(
         _copy_compliance_file(source, copied)
         source_checksums = source_package.get("checksums") or []
         bottle_checksums = (bottle_package or {}).get("checksums") or []
-        records.append(
-            {
-                "component_id": component_id,
-                "name": name,
-                "version": version,
-                "license_concluded": source_package.get("licenseConcluded"),
-                "source_url": source_package.get("downloadLocation"),
-                "source_sha256": next(
-                    (
-                        item.get("checksumValue")
-                        for item in source_checksums
-                        if item.get("algorithm") == "SHA256"
-                    ),
-                    None,
-                ),
-                "bottle_url": (bottle_package or {}).get("downloadLocation"),
-                "bottle_sha256": next(
-                    (
-                        item.get("checksumValue")
-                        for item in bottle_checksums
-                        if item.get("algorithm") == "SHA256"
-                    ),
-                    None,
-                ),
-                "homebrew_sbom": copied.relative_to(destination.parent).as_posix(),
-                "homebrew_sbom_sha256": sha256_file(copied),
-            }
+        source_sha256 = next(
+            (
+                str(item.get("checksumValue"))
+                for item in source_checksums
+                if item.get("algorithm") == "SHA256"
+            ),
+            "",
         )
+        bottle_sha256 = next(
+            (
+                str(item.get("checksumValue"))
+                for item in bottle_checksums
+                if item.get("algorithm") == "SHA256"
+            ),
+            "",
+        )
+        receipt_path = cellar / name / version / "INSTALL_RECEIPT.json"
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        metadata_path: Path | None = None
+        if resolve_formulas:
+            brew_info = json.loads(
+                _run(
+                    ["brew", "info", "--json=v2", name],
+                    capture_output=True,
+                ).stdout
+            )
+            metadata_path = destination / f"{name}-{version}.brew-info.json"
+            _write_json(metadata_path, brew_info)
+            if not bottle_sha256:
+                bottle = _installed_homebrew_bottle(
+                    brew_info,
+                    name=name,
+                    version=version,
+                    receipt=receipt,
+                )
+                if bottle is not None:
+                    bottle_sha256 = bottle["bottle_sha256"]
+                    bottle_package = {
+                        "downloadLocation": bottle["bottle_url"],
+                    }
+        record = {
+            "component_id": component_id,
+            "name": name,
+            "version": version,
+            "license_concluded": source_package.get("licenseConcluded"),
+            "source_url": source_package.get("downloadLocation"),
+            "source_sha256": source_sha256 or None,
+            "bottle_url": (bottle_package or {}).get("downloadLocation"),
+            "bottle_sha256": bottle_sha256 or None,
+            "homebrew_sbom": copied.relative_to(destination.parent).as_posix(),
+            "homebrew_sbom_sha256": sha256_file(copied),
+        }
+        if resolve_formulas:
+            if metadata_path is None:
+                raise AssertionError("Homebrew metadata path was not initialized")
+            record["homebrew_metadata"] = metadata_path.relative_to(
+                destination.parent.parent
+            ).as_posix()
+            record["homebrew_metadata_sha256"] = sha256_file(metadata_path)
+        if resolve_formulas:
+            if not _is_lower_hex(source_sha256, 64) or not _is_lower_hex(
+                bottle_sha256, 64
+            ):
+                blockers.append(
+                    {
+                        "code": "missing-homebrew-formula-input",
+                        "detail": f"Formula source/bottle hashes are missing: {name}",
+                    }
+                )
+            else:
+                try:
+                    formula = _resolve_homebrew_formula(
+                        name=name,
+                        version=version,
+                        prefix=cellar / name / version,
+                        source_sha256=source_sha256,
+                        bottle_sha256=bottle_sha256,
+                        destination=(
+                            destination.parent.parent
+                            / "formulae"
+                            / f"{name}-{version}.rb"
+                        ),
+                        cache=formula_cache,
+                    )
+                except (OSError, RuntimeError, urllib.error.URLError) as error:
+                    blockers.append(
+                        {
+                            "code": "missing-exact-homebrew-formula-recipe",
+                            "detail": str(error),
+                        }
+                    )
+                else:
+                    formula["formula_path"] = (
+                        Path(formula["formula_path"])
+                        .relative_to(destination.parent.parent)
+                        .as_posix()
+                    )
+                    record.update(formula)
+        records.append(record)
     return records, blockers
 
 
@@ -2070,6 +2335,7 @@ def generate_compliance_preflight(
     *,
     repository: Path | None = None,
     replace: bool = False,
+    resolve_formulas: bool = False,
 ) -> dict[str, Any]:
     _require_host()
     bundle = app.resolve()
@@ -2195,6 +2461,8 @@ def generate_compliance_preflight(
             homebrew_records, homebrew_blockers = _homebrew_component_provenance(
                 components,
                 staged / "embedded-sboms" / "homebrew",
+                resolve_formulas=resolve_formulas,
+                formula_cache=repo / "results" / "desktop" / "cache" / "formulae",
             )
             blockers.extend(homebrew_blockers)
             _write_json(staged / "homebrew-source-records.json", homebrew_records)
@@ -2275,13 +2543,6 @@ def generate_compliance_preflight(
                         ),
                     },
                     {
-                        "code": "missing-exact-homebrew-formula-recipes",
-                        "detail": (
-                            "Homebrew SPDX source/bottle records are preserved, but "
-                            "the exact formula recipe revisions are not pinned"
-                        ),
-                    },
-                    {
                         "code": "source-archives-not-embedded",
                         "detail": (
                             "Exact source records exist, but required copyleft/MPL "
@@ -2290,6 +2551,16 @@ def generate_compliance_preflight(
                     },
                 ]
             )
+            if not resolve_formulas:
+                blockers.append(
+                    {
+                        "code": "missing-exact-homebrew-formula-recipes",
+                        "detail": (
+                            "Homebrew SPDX source/bottle records are preserved, but "
+                            "the exact formula recipe revisions are not pinned"
+                        ),
+                    }
+                )
             report = {
                 "schema_version": "doc-evidence.desktop-compliance-preflight.v1",
                 "status": "blocked",
@@ -2343,6 +2614,7 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     compliance.add_argument("--app", type=Path)
     compliance.add_argument("--output", type=Path)
     compliance.add_argument("--replace", action="store_true")
+    compliance.add_argument("--resolve-formulas", action="store_true")
     args = parser.parse_args(arguments)
     repository = repository_root()
     if args.operation == "stage":
@@ -2380,6 +2652,7 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
             args.output or compliance_root(repository),
             repository=repository,
             replace=bool(args.replace),
+            resolve_formulas=bool(args.resolve_formulas),
         )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
