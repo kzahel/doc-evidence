@@ -8,6 +8,54 @@ The project is intentionally domain-neutral. Its first real downstream case is
 a private U.S.–Swiss tax workspace, but private documents and case-specific
 facts do not belong in this Git repository.
 
+## Product Direction
+
+`doc-evidence` is being built as a distributable, local-first desktop library
+application. The current CLI and authenticated localhost host are useful
+development, automation, and headless interfaces, but they are compositions of
+the same product services rather than the final ownership or distribution
+model.
+
+```text
+Tauri desktop shell (future, thin)
+  native lifecycle, folder authorization, sidecar supervision, distribution
+                              |
+                              v
+Shared React application + Python application services
+                              |
+                              v
+Named local libraries
+  one stable identity, one SQLite database, one artifact store,
+  one or more explicit read-only source collections
+```
+
+Python remains the owner of library management, SQLite, durable jobs,
+extractors, comparison, review, and provenance. React consumes those behaviors
+through a platform-neutral runtime. A future Tauri shell will provide native
+application-data paths, folder grants, process lifecycle, and desktop
+distribution without introducing a second document model or moving product
+logic into Rust.
+
+The delivery sequence is deliberate:
+
+1. **Implemented:** deterministic inventory, content-addressed extraction and
+   benchmarking, plus the read-only localhost library/comparison application.
+2. **Approved next:** desktop-style application home and remembered libraries,
+   unified per-library persistence, durable extraction jobs, recovery, and
+   operational UI in Tactical 001.
+3. **Following product slice:** durable human review events and portable review
+   state, kept separate from regenerable extractor output.
+4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
+   native folder selection, Python and optional extractor packaging,
+   installers, signing, updating, and cross-platform validation.
+
+Desktop distribution is therefore an explicit destination, while its exact
+packaging mechanics remain intentionally outside the active tactical until a
+bounded prototype establishes them. See
+[Product vision and application architecture](docs/product-vision-and-architecture.md),
+[Application platform](docs/topics/application-platform.md), and
+[Desktop library management](docs/topics/library-management.md).
+
 ## Status
 
 Phases 1 and 2 and the first read-only application slice are implemented. In

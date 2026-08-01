@@ -18,6 +18,39 @@ Never copy, move, rename, commit, upload, or modify private source documents as
 part of generic-tool development. Read an external collection only when the
 task and an explicit configuration path place it in scope.
 
+## Product Destination and Delivery Sequence
+
+The intended product is a distributable, local-first desktop document-evidence
+application, not a permanently CLI-only tool or a browser product that happens
+to read local files. Preserve this direction in architecture, planning, and
+implementation decisions:
+
+- The shared product is the React interface over framework-independent Python
+  library, persistence, job, extraction, comparison, review, and provenance
+  services.
+- The current authenticated loopback server and CLI are development,
+  automation, and headless compositions of those same services. They are not a
+  separate product model.
+- A future Tauri shell is intentionally thin. It will own native lifecycle,
+  application-data injection, folder authorization, Python-sidecar
+  supervision, and desktop distribution concerns without moving document or
+  evidence logic into Rust or importing Tauri into React product components.
+- The durable user-facing unit is a named library with a stable ID, one SQLite
+  database, one artifact store, and one or more explicit read-only source
+  collections. App-wide known/default/last-library state is bounded metadata
+  beneath the platform application-data directory.
+- Tactical 001 is the desktop foundation as well as the durable-job slice: it
+  adds application-home isolation, remembered libraries, unified per-library
+  persistence, durable execution, recovery, and operational UI. Durable human
+  review state follows separately.
+- Native folder pickers, Tauri packaging, Python runtime bundling, optional
+  heavyweight-extractor packs, installers, signing, updating, and
+  cross-platform distribution require a later prototype and approved tactical.
+
+Do not let a short-term localhost or CLI implementation create a competing
+ownership model, embed platform APIs in product components, or make later
+desktop packaging depend on private case paths or source mutation.
+
 ## Startup Routine
 
 Before substantive work:
