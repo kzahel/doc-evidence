@@ -2,8 +2,9 @@
 
 Topic: maintainer-feature-requests
 
-**Status:** Review-workspace revisions implemented; UI-triggered extraction
-execution is approved and planned in Tactical 001 but not yet implemented.
+**Status:** Review-workspace revisions implemented; desktop library management
+and UI-triggered extraction execution are approved and planned in Tactical 001
+but not yet implemented.
 
 ## Purpose
 
@@ -15,6 +16,30 @@ Requests remain here after implementation so the original need, accepted
 behavior, and implementation status remain traceable.
 
 ## Open Requests
+
+### Remember libraries without repeated command-line configuration
+
+**Status:** PLANNED — approved in
+[Tactical 001](../tactical/001-durable-extraction-jobs.md).
+
+The first-class product should behave like a desktop application rather than
+require a configuration path at every launch. It should:
+
+- show known libraries and remember a default or last-opened library;
+- keep one SQLite database and artifact store per library;
+- let one library contain multiple explicit read-only collections;
+- adopt the existing external case configuration and artifact store without
+  moving private documents or recomputing successful artifacts;
+- avoid duplicate indexing when a requested parent collection covers an
+  existing child collection by offering a deliberate replace/expand flow; and
+- place all app-owned registry and managed-library state beneath the platform
+  application-data directory.
+
+`DOC_EVIDENCE_HOME` must override that complete app-owned data root for tests,
+standalone development, and portable isolated runs. External source collection
+paths remain external and unchanged. Automated tests and background Playwright
+validation must use a fresh temporary override so they cannot disturb the
+maintainer's normal library registry or stores.
 
 ### Trigger and monitor extraction from the application
 
@@ -129,6 +154,9 @@ now labels cached-run coverage and this image-only limitation.
 
 - [Application platform](application-platform.md) owns job orchestration,
   application state, and frontend/backend boundaries.
+- [Library management](library-management.md) owns app-home discovery, stable
+  library identity, per-library persistence, explicit collections, and
+  collection-scope transitions.
 - [Comparison and review workspace](comparison-review-workspace.md) owns the
   page-centered comparison interaction and extraction presentation.
 - [Tactical 000](../tactical/000-read-only-library-comparison.md) remains the

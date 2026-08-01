@@ -2,7 +2,8 @@
 
 **Last updated:** 2026-08-01  
 **Status:** Approved direction; first read-only application slice implemented;
-durable extraction-job architecture approved and planned
+desktop library-management and durable extraction-job architectures approved
+and planned
 
 ## Product Statement
 
@@ -31,6 +32,8 @@ embedding tax rules.
 Living application and comparison status is maintained in
 [Application platform](topics/application-platform.md) and
 [Comparison and review workspace](topics/comparison-review-workspace.md).
+Desktop library ownership is maintained in
+[Desktop library management](topics/library-management.md).
 Bounded implementation plans live under [`tactical/`](tactical/README.md).
 
 ## Product Principles
@@ -136,9 +139,29 @@ case.
 
 ## Deployment Direction
 
-### Initial shape: localhost application
+### Primary product shape: desktop library application
 
-Development begins as two local processes:
+The product is designed around an installed desktop application that owns a
+known-library registry, reopens the last library, obtains explicit source
+folder authorization, supervises a Python sidecar, and stores managed library
+data in platform application storage. The desktop shell is lifecycle and
+security composition, not a second document model.
+
+```text
+Tauri desktop shell
+  |
+  +-- platform application-data root and library registry
+  +-- native folder authorization
+  +-- authenticated Python sidecar lifecycle
+  |
+  v
+shared React application and Python-owned library/job services
+```
+
+### Current implementation shape: localhost host
+
+Development currently composes the same shared application as two local
+processes:
 
 ```text
 browser
@@ -149,26 +172,22 @@ React development/build output
   v
 Python HTTP application on loopback
   |
-  +-- SQLite workspaces
+  +-- app-owned known-library registry
+  +-- one SQLite/artifact store per library
   +-- content-addressed artifacts
   +-- configured read-only collections
   +-- local extraction workers
 ```
 
-The server binds only to loopback by default. Opening remote interfaces,
-enabling network-backed adapters, or exposing document contents requires an
-explicit configuration change.
+The server binds only to loopback by default. The localhost host emulates the
+desktop library contract and remains supported for development, automation,
+and headless operation. Opening remote interfaces, enabling network-backed
+adapters, or exposing document contents requires an explicit configuration
+change.
 
-### Later shape: desktop package
-
-The same frontend and local HTTP API should be compatible with a future Tauri
-desktop shell. Tauri may launch the packaged Python service as a sidecar,
-select an available loopback port, pass an ephemeral session credential, and
-manage startup and shutdown.
-
-Desktop packaging is a deployment adapter, not a second application. The CLI
-and localhost application remain supported for automation, development, and
-headless operation.
+Tauri may later launch the packaged Python service as a sidecar, select an
+available loopback port, pass an ephemeral session credential and application-
+data location, and manage startup and shutdown.
 
 Packaging the Python runtime and optional model-heavy extractors will require
 an explicit prototype. The application architecture must not assume that all
@@ -255,12 +274,14 @@ Durability classes must be explicit:
   corrections, accepted observations, pipeline policies, and user-authored
   notes.
 
-The approved local composition uses one active SQLite database with separate
-table groups and lifecycle policies rather than multiple active files:
+The approved local composition uses one active SQLite database per library
+with separate table groups and lifecycle policies rather than separate
+catalog, job, review, or collection databases:
 
 ```text
 doc-evidence.sqlite
-  catalog generations       # rebuildable projections
+  stable content/run/pages   # reusable content-derived projections
+  membership generations    # rebuildable collection scope
   jobs/attempts/events       # restartable bounded operational state
   future review state       # migrated and never automatically rebuilt
 ```
@@ -270,9 +291,24 @@ switches the active-generation pointer without replacing the database file.
 Durable review and observation data must also support explicit portable
 export. References use content hashes and run identities so they survive path
 changes and catalog regeneration. The complete decision is in
-[Durable job architecture](topics/job-architecture.md).
+[Durable job architecture](topics/job-architecture.md). App-level registry,
+collection, and managed-store ownership is in
+[Desktop library management](topics/library-management.md).
 
 ## Application Components
+
+### Library service
+
+- Resolves platform application data or the isolated `DOC_EVIDENCE_HOME`.
+- Lists and selects known/default/last libraries without requiring repeated
+  CLI configuration.
+- Enforces stable library identity across registry, descriptor, database,
+  jobs, API resources, and deep links.
+- Gives each library one database/artifact store and one or more explicit
+  non-overlapping collections.
+- Treats parent-folder selection as scope expansion with content/cache reuse,
+  not a second overlapping scan root.
+- Keeps native folder grants behind the platform adapter.
 
 ### Collection service
 
@@ -281,6 +317,8 @@ changes and catalog regeneration. The complete decision is in
 - Scans incrementally and records source occurrences.
 - Detects disappeared, moved, new, and changed paths without confusing paths
   with content identity.
+- Projects scope membership separately from reusable content/run/page/FTS
+  records.
 
 ### Artifact service
 
@@ -371,7 +409,16 @@ provenance or bypass review policy.
 
 ## First-class User Interface
 
-### Library
+### Library home and settings
+
+- Known libraries, last/default selection, and active identity.
+- New/open-existing flows through authorized platform adapters.
+- Explicit non-overlapping collection folders and availability.
+- Parent-expansion/child-covered preflight with cache-reuse explanation.
+- Managed versus adopted store, storage usage, and integrity state.
+- No repeated config-path requirement for ordinary startup.
+
+### Document library
 
 - Collection and folder navigation.
 - Document grid/list with search and facets.
@@ -431,11 +478,13 @@ The first API should be resource-oriented and narrow. Representative areas
 include:
 
 ```text
-/api/workspace
-/api/collections
-/api/documents
-/api/documents/{id}/pages
-/api/documents/{id}/runs
+/api/app
+/api/libraries
+/api/libraries/{id}
+/api/libraries/{id}/collections
+/api/libraries/{id}/documents
+/api/libraries/{id}/documents/{document_id}/pages
+/api/libraries/{id}/documents/{document_id}/runs
 /api/artifacts/{id}
 /api/comparisons
 /api/observations
@@ -570,8 +619,11 @@ desktop packaging follow this milestone.
 
 - `doc-evidence` is a standalone, domain-neutral product.
 - It is local-first and must support fully offline use.
-- The initial application is a single-user localhost web application.
-- A future Tauri desktop shell should reuse the same application contracts.
+- The primary product model is a single-user desktop library application.
+- The current localhost web application and CLI reuse the same application
+  contracts for development and automation.
+- A future Tauri shell owns native lifecycle, application-data resolution, and
+  folder authorization without owning document logic.
 - Source collections remain immutable and read-only.
 - Python owns the backend, SQLite, job orchestration, and extractor adapters.
 - React and TypeScript provide the first-class UI.
@@ -580,16 +632,25 @@ desktop packaging follow this milestone.
 - Frontend API types are generated from Python-owned contracts.
 - The existing CLI, artifact store, and Python extractors are retained.
 - The comparison and review workspace is the first defining vertical slice.
-- One active `doc-evidence.sqlite` contains logically distinct catalog
-  generations, operational job state, and future durable review state.
+- One active `doc-evidence.sqlite` per library contains stable content-derived
+  projections, membership generations, operational job state, and future
+  durable review state.
+- App-level known/default/last library state is bounded atomic JSON, not
+  another document database.
+- New libraries default to platform-managed application storage;
+  `DOC_EVIDENCE_HOME` isolates the entire app-owned root for tests and
+  development.
+- Libraries use explicit non-overlapping collections. Parent-folder expansion
+  reuses content-addressed artifacts rather than registering both roots.
 - The first job executor is a bounded local scheduler over supervised
   subprocesses, not Celery or an external broker.
 
 ### Open implementation decisions
 
 - Tactical 001 must implement and validate the approved unified SQLite
-  migrations and catalog-generation mechanism. Tactical 000 validated the
-  FastAPI/Pydantic adapter.
+  migrations, reusable content/membership-generation split, application-home
+  resolver, and library registry. Tactical 000 validated the FastAPI/Pydantic
+  adapter.
 - Tactical 000 validated the Vite, React, TanStack Query, narrow Zustand, and
   CSS Modules frontend composition; the maintainer interaction gate remains.
 - Measured default concurrency for light, OCR, and model-heavy resource

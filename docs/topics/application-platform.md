@@ -28,10 +28,18 @@ tested through bounded tacticals.
 
 - Python owns the backend, SQLite access, job orchestration, and extractor
   adapters.
+- The product is designed as a desktop library application. The current
+  localhost host and CLI are development/automation adapters over the same
+  library and runtime contracts.
+- The desktop model has an app-owned known-library registry and one SQLite/
+  artifact store per library. Multiple collections share that library store.
+- Platform-native application data is the production default;
+  `DOC_EVIDENCE_HOME` is the required isolated override for development and
+  tests.
 - Domain and application services must not depend on FastAPI, a browser,
   Tauri, or a concrete persistence adapter.
-- The initial composition is a single-user localhost application over an
-  explicitly configured external workspace.
+- The initial composition is a single-user localhost implementation of the
+  desktop-shaped library application over registered external collections.
 - React and TypeScript provide the shared product UI.
 - TanStack Query should own server-derived remote state. Zustand owns only
   client-local selection, view configuration, and transient interaction
@@ -99,6 +107,10 @@ parallel boundary. The exact inspected documents and pinned revision are in
 No `atpiano` code is a dependency. Reuse concepts and validation lessons;
 author `doc-evidence` contracts for its own domain.
 
+The complete library-home, collection, managed-store, and application-path
+contract is maintained in
+[Desktop library management](library-management.md).
+
 ## State and Persistence Boundary
 
 The application distinguishes:
@@ -116,6 +128,10 @@ future durable review state. These remain logically separate by table group
 and retention policy while avoiding multiple active databases. Tactical 001
 owns the migration from whole-file catalog replacement to atomic catalog
 generations inside that database.
+
+This is one database per library, not one global database spanning unrelated
+libraries. App-level known/default/last library state is a bounded atomic JSON
+registry beneath the application home rather than a second SQLite database.
 
 ## API and Runtime Direction
 
@@ -150,6 +166,9 @@ tactical.
 
 - The unified-database and migration direction is approved but not yet
   implemented.
+- Application-home resolution, `DOC_EVIDENCE_HOME`, known-library registry,
+  explicit library identity, and non-overlapping collection management are
+  approved but not implemented.
 - Tactical 001 starts with bounded polling for job updates. A later event
   stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and optional extractor-pack
@@ -204,5 +223,6 @@ record is in
 Implement [Tactical 001](../tactical/001-durable-extraction-jobs.md) only after
 the maintainer explicitly asks to proceed. Its write, persistence, worker,
 artifact, recovery, and UI boundaries are frozen in the
-[durable job architecture](job-architecture.md). Durable review events remain
-the likely following tactical.
+[durable job architecture](job-architecture.md) and
+[desktop library management](library-management.md). Durable review events
+remain the likely following tactical.

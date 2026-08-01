@@ -2,6 +2,8 @@
 
 Topic: job-architecture
 
+Topic: library-management
+
 Topic: application-platform
 
 Topic: maintainer-feature-requests
@@ -15,12 +17,15 @@ artifact store. Most documents therefore expose native Poppler text only,
 image-only PDFs can appear empty, and the user must leave the application to
 run benchmark-oriented tooling.
 
-After this tactical, a user can explicitly run a supported extractor for the
-open document, request OCR for an image-only document, inspect the exact cache
-decision, monitor work across the application, cancel or retry an attempt,
-survive a browser or backend restart without ambiguous state, and inspect
-detailed operational diagnostics. A bounded batch can enqueue missing OCR for
-an explicitly reviewed set without unbounded fan-out.
+After this tactical, the application resolves an isolated desktop-style
+application home, remembers known libraries and the last/default library,
+opens an existing library without a repeated config argument, and makes
+library identity visible in the UI. A user can then explicitly run a supported
+extractor for the open document, request OCR for an image-only document,
+inspect the exact cache decision, monitor work across the application, cancel
+or retry an attempt, survive a browser or backend restart without ambiguous
+state, and inspect detailed operational diagnostics. A bounded batch can
+enqueue missing OCR for an explicitly reviewed set without unbounded fan-out.
 
 Successful output remains content-addressed, versioned, immutable, and
 traceable. Source documents remain unchanged. Merely opening a document never
@@ -29,6 +34,7 @@ starts extraction.
 ## Dependencies and References
 
 - [Durable job architecture](../topics/job-architecture.md)
+- [Desktop library management](../topics/library-management.md)
 - [Product vision and application architecture](../product-vision-and-architecture.md)
 - [Application platform](../topics/application-platform.md)
 - [Comparison and review workspace](../topics/comparison-review-workspace.md)
@@ -62,26 +68,101 @@ session or streaming model.
   live in that replacement model.
 - Exact successful extractor cache identity already includes source content,
   extractor descriptor/configuration, and normalized schema version.
+- The current CLI requires `--config` on every library command even though the
+  external tax workspace already has a case-local `.doc-evidence.yaml` and an
+  established artifact store. No app-owned known-library registry or
+  last-opened/default selection exists.
+- The current catalog duplicates content-derived page/FTS projections in each
+  whole-file rebuild and does not yet model scope changes as reusable
+  generation membership over stable content records.
+- The current validator prevents collection/store overlap but does not reject
+  two physical collection roots where one contains the other.
 - The external private calibration library demonstrates both exact cache reuse
   and documents that lack appropriate OCR/layout coverage.
-- The maintainer explicitly approved one active SQLite database, a small local
-  scheduler instead of Celery, process-group supervision, atomic artifact
-  publication, watchdog recovery, a global activity surface, and an advanced
-  concurrency/debug view.
+- The maintainer explicitly approved one active SQLite database per library, a
+  small local scheduler instead of Celery, process-group supervision, atomic
+  artifact publication, watchdog recovery, a global activity surface, and an
+  advanced concurrency/debug view.
+- The maintainer subsequently approved a desktop-first library manager: one
+  SQLite database per named library, multiple explicit non-overlapping source
+  collections, app-managed storage by default, existing external-store
+  adoption, parent-folder expansion with cache reuse, and
+  `DOC_EVIDENCE_HOME` isolation for standalone tests and development.
 
 ## Frozen Decisions
 
+### Desktop application home and library ownership
+
+- Model the product as a desktop application with a library home. The CLI and
+  localhost web host consume the same library application services rather than
+  defining library ownership through repeated `--config` flags.
+- Resolve the production application home through the platform's per-user
+  application-data convention.
+- Support `DOC_EVIDENCE_HOME` as the required absolute override for the entire
+  app-owned root. Read it once at composition, never auto-load a `.env`, and
+  keep every isolated test/headless browser run below a fresh temporary value.
+- Resolve in the frozen order: `DOC_EVIDENCE_HOME`, desktop-host-injected
+  app-data root, then platform default. Report the selected source in safe
+  diagnostics.
+- Store a versioned atomic `app-state.json` registry and managed libraries
+  below application home. The registry contains known library identity and
+  selection metadata, not document data or another SQLite database.
+- Give every library a stable ID, mutable display name, versioned descriptor,
+  and one database/artifact store. Multiple collections in the same library
+  never create additional databases.
+- New desktop-created libraries default to a managed store below application
+  home. Tactical 001 may adopt the existing external tax configuration/store
+  in place; it must not copy private documents or rerun successful artifacts.
+- Preserve explicit `--config` as an automation/compatibility override and add
+  a bounded CLI/development registration path. Ordinary startup uses the
+  known-library registry and last/default library.
+- Make library identity explicit in application requests, durable jobs,
+  scheduler leases, query keys, diagnostics, and document deep links. Changing
+  UI selection cannot retarget existing work.
+- The Tactical 001 localhost UI lists/selects known libraries, exposes the
+  active library and collection settings, and provides deterministic empty and
+  identity-error states. Native folder selection remains a Tauri adapter.
+- Do not expose a localhost API accepting an arbitrary browser-supplied
+  filesystem path.
+
+### Explicit collections and scope changes
+
+- Collections are read-only explicit source folders sharing one library
+  store. Canonical collection roots must not overlap each other or the store.
+- Adding a parent of an existing collection is a preflighted replacement/
+  expansion, not a second active collection. Adding a child of an existing
+  root reports that the folder is already covered. Non-overlapping siblings
+  are ordinary collections.
+- A scope expansion preserves library/store identity and creates a new
+  membership generation. Existing content, extraction runs, normalized pages,
+  FTS data, and artifacts are reused by content/run identity.
+- Keep content objects, extraction runs, pages, FTS, and registered artifacts
+  generation-independent. Keep collection snapshots, source occurrences,
+  active membership, and scope-dependent duplicate membership generation-
+  scoped.
+- Permit incremental file-hash reuse only from a sufficiently strong local
+  fingerprint. SHA-256 remains canonical, and a full verification mode
+  rehashes every source.
+- Narrowing scope never immediately deletes successful content artifacts.
+  Garbage collection requires explicit reachability, pins/retention, and a
+  separate operation.
+
 ### Persistence
 
-- Introduce one active `<store>/doc-evidence.sqlite` database.
+- Introduce one active `<library-store>/doc-evidence.sqlite` database per
+  library. Do not create separate catalog, job, review, or collection
+  databases.
 - Use explicit transactional schema migrations and a recorded schema version.
-- Store catalog generations, jobs, attempts, bounded events, scheduler lease,
-  and later durable review tables in the same database.
+- Store stable content/run/page projections, catalog membership generations,
+  jobs, attempts, bounded events, scheduler lease, and later durable review
+  tables in that database.
+- Keep the app-level known-library registry in bounded atomic `app-state.json`,
+  not another SQLite database.
 - Keep extractor payloads, renders, raw output, and full logs in the existing
   content-addressed filesystem store.
-- Replace whole-file catalog rebuilds with inactive generation construction,
-  validation, an atomic active-generation switch, and separately bounded
-  generation cleanup.
+- Replace whole-file catalog rebuilds with persistent content/run/page tables,
+  inactive membership-generation construction, validation, an atomic active-
+  generation switch, and separately bounded generation cleanup.
 - Import or rebuild the latest legacy `catalog.sqlite` snapshot into the first
   unified generation without modifying source documents or existing
   successful artifacts.
@@ -112,7 +193,7 @@ session or streaming model.
 
 ### Scheduling
 
-- One active scheduler owns a workspace through a process lock and persisted
+- One active scheduler owns a library through a process lock and persisted
   lease/heartbeat.
 - Start with explicit `light`, `ocr`, and `model_heavy` resource classes plus
   an exclusive accelerator dimension where needed.
@@ -147,8 +228,8 @@ session or streaming model.
 
 ### Frontend ownership and updates
 
-- TanStack Query owns extractor capabilities, jobs, attempts, events, and
-  progress snapshots.
+- TanStack Query owns known/active library records, collection settings,
+  extractor capabilities, jobs, attempts, events, and progress snapshots.
 - Zustand owns activity-panel visibility, selected job, filters, and other
   transient presentation state only.
 - Start with bounded polling: approximately once per second while relevant
@@ -165,24 +246,40 @@ session or streaming model.
 Exact column names may tighten during implementation, but the persisted model
 must retain these semantics.
 
-### Infrastructure and catalog
+### App-level state outside library databases
+
+```text
+app-state.json              # known/default/last library registry only
+```
+
+The registry is versioned, bounded, and atomically written beneath the
+resolved application home. It contains no catalog, jobs, extracted text, or
+review records.
+
+### Library infrastructure and catalog
 
 ```text
 schema_migrations
-workspace_metadata
-catalog_generations
-documents                  # generation-scoped projection
-sources                    # generation-scoped projection
-extraction_runs            # generation-scoped projection
-pages                      # generation-scoped projection
-pages_fts                  # generation-scoped searchable projection
-duplicate_members          # generation-scoped projection
+library_metadata            # stable library identity/name/config state
+content_objects             # generation-independent SHA-256 identities
+extraction_runs             # generation-independent run projections
+run_pages                   # generation-independent normalized pages
+pages_fts                   # generation-independent searchable run text
+registered_artifacts        # generation-independent artifact references
+scan_fingerprints           # local incremental hashing hints
+inventory_generations
+collection_snapshots
+source_occurrences          # generation-scoped path observations
+generation_documents        # generation-scoped active membership
+duplicate_members           # generation-scoped scope-dependent grouping
 scheduler_lease
 ```
 
-The active catalog generation is one small durable pointer. All library and
-search queries resolve through it. Jobs target stable content identity rather
-than generation-scoped row identity.
+The active inventory generation is one small durable pointer. Library and
+search queries join active membership to stable content/run/page/FTS records.
+Expanding scope does not duplicate page text or extractor projections. Jobs
+target explicit library and stable content identities rather than a selected
+path or generation-scoped row.
 
 ### Operational tables
 
@@ -193,9 +290,10 @@ job_attempts
 job_events
 ```
 
-`jobs` retain request kind, document/extractor/configuration identity,
-execution mode, run key, priority/resource class, lifecycle state, outcome,
-timestamps, active attempt, result identity, and bounded error summary.
+`jobs` retain library ID, request kind, document/extractor/configuration
+identity, execution mode, run key, priority/resource class, lifecycle state,
+outcome, timestamps, active attempt, result identity, and bounded error
+summary.
 
 `job_attempts` retain attempt number, scheduler/worker identity, heartbeat and
 deadline, exact execution descriptor, attempt/log paths, exit details,
@@ -266,19 +364,42 @@ making transient queue state necessary to read a successful artifact.
 
 ## Python Scope
 
-### 1. Unified persistence and migrations
+### 1. Application home and library services
+
+- Add a single application-home resolver with platform-native production
+  defaults and required `DOC_EVIDENCE_HOME` override semantics.
+- Add versioned atomic app-state, known-library registry, last/default
+  selection, stable library identity, and managed descriptor/store layout.
+- Add framework-independent services to list, select, inspect, register/adopt,
+  and validate known libraries and explicit collection roots.
+- Add CLI/development bootstrap for registering the existing external config;
+  ordinary `serve` starts from app state without requiring `--config`.
+- Preserve `--config` as an explicit compatibility/automation override that
+  does not silently rewrite the app registry.
+- Reject overlapping canonical collection roots and collection/store overlap.
+  Add parent-expansion and child-already-covered preflight values for future
+  native folder adapters.
+- Scope runtime operations, deep links, query keys, jobs, and leases to stable
+  library identity.
+- Keep native filesystem selection out of React and the localhost arbitrary-
+  path API; represent it behind an authorized platform adapter.
+
+### 2. Unified persistence and migrations
 
 - Add framework-independent repositories and transactional schema migrations
   for `doc-evidence.sqlite`.
 - Import/rebuild the current catalog as the first active generation.
-- Update inventory to construct and activate catalog generations without
-  replacing the unified database.
+- Update inventory to persist stable content/run/page/FTS projections and
+  construct/activate scope membership generations without replacing the
+  unified database.
 - Preserve literal/FTS search, duplicate, document, page, run, and source-path
   behavior through the new projection.
-- Add integrity, migration, generation-switch, interrupted-build, and legacy
-  rollback tests.
+- Add incremental fingerprint hints plus an explicit full-hash verification
+  mode. Metadata never replaces canonical SHA-256 identity.
+- Add integrity, migration, scope-expansion reuse, generation-switch,
+  interrupted-build, legacy adoption, and rollback tests.
 
-### 2. Extractor registry and preflight
+### 3. Extractor registry and preflight
 
 - Introduce a typed server-owned extractor registry declaring identifier,
   version/descriptor, supported media types, required dependencies, resource
@@ -292,7 +413,7 @@ making transient queue state necessary to read a successful artifact.
   it rather than hiding conversion inside an unrelated run.
 - Do not accept executable or filesystem paths from the client.
 
-### 3. Supervised attempts and atomic artifacts
+### 4. Supervised attempts and atomic artifacts
 
 - Refactor synchronous command execution behind an attempt supervisor with
   cancellation, process-group ownership, deadlines, heartbeats, bounded log
@@ -304,12 +425,12 @@ making transient queue state necessary to read a successful artifact.
 - Add a retention service for failed/cancelled attempt diagnostics with byte
   and age caps; do not delete diagnostics during the job that produced them.
 
-### 4. Job application service and scheduler
+### 5. Job application service and scheduler
 
 - Implement job creation, cache resolution, idempotency, coalescing, claim,
   transitions, retry, cancellation, timeout, priority aging, and result
   publication as framework-independent services.
-- Add one workspace scheduler lease and a bounded resource-class dispatcher.
+- Add one library scheduler lease and a bounded resource-class dispatcher.
 - Keep scheduling data bounded: queue rows and aggregate counters replace
   unbounded in-memory task lists.
 - Add startup and periodic reconciliation for stale workers, published
@@ -318,19 +439,23 @@ making transient queue state necessary to read a successful artifact.
   policy allows, preserve queue intent, and leave remaining attempts explicitly
   recoverable.
 
-### 5. Application contracts and local API
+### 6. Application contracts and local API
 
 The bounded v1 surface may include:
 
 ```text
-GET  /api/v1/extractors
-POST /api/v1/jobs/extractions
-POST /api/v1/jobs/extraction-batches
-GET  /api/v1/jobs
-GET  /api/v1/jobs/{job_id}
-GET  /api/v1/jobs/{job_id}/events
-POST /api/v1/jobs/{job_id}/cancel
-POST /api/v1/jobs/{job_id}/retry
+GET  /api/v1/app
+GET  /api/v1/libraries
+GET  /api/v1/libraries/{library_id}
+POST /api/v1/libraries/{library_id}/activate
+GET  /api/v1/libraries/{library_id}/extractors
+POST /api/v1/libraries/{library_id}/jobs/extractions
+POST /api/v1/libraries/{library_id}/jobs/extraction-batches
+GET  /api/v1/libraries/{library_id}/jobs
+GET  /api/v1/libraries/{library_id}/jobs/{job_id}
+GET  /api/v1/libraries/{library_id}/jobs/{job_id}/events
+POST /api/v1/libraries/{library_id}/jobs/{job_id}/cancel
+POST /api/v1/libraries/{library_id}/jobs/{job_id}/retry
 ```
 
 - Add Pydantic contracts, OpenAPI, generated TypeScript wire types/client, and
@@ -343,8 +468,31 @@ POST /api/v1/jobs/{job_id}/retry
 - Map typed application failures to stable API problem codes.
 - Do not expose arbitrary commands, environment, executable paths, source
   paths, destination paths, or unrestricted artifact reads.
+- Keep Tactical 000's unscoped read routes only as temporary compatibility
+  aliases where needed; new runtime operations name library identity.
 
 ## User Interface Scope
+
+### Library home and active-library context
+
+Add a desktop-shaped library entry surface to the shared React application:
+
+- reopen the registered last/default library when it remains valid;
+- list known libraries with name, collection count, store mode, last-opened
+  time, and actionable unavailable/integrity state;
+- select a known library by stable ID;
+- show an empty-library-home state with the exact CLI/development registration
+  action until a native Tauri picker exists;
+- display active library name and collection scope in the application shell;
+- include library ID in document/page deep links and restore it before
+  document selection;
+- inspect configured collections and whether each root is available; and
+- present parent-expansion, child-covered, root-overlap, and store-overlap
+  preflight outcomes without accepting an arbitrary browser path.
+
+Switching the selected library cannot retarget an existing document request,
+job, artifact, or comparison. Tactical 001 need not implement Tauri packaging,
+native folder selection, managed-store relocation, or library deletion.
 
 ### Document extraction panel
 
@@ -440,6 +588,21 @@ an alive but quiet model failed merely because it has not emitted progress.
 
 ### Persistence and application services
 
+- Application-home resolution selects the platform default when unset and an
+  absolute `DOC_EVIDENCE_HOME` when provided.
+- The explicit environment override wins over a desktop-host-injected root;
+  the injected root wins over the platform default.
+- Every automated/integration process using the override leaves the production
+  application home absent or byte-for-byte unchanged.
+- App-state creation/update is atomic; interrupted replacement and malformed
+  registry data yield a bounded recovery/error state rather than silent loss.
+- Two isolated app homes cannot discover or mutate each other's registered or
+  managed libraries.
+- Multiple libraries have distinct identity, database/store, query, deep-link,
+  scheduler, and job scope.
+- Registry/descriptor/database identity disagreement blocks opening.
+- Sibling collection roots validate; parent/child and collection/store overlap
+  fail or use the explicit scope-expansion preflight.
 - Fresh database creation and every migration path pass SQLite integrity and
   foreign-key checks.
 - A legacy catalog becomes the first active unified generation without source
@@ -452,6 +615,11 @@ an alive but quiet model failed merely because it has not emitted progress.
 - Cache hits start no worker process.
 - Retry, fresh verification, changed settings, and nondeterministic output
   preserve distinct intended histories.
+- Replacing a child root with its parent leaves existing successful artifacts
+  byte-for-byte unchanged, reuses existing content/run/page/FTS records,
+  starts no extractor for unchanged content, and processes only new content.
+- Full verification rehashes every observed source; narrowing and re-expanding
+  within retention reuses successful artifacts.
 - Scheduler ownership, resource bounds, priority aging, batch bounds, and
   queue pause/resume are deterministic under fake time.
 
@@ -480,28 +648,38 @@ attempt accumulation.
 
 ### API, contracts, and frontend
 
-- Authentication, allowed origin, idempotency, pagination, settings bounds,
-  batch bounds, capability validation, and path/command injection tests pass.
+- Authentication, allowed origin, explicit library identity, active-library
+  isolation, idempotency, pagination, settings bounds, batch bounds,
+  capability validation, and path/command injection tests pass.
 - OpenAPI and generated TypeScript/client drift checks pass.
-- Representative job, attempt, event, extractor-capability, batch, and error
-  payloads validate in Python and TypeScript.
+- Representative app-state, library, collection, job, attempt, event,
+  extractor-capability, batch, and error payloads validate in Python and
+  TypeScript.
 - TanStack Query tests cover active polling, idle backoff, completion
   invalidation, restart/interrupted state, and cache-hit fulfillment.
-- Component tests cover document execution, unavailable dependencies,
-  activity filters/counts, cancellation/retry, batch preflight, resource lanes,
-  live-but-quiet versus dead workers, diagnostics, and narrow layouts.
+- Component tests cover library home/selection/identity errors, active-library
+  header and deep links, collection overlap/expansion states, document
+  execution, unavailable dependencies, activity filters/counts,
+  cancellation/retry, batch preflight, resource lanes, live-but-quiet versus
+  dead workers, diagnostics, and narrow layouts.
 - TypeScript typecheck, frontend tests, production build, Ruff, Pyright, Python
   tests, package build, and generated-contract checks pass.
 - Background/headless Playwright—not the maintainer's interactive browser—runs
-  the real application against deterministic fake extractors and validates
-  success, cache reuse, cancellation, timeout, restart recovery, activity
-  updates, document refresh, and the debug timeline without console errors.
+  the real application under a fresh temporary `DOC_EVIDENCE_HOME` against
+  deterministic libraries and fake extractors. It validates library
+  selection/isolation, success, cache reuse, cancellation, timeout, restart
+  recovery, activity updates, document refresh, and the debug timeline without
+  console errors.
 
 ### External private integration
 
 Run against the configured private tax workspace without copying or modifying
 source documents:
 
+- create a temporary `DOC_EVIDENCE_HOME` and register/adopt the existing tax
+  configuration/store without modifying the production app registry;
+- confirm ordinary startup selects the registered tax library without a
+  repeated `--config` argument and displays its identity/collections;
 - record a full source hash baseline before and after;
 - enqueue one missing OCR extraction for an image-only PDF through the UI;
 - observe queue, worker, publication, document refresh, and subsequent cache
@@ -509,6 +687,8 @@ source documents:
 - run or reuse one selected layout extractor where dependencies are available;
 - preflight the image-only/missing-OCR batch without automatically confirming
   broad work; and
+- confirm the production app-home registry remains absent or byte-for-byte
+  unchanged; then
 - record only counts, versions, timings, states, safe diagnostics, and
   non-sensitive UI evidence in this repository.
 
@@ -519,6 +699,11 @@ into an application failure; the UI must represent it accurately.
 
 The maintainer reviews:
 
+- library home, known/last library selection, active-library header, and
+  collection settings;
+- isolated `DOC_EVIDENCE_HOME` startup and ordinary launch without repeated
+  config arguments;
+- parent-expansion/child-covered overlap explanation and cache-reuse preflight;
 - explicit extraction from the current document;
 - passive browsing with no accidental work;
 - cache reuse versus fresh verification wording;
@@ -534,6 +719,12 @@ that advanced worker detail is available without dominating the primary UI.
 
 ## Security and Resource Bounds
 
+- Resolve all app-owned paths beneath the platform application home or the
+  absolute `DOC_EVIDENCE_HOME` selected at process startup.
+- Write app-state and managed descriptors atomically; never persist the launch
+  credential in them.
+- Reject registry/descriptor/database identity conflicts and collection roots
+  overlapping another collection or their library store.
 - Preserve loopback-only binding, per-launch bearer authentication, exact
   allowed-origin policy, credential redaction, and no remote assets.
 - Register extractors and settings server-side; reject arbitrary executables,
@@ -560,6 +751,9 @@ that advanced worker detail is available without dominating the primary UI.
   or domain packs.
 - No Tauri packaging, installer, updater, signing, or Windows-specific process
   integration beyond keeping portable boundaries.
+- No native folder picker, platform security-scoped bookmark, library/store
+  relocation, cross-library cache pool, managed-store deletion, or multi-window
+  library behavior.
 - No remote model fallback, upload, analytics, telemetry, or diagnostic
   transmission.
 - No source mutation, OCR replacement of originals, document moves, renames,
@@ -572,6 +766,11 @@ that advanced worker detail is available without dominating the primary UI.
 Existing successful artifact paths and run descriptors remain readable.
 Current source collections, manifests, benchmark suites, generated review
 packs, and CLI cache identities are not rewritten.
+
+The application-home registry and managed descriptors are additive. An
+explicit `--config` launch remains available during rollback and does not
+depend on app-state. Removing a registry entry does not delete an external
+configuration, source collection, adopted store, or successful artifact.
 
 The unified database is additive. Migration leaves the legacy rebuildable
 catalog untouched as rollback material during this tactical and never
@@ -586,46 +785,61 @@ interrupted attempts.
 
 ## Planned Commit Slices
 
-1. Add unified SQLite migrations, catalog generations, and legacy catalog
-   import/rebuild with search and inventory parity.
-2. Add the typed extractor registry, attempt workspace, supervised process
+1. Add application-home resolution, `DOC_EVIDENCE_HOME` isolation, atomic
+   app-state, library/descriptor contracts, legacy external-library adoption,
+   and CLI/development registration.
+2. Add library-scoped unified SQLite migrations, stable content/run/page/FTS
+   tables, membership generations, incremental/full hashing, collection
+   overlap/expansion behavior, and legacy catalog import with search/inventory
+   parity.
+3. Add library-home/selection UI, active-library identity/deep links,
+   collection settings/preflight, generated contracts, and isolated frontend
+   fixtures.
+4. Add the typed extractor registry, attempt workspace, supervised process
    execution, cancellation, validation, and atomic publication.
-3. Add framework-independent jobs, attempts, events, scheduler lease,
+5. Add framework-independent jobs, attempts, events, scheduler lease,
    resource dispatch, cache/coalescing, watchdog, and restart reconciliation.
-4. Add authenticated job/capability API contracts, generated TypeScript, and
+6. Add authenticated job/capability API contracts, generated TypeScript, and
    runtime operations.
-5. Add document extraction controls, progress, cache/fresh semantics, and
+7. Add document extraction controls, progress, cache/fresh semantics, and
    post-publication representation refresh.
-6. Add the global activity center, batch preflight, concurrency lanes, and
+8. Add the global activity center, batch preflight, concurrency lanes, and
    operational debug view.
-7. Add crash-window/fault-injection validation, headless Playwright evidence,
+9. Add crash-window/fault-injection validation, isolated-headless Playwright,
    private integration, operations documentation, and final acceptance packet.
 
-Each implementation commit for this tactical uses the trailer:
+Each implementation commit for this tactical uses the relevant trailer or
+trailers:
 
 ```text
 Topic: job-architecture
+Topic: library-management
 ```
 
 ## Falsifiable Stopping Condition
 
-Tactical 001 is complete only when one production-like localhost session can
-start extraction from the document UI, distinguish cache reuse from fresh
-execution, expose bounded activity/debug state, safely cancel and retry,
-recover from forced backend termination at every persisted lifecycle boundary,
-publish only validated immutable artifacts, refresh the document workspace,
-and pass the complete automated, private-integration, and explicit maintainer
-acceptance gates above.
+Tactical 001 is complete only when one production-like localhost session under
+an isolated `DOC_EVIDENCE_HOME` can select/reopen an explicitly registered
+library without a repeated config argument, preserve library identity across
+deep links/jobs/restart, demonstrate parent-scope cache reuse, start extraction
+from the document UI, distinguish cache reuse from fresh execution, expose
+bounded activity/debug state, safely cancel and retry, recover from forced
+backend termination at every persisted lifecycle boundary, publish only
+validated immutable artifacts, refresh the document workspace, and pass the
+complete automated, private-integration, and explicit maintainer acceptance
+gates above.
 
 Any request left silently `running` after its lease/deadline and a restart, any
 orphan descendant process, any partial attempt displayed as canonical success,
+any cross-library retargeting, any isolated test touching production app state,
 any source mutation, or any lost valid canonical artifact falsifies completion.
 
 ## Next-Slice Boundary
 
 Durable human review events, corrections, tags, and portable review export
 remain the likely next tactical after the job system is accepted. Hosted
-workers and Tauri packaging remain separate decisions driven by measured need.
+workers, native Tauri folder selection, store relocation, and packaging remain
+separate decisions driven by measured need.
 
 ## Execution Record
 

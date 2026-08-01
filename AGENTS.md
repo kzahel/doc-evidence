@@ -31,6 +31,10 @@ Before substantive work:
    Read `docs/topics/job-architecture.md` before changing job persistence,
    scheduling, workers, extraction execution, artifact publication,
    cancellation, recovery, or operational UI.
+   Read `docs/topics/library-management.md` before changing application-home
+   discovery, library registration or selection, configuration persistence,
+   store/database ownership, collection scope, desktop startup, or collection
+   overlap behavior.
 4. Read the active tactical under `docs/tactical/` before implementing its
    scope. `docs/tactical/000-read-only-library-comparison.md` is the implemented
    read-only execution record. The approved next implementation plan is
@@ -87,6 +91,13 @@ Before substantive work:
   before a working consumer requires the boundary.
 - A future Tauri shell remains thin lifecycle/security composition around the
   same Python application. Do not import Tauri into product components.
+- Treat a library as the durable user-facing unit: one stable library identity,
+  one SQLite database, one artifact store, and one or more explicit read-only
+  collections. The app registry is bounded metadata, not another database.
+- Resolve all app-owned state beneath the platform application-data directory,
+  or beneath `DOC_EVIDENCE_HOME` when that explicit override is set. Tests and
+  isolated development runs must use a fresh temporary override and must not
+  touch the maintainer's main application state.
 
 ## Development Rules
 

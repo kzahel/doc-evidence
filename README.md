@@ -21,8 +21,10 @@ The repository now includes a Python-backed authenticated localhost
 application with a React/TypeScript interface for browsing and searching the
 cached library, opening rendered pages, grouping exact extractor output, and
 reviewing versioned word/numeric comparisons. The approved next product
-boundary is durable extraction jobs, atomic artifact publication, recovery,
-and operational UI; durable human review state follows as a separate slice.
+boundary establishes desktop-first library management and isolated app-home
+configuration together with durable extraction jobs, atomic artifact
+publication, recovery, and operational UI. Durable human review state follows
+as a separate slice.
 
 The implemented slice is
 [Tactical 000: read-only library and extractor comparison](docs/tactical/000-read-only-library-comparison.md).
@@ -32,7 +34,8 @@ durable review writes, pipeline execution, and desktop packaging.
 
 The approved implementation plan for the next boundary is
 [Tactical 001: durable extraction jobs and operational UI](docs/tactical/001-durable-extraction-jobs.md),
-owned by the living [job architecture topic](docs/topics/job-architecture.md).
+owned by the living [library management](docs/topics/library-management.md)
+and [job architecture](docs/topics/job-architecture.md) topics.
 Implementation has not started.
 
 Read these first:
@@ -40,13 +43,14 @@ Read these first:
 1. [Product vision and application architecture](docs/product-vision-and-architecture.md)
 2. [Master plan](docs/master-plan.md)
 3. [Living topics](docs/topics/README.md)
-4. [Durable job architecture](docs/topics/job-architecture.md)
-5. [Implementation tacticals](docs/tactical/README.md)
-6. [Architecture](docs/architecture.md)
-7. [Data contracts](docs/data-contracts.md)
-8. [Benchmark plan](docs/benchmarking.md)
-9. [References](docs/references.md)
-10. [Operations](docs/operations.md)
+4. [Library management](docs/topics/library-management.md)
+5. [Durable job architecture](docs/topics/job-architecture.md)
+6. [Implementation tacticals](docs/tactical/README.md)
+7. [Architecture](docs/architecture.md)
+8. [Data contracts](docs/data-contracts.md)
+9. [Benchmark plan](docs/benchmarking.md)
+10. [References](docs/references.md)
+11. [Operations](docs/operations.md)
 
 ## Core Principles
 
@@ -55,8 +59,9 @@ Read these first:
 - Extraction outputs are derived, versioned, and reproducible.
 - Candidate observations retain document and page provenance.
 - Automated observations are never silently promoted to accepted facts.
-- Catalog projections remain rebuildable while job and future review state
-  have separate durability policies inside one active workspace database.
+- Each user-facing library owns one SQLite database and artifact store.
+  Generation-independent content is reused across collection-scope changes,
+  while membership projections remain rebuildable.
 - Extractors are adapters behind a stable contract.
 - Use a fast deterministic baseline and escalate only difficult documents.
 - Keep private datasets outside the Git repository.
@@ -136,6 +141,12 @@ Case configuration stays with the case, not this repository. See
 
 Relative paths are resolved relative to the configuration file, making a case
 workspace movable without teaching this tool its layout.
+
+The planned desktop library foundation will remember known and default
+libraries in the platform application-data directory. Setting
+`DOC_EVIDENCE_HOME` will override that complete app-owned directory for
+isolated testing and development without relocating external collections.
+That behavior is specified for Tactical 001 and is not implemented yet.
 
 ## Phase 1 Output
 

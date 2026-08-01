@@ -1,8 +1,8 @@
 # Master Plan
 
 **Last updated:** 2026-08-01
-**Status:** Phase 2 and read-only application slice implemented; maintainer
-interaction acceptance pending
+**Status:** Phase 2 and read-only application slice implemented; desktop-first
+library management and durable job execution approved as the next slice
 
 ## Objective
 
@@ -106,8 +106,12 @@ The bounded first implementation plan is
 [Tactical 000](tactical/000-read-only-library-comparison.md).
 
 The maintainer selected durable extraction execution before durable review
-writes as the next product priority. The approved architecture is
-[Durable job architecture](topics/job-architecture.md), and its bounded
+writes as the next product priority. Before execution is durable, the product
+will establish the approved desktop-first ownership model: an app-owned
+known/default-library registry, one SQLite database and artifact store per
+library, and explicit read-only collections. The approved architecture is in
+[Library management](topics/library-management.md) and
+[Durable job architecture](topics/job-architecture.md). Their bounded
 implementation plan is
 [Tactical 001](tactical/001-durable-extraction-jobs.md). Implementation has not
 started.
@@ -151,13 +155,23 @@ started.
 9. Local application foundation and read-only library. — implemented
 10. First-class comparison workspace. — read-only interaction implemented;
     durable review pending
-11. Durable extraction jobs and operational UI. — approved plan; not started
+11. Desktop library foundation, durable extraction jobs, and operational UI.
+    — approved plan; not started
 12. Observation and downstream-promotion workflows.
 
 ## Open Implementation Decisions
 
-- Implement and validate the approved unified `doc-evidence.sqlite`, catalog
-  generation, job migration, and retention design in Tactical 001.
+- Implement and validate application-home discovery, the bounded app registry,
+  stable library identity, one `doc-evidence.sqlite` per library, and
+  `DOC_EVIDENCE_HOME` isolation in Tactical 001.
+- Split generation-independent content/extraction/page/FTS data from
+  generation-scoped collection occurrences and membership so expanding a
+  collection scope reuses existing work.
+- Reject or explicitly resolve parent/child collection overlap within one
+  library; implement the approved replace/expand flow instead of silently
+  double-indexing content.
+- Implement and validate the approved catalog generation, durable job
+  migration, and retention design in Tactical 001.
 - Measure safe default concurrency for light, OCR, and model-heavy resource
   classes rather than inferring it from CPU count alone.
 - Whether the directional v1 token diff should gain a symmetric summary, plus

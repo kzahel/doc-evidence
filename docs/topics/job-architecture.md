@@ -21,16 +21,22 @@ exports without changing its reliability model.
 The application remains local-first and single-user. Source collections are
 read-only. Opening or browsing a document never starts expensive work.
 
+Library creation, selection, application-home resolution, collection scope,
+and managed-store ownership are defined in
+[Desktop library management](library-management.md). Every job names an
+explicit library and runs against that library's single database/artifact
+store; changing the selected library cannot retarget existing work.
+
 ## Approved System Shape
 
 ```text
-React application
+Desktop-shaped React application
         |
         | authenticated typed HTTP
         v
 framework-independent job application service
         |
-        +---- one active workspace scheduler
+        +---- one active library scheduler
         |              |
         |              v
         |       resource-bounded subprocess workers
@@ -41,8 +47,9 @@ framework-independent job application service
         |              v
         |       validated atomic artifact publication
         |
-        +---- doc-evidence.sqlite
-        |       catalog generations
+        +---- per-library doc-evidence.sqlite
+        |       stable content/run/page/FTS projections
+        |       catalog membership generations
         |       jobs, attempts, and bounded events
         |       future durable review state
         |
@@ -55,33 +62,45 @@ Python owns scheduling and worker supervision. React consumes application
 contracts rather than worker or process details. Expensive and failure-prone
 extractors run in operating-system subprocesses rather than the API process.
 
-## One Active SQLite Database
+## One Active SQLite Database Per Library
 
-Each configured workspace has one active application database:
+Each configured library has one active application database:
 
 ```text
 <store>/doc-evidence.sqlite
 ```
 
 Logical durability classes remain separate by table and policy, not by
-creating multiple active SQLite files:
+creating separate catalog, job, review, or collection databases:
 
-- rebuildable catalog generations project source occurrences and artifacts;
+- generation-independent content/run/page/FTS tables project reusable
+  content-derived work;
+- rebuildable catalog membership generations project collection scope and
+  source occurrences;
 - operational job tables survive browser and backend restarts but have a
   bounded diagnostic-retention policy; and
 - future reviews, corrections, tags, and accepted observations are durable
-  user-authored workspace state.
+  user-authored library state.
+
+The desktop-level known/last/default library registry is bounded atomic
+`app-state.json` under the resolved application home, not another document
+database. `DOC_EVIDENCE_HOME` provides the required isolated override for the
+entire app-owned root in tests and development. The complete ownership and
+path-resolution contract is in
+[Desktop library management](library-management.md).
 
 Large binaries, complete extractor output, page renders, and full logs remain
 files in the artifact store. SQLite stores identities, relationships, states,
 bounded event details, and artifact references.
 
 The existing `catalog.sqlite` is an atomic rebuildable snapshot. Tactical 001
-must replace that active-file replacement behavior with catalog generations
-inside `doc-evidence.sqlite`. Inventory builds a new inactive generation,
-validates it, switches the active generation in one short transaction, and
-garbage-collects older generations separately. Job and future review tables
-are therefore not endangered by catalog refreshes.
+must replace that active-file replacement behavior with stable content-derived
+tables and catalog membership generations inside `doc-evidence.sqlite`.
+Inventory builds a new inactive membership generation, validates it, switches
+the active generation in one short transaction, and garbage-collects older
+membership separately. Job and future review tables are therefore not
+endangered by catalog refreshes, and folder-scope expansion reuses existing
+page/FTS projections rather than duplicating them.
 
 During migration an untouched legacy `catalog.sqlite` may remain as rollback
 material, but it is not a second active database and must never be kept in
@@ -99,6 +118,7 @@ The initial job schema has four concepts.
 
 A job is one logical user or policy request. It records at least:
 
+- library ID;
 - job ID and kind;
 - stable document content identity;
 - extractor and validated configuration identity;
@@ -143,8 +163,8 @@ writes.
 
 ### Scheduler lease
 
-Only one scheduler owns a workspace initially. A process-lifetime workspace
-lock and persisted scheduler lease/heartbeat make that ownership observable
+Only one scheduler owns a library initially. A process-lifetime library lock
+and persisted scheduler lease/heartbeat make that ownership observable
 and prevent two accidentally launched local servers from independently
 exceeding concurrency limits. The database does not contain live Python
 objects or process handles.
@@ -309,18 +329,21 @@ transitions, cache decisions, deduplication, cancellation policy, retry policy,
 and result publication. SQLite, process control, time, filesystem staging, and
 extractor invocation are ports/adapters.
 
-The authenticated localhost API exposes identities, never arbitrary commands
-or filesystem paths. The initial resource-oriented surface includes:
+The authenticated localhost API exposes registered identities, never
+arbitrary commands or filesystem paths. The initial resource-oriented surface
+includes:
 
 ```text
-GET  /api/v1/extractors
-POST /api/v1/jobs/extractions
-POST /api/v1/jobs/extraction-batches
-GET  /api/v1/jobs
-GET  /api/v1/jobs/{job_id}
-GET  /api/v1/jobs/{job_id}/events
-POST /api/v1/jobs/{job_id}/cancel
-POST /api/v1/jobs/{job_id}/retry
+GET  /api/v1/libraries
+GET  /api/v1/libraries/{library_id}
+GET  /api/v1/libraries/{library_id}/extractors
+POST /api/v1/libraries/{library_id}/jobs/extractions
+POST /api/v1/libraries/{library_id}/jobs/extraction-batches
+GET  /api/v1/libraries/{library_id}/jobs
+GET  /api/v1/libraries/{library_id}/jobs/{job_id}
+GET  /api/v1/libraries/{library_id}/jobs/{job_id}/events
+POST /api/v1/libraries/{library_id}/jobs/{job_id}/cancel
+POST /api/v1/libraries/{library_id}/jobs/{job_id}/retry
 ```
 
 Exact route spelling may tighten in Tactical 001, but the runtime operations
@@ -342,7 +365,8 @@ selection, and layout preferences.
 
 ### Document execution controls
 
-The document workspace shows:
+The application shell shows the active library identity, and its document
+workspace shows:
 
 - available extractors and dependency/capability status;
 - exact cached coverage and cache identity;
@@ -388,7 +412,7 @@ launch credential is never present in diagnostics.
 
 The initial local application does not use Celery, Redis, RabbitMQ, or a
 separate distributed worker service. Their deployment and lifecycle costs are
-not justified for one local workspace and would not remove the need for
+not justified for one local library and would not remove the need for
 idempotent artifacts, process cleanup, or crash reconciliation.
 
 The implementation must not recreate a general distributed task system. It
@@ -403,6 +427,8 @@ changing artifact identity, extraction semantics, or the React runtime.
 
 Deterministic fake extractors and integration harnesses must cover:
 
+- isolated application homes and explicit library/job identity;
+- selected-library changes that cannot retarget queued or running work;
 - success, cache hit, changed configuration, and duplicate request;
 - immediate crash and nonzero exit;
 - indefinite hang and absolute timeout;
@@ -432,9 +458,11 @@ The core recovery invariant is:
   they are not latent Tactical 001 requirements.
 - Durable human review and observation history will share the unified database
   but require their own tactical and portable export contract.
-- Long-term attempt/log retention defaults require measured workspace use.
+- Long-term attempt/log retention defaults require measured library use.
 
 ## Implementing Tactical
 
 [Tactical 001](../tactical/001-durable-extraction-jobs.md) owns the first
-end-to-end implementation and validation of this architecture.
+end-to-end implementation and validation of this architecture together with
+the required platform-neutral foundation from
+[Desktop library management](library-management.md).

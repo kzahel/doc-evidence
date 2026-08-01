@@ -7,6 +7,8 @@ Python/React boundary are defined in
 Current implementation posture is maintained in
 [Application platform](topics/application-platform.md), and the closest
 reviewed sibling precedent is recorded in [References](references.md).
+Desktop library ownership, application-data placement, and collection scope
+are defined in [Library management](topics/library-management.md).
 
 ## System Boundary
 
@@ -25,8 +27,8 @@ inventory -> extractor adapters -> normalized artifacts -> observations
                               v
                  content-addressed file store
                               +
-                  unified workspace SQLite
-                  with catalog generations
+                  selected-library SQLite
+                 with membership generations
                               |
                               v
                    external review overlays
@@ -35,26 +37,33 @@ inventory -> extractor adapters -> normalized artifacts -> observations
                    downstream domain adapters
 ```
 
-The first-class application adds a local interface without changing the
-source or artifact boundaries:
+The first-class product is a desktop-shaped library application. The current
+localhost host and CLI are adapters around the same services and do not change
+the source or artifact boundaries:
 
 ```text
-React + TypeScript UI
+desktop shell or localhost host
         |
         v
-Python localhost API and job service
+React + TypeScript UI + Python application services
         |
-        +-- one active workspace database
-        |     +-- durable operational/review state
-        |     +-- rebuildable catalog generations
-        +-- content-addressed artifacts
-        +-- configured read-only collections
-        +-- isolated extraction subprocesses
+        +-- bounded app registry
+        +-- selected library
+              +-- one SQLite database
+              |     +-- stable content, extraction, page, and FTS data
+              |     +-- generation-scoped collection membership
+              |     +-- durable operational/review state
+              +-- content-addressed artifacts
+              +-- configured read-only collections
+              +-- isolated extraction subprocesses
 ```
 
 Frontend request and response types are generated from Python-owned API
-contracts. A future Tauri shell should launch and supervise the same local API
-rather than introduce a separate desktop data model.
+contracts. A future Tauri shell should supply the platform application-data
+directory, authorize collection folders, and supervise the same local API
+rather than introduce a separate desktop data model. `DOC_EVIDENCE_HOME`
+overrides the complete app-owned data root for isolated development, tests,
+and portable local runs.
 
 ## Content Identity
 
@@ -80,13 +89,20 @@ comparisons.
 
 ## Storage
 
-The artifact store contains inspectable immutable successful run outputs under
+Each library store contains inspectable immutable successful run outputs under
 `blobs/<hash-prefix>/<sha256>/runs/<extractor>/<run-key>/`. Catalog tables in
-the active `doc-evidence.sqlite` project those artifacts into convenient
-metadata, relationships, and full-text indexes. Catalog generations are
-rebuildable from source collections and artifact sidecars, but the database
-file also contains operational and future user-authored state and therefore is
-not deleted to rebuild the catalog.
+that library's `doc-evidence.sqlite` project those artifacts into convenient
+metadata, relationships, and full-text indexes. Content identity, extraction
+runs, normalized pages, and full-text rows are generation-independent.
+Collection occurrences and active membership are generation-scoped so scope
+changes do not duplicate expensive work. The database also contains
+operational and future user-authored state and therefore is not deleted to
+rebuild the catalog.
+
+The app-wide known/default-library registry is a bounded, atomically replaced
+JSON file in the application home, not a second database. Each library owns
+exactly one SQLite database and one artifact store. The complete ownership and
+scope model is maintained in [Library management](topics/library-management.md).
 
 Human review decisions are not extractor artifacts. They belong in a durable
 logical workspace store that can refer to observations and source hashes while
@@ -104,8 +120,11 @@ an unchanged expert run while producing a new comparison/review snapshot.
 
 ### Configuration loader
 
+- Resolves the application home, app registry, selected library, and stable
+  library identity.
 - Resolves paths relative to the config file.
-- Validates collection IDs and store boundaries.
+- Validates collection IDs, parent/child collection overlap, and store
+  boundaries.
 - Produces a canonical configuration representation and hash.
 
 ### Inventory engine
@@ -154,10 +173,10 @@ document, page, extractor run, and text offsets when available.
 
 The Phase 1 implementation uses an atomic whole-file catalog snapshot of the
 collections selected by the latest inventory invocation. Tactical 001 replaces
-that mechanism with generation-scoped catalog rows and an atomic active
-generation pointer inside the unified database. Running an inventory for a
-subset still intentionally replaces the active searchable projection, while
-prior content-addressed artifacts and timestamped manifests remain available.
+that mechanism with generation-independent content, extraction, page, and FTS
+rows plus generation-scoped occurrence and collection-membership rows. An
+atomic active-generation pointer selects the visible membership without
+discarding reusable content-addressed artifacts.
 
 ### Downstream adapters
 

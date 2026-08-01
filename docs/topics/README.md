@@ -32,6 +32,10 @@ Do not create one topic per small change. A topic should normally include:
   boundary, generated TypeScript contracts, React runtime ownership,
   localhost/Tauri deployment direction, and lessons from the sibling
   `atpiano` implementation.
+- [Library management](library-management.md) — desktop-first library model,
+  application-home discovery and isolation, known/default-library registry,
+  per-library database and artifact ownership, explicit collections, and
+  scope expansion without unnecessary re-extraction.
 - [Durable job architecture](job-architecture.md) — unified SQLite job state,
   worker supervision, resource-bounded scheduling, atomic artifact
   publication, cancellation, restart recovery, and operational UI.
