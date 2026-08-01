@@ -35,8 +35,12 @@ export function App() {
   });
 
   useEffect(() => {
-    if (!selectedDocumentId && documents.data?.items[0]) {
-      selectDocument(documents.data.items[0].document_id);
+    if (!selectedDocumentId && documents.data) {
+      const initial =
+        documents.data.items.find(
+          (document) => document.media_type === "application/pdf" && (document.page_count ?? 0) > 0,
+        ) ?? documents.data.items[0];
+      if (initial) selectDocument(initial.document_id);
     }
   }, [documents.data, selectDocument, selectedDocumentId]);
 

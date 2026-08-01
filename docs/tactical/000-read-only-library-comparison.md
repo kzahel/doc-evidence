@@ -4,7 +4,8 @@ Topic: application-platform
 
 Topic: comparison-review-workspace
 
-**Status:** Proposed; ready for maintainer review before implementation.
+**Status:** Implemented; automated and private integration gates pass; awaiting
+explicit maintainer acceptance of the live interaction.
 
 ## Motivation and Outcome
 
@@ -353,4 +354,65 @@ shape.
 
 ## Execution Record
 
-Not started.
+Implementation was approved and completed on 2026-08-01 in three reviewable
+slices:
+
+1. `1bb234b` — framework-independent read-only application services,
+   Pydantic contracts, bounded local workspace adapter, FastAPI composition,
+   authenticated loopback launch, render cache, and versioned comparison
+   service;
+2. `edd5803` — checked OpenAPI/TypeScript contracts, hand-owned runtime,
+   React/Vite application, TanStack Query/Zustand state split, library,
+   document, equivalence, comparison, assertion, and fixture-test views; and
+3. a final integration/polish commit recorded in Git history after this
+   execution record, covering direct links, unsupported-file selection,
+   sandboxed raw-artifact preview, zero-byte artifacts, responsive validation,
+   and documentation.
+
+### Automated evidence
+
+- Ruff formatting and lint checks pass.
+- 18 Python unit/integration tests pass, including authentication, origin
+  policy, bounded identities, traversal rejection, rendering, cache reuse,
+  source immutability, exact grouping, and numeric replacements.
+- Pyright reports zero errors and `uv build` succeeds.
+- Checked OpenAPI and generated TypeScript/client drift checks pass.
+- TypeScript typecheck passes; 8 frontend tests pass; the Vite production
+  build succeeds.
+- The dependency boundary checks confirm that application/comparison modules
+  do not import FastAPI and product components do not contain endpoint paths,
+  Tauri imports, or filesystem imports.
+
+### External private integration evidence
+
+The production build was exercised locally against the external 2023 tax
+configuration without copying private data into this repository:
+
+- the library reported 80 unique documents and 81 source occurrences;
+- all seven selected calibration pages across five documents rendered,
+  exposed extractor groups, accepted direct document/page links, and opened a
+  comparison workspace without browser-console errors;
+- a known hybrid form collapsed the Poppler and skip-existing-text OCR runs
+  into one exact-equivalence group while keeping the layout-parser output
+  separate;
+- a representative literal query returned 14 page-level matches;
+- differences-only/full switching, numeric navigation, baseline/comparison
+  swapping, and the narrow stacked layout passed in headless Playwright;
+- raw artifacts, including a valid zero-byte stderr artifact, opened in a
+  bounded sandboxed preview with a download option; and
+- an aggregate SHA-256 digest over every configured private source file was
+  identical before and after the seven-page integration run.
+
+The integration pass found and fixed four concrete issues before handoff: an
+unsupported Word document being chosen before the first renderable PDF,
+successful zero-byte artifacts being mistaken for failed responses,
+asynchronous artifact previews being blocked as popups, and direct-link query
+state being written but not restored.
+
+### Remaining gate
+
+The code and integration gates are complete. Tactical 000 remains open only
+for the maintainer's explicit live acceptance of the information hierarchy,
+terminology, diff density, and page/output split. That review determines
+whether the next tactical should add durable review events or first revise the
+read-only interaction.

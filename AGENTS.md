@@ -27,7 +27,7 @@ Before substantive work:
 3. Read `docs/topics/application-platform.md` and
    `docs/topics/comparison-review-workspace.md` for application work.
 4. Read the active tactical under `docs/tactical/` before implementing its
-   scope. The current proposed slice is
+   scope. The current implemented slice awaiting maintainer acceptance is
    `docs/tactical/000-read-only-library-comparison.md`.
 5. Read `docs/master-plan.md`, `docs/architecture.md`, and
    `docs/data-contracts.md` for the affected core boundary.
@@ -156,14 +156,15 @@ calibration is now accumulating reviewed evidence. Do not select or retire a
 heavyweight expert from agreement metrics or an under-supported aggregate
 score.
 
-The next approved product milestone is a Python-owned localhost API and
-React/TypeScript interface for the cached library and first-class extractor
-comparison. Preserve the CLI and existing artifact contracts while building a
-vertical slice; do not mechanically reorganize the package first.
+The Python-owned localhost API and React/TypeScript read-only library and
+extractor-comparison slice are implemented and pass automated/private
+integration gates. Tactical 000 remains open until the maintainer explicitly
+accepts the live interaction.
 
-`docs/tactical/000-read-only-library-comparison.md` is the proposed first
-slice. Do not begin persistent review writes, UI-triggered extraction jobs, or
-Tauri packaging under its authority.
+`docs/tactical/000-read-only-library-comparison.md` is the active execution
+record. Do not begin persistent review writes, UI-triggered extraction jobs,
+or Tauri packaging under its authority. A new tactical is required after the
+manual acceptance decision.
 
 ## Validation and Commits
 

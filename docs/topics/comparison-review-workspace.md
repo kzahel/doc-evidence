@@ -2,8 +2,8 @@
 
 Topic: comparison-review-workspace
 
-**Status:** Product direction accepted; generated Phase 2 calibration HTML is
-an interim artifact; Tactical 000 is proposed.
+**Status:** Tactical 000 read-only comparison workspace implemented and
+validated; awaiting maintainer live acceptance.
 
 ## Scope
 
@@ -122,16 +122,35 @@ documents.
 ## Known Gaps
 
 - Current normalized Docling and Marker pages flatten block provenance.
-- Current comparison flags are metrics, not user-navigable diff artifacts.
 - No durable workspace review database exists.
 - No generic classification contract identifies hybrid image-background plus
   native-text pages.
 - Calibration has too few human-reviewed pages to select extractor roles by
   document class.
+- The `SequenceMatcher` alignment is directional: swapping baseline and
+  comparison can change the number of numeric discrepancy segments even when
+  the same two texts are selected. The UI presents a directional comparison,
+  not a symmetric distance metric.
+- Several historical runs of the same extractor/version can appear as
+  similarly named representations when their output or failure status differs;
+  cache identity and status disambiguate them, but the compact labels can be
+  improved.
+
+## Implementation Evidence
+
+The first-class workspace now keeps a rendered source page beside explicitly
+labeled normalized extractor output, collapses exact output, identifies every
+contributing run, exposes raw artifacts in a sandboxed preview, and computes a
+versioned word/numeric diff with differences-only/full modes and numeric
+navigation.
+
+All seven pages in the private calibration set loaded through this workspace.
+On the known hybrid form, native Poppler and skip-existing-text OCR collapsed
+as expected while Docling and Marker remained separately inspectable. These
+checks establish product mechanics, not extractor correctness.
 
 ## Recommended Next Work
 
-Use Tactical 000 to make equivalent outputs and numeric differences obvious
-on the existing private calibration set. Update this topic with observed UX
-failures before designing persistent review state.
-
+Have the maintainer review the live comparison density, terminology, and
+directional-diff semantics. Only after explicit acceptance should Tactical 001
+design persistent review decisions and portable export.

@@ -2,8 +2,8 @@
 
 Topic: application-platform
 
-**Status:** Accepted direction; Tactical 000 is proposed and application code
-has not started.
+**Status:** Tactical 000 implemented and validated; awaiting maintainer live
+acceptance before any write-enabled tactical.
 
 ## Scope
 
@@ -142,17 +142,39 @@ tactical.
 
 ## Known Gaps
 
-- No application package, HTTP surface, frontend workspace, or generated
-  TypeScript client exists yet.
 - The physical split and migration policy for durable workspace state remains
   undecided.
 - The exact job event transport is deferred until the UI can start work.
 - Tauri packaging, Python runtime staging, and optional extractor-pack
   discovery have not been prototyped.
+- The source checkout serves a separately built `web/dist`; self-contained
+  wheel/desktop asset packaging is deferred to a packaging tactical.
 - A hosted composition is a possible future adapter, not current scope.
+
+## Implementation Evidence
+
+Tactical 000 now provides:
+
+- framework-independent Python application queries and comparison services;
+- a concrete read-only SQLite/artifact adapter with identity- and root-bounded
+  lookups;
+- a versioned Pydantic/FastAPI surface protected by a per-launch in-memory
+  bearer credential and exact loopback origin policy;
+- checked OpenAPI plus generated TypeScript wire types/client;
+- a hand-owned runtime consumed by React product components;
+- TanStack Query server state, narrow Zustand interaction state, and CSS
+  Modules; and
+- a production-like `doc-evidence serve --config PATH` composition.
+
+The external private integration opened all seven calibration pages while an
+aggregate source digest remained unchanged. The complete command and test
+record is in
+[Tactical 000](../tactical/000-read-only-library-comparison.md#execution-record).
 
 ## Recommended Next Work
 
-Implement [Tactical 000](../tactical/000-read-only-library-comparison.md) as a
-read-only walking skeleton. Use its evidence to update this topic before
-opening durable review writes or pipeline execution.
+Run the maintainer live-review gate for
+[Tactical 000](../tactical/000-read-only-library-comparison.md). If the
+interaction is accepted, write a separate Tactical 001 for the durable
+workspace/review-event boundary; if not, revise the read-only interaction
+before introducing persistent state.

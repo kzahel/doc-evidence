@@ -40,7 +40,7 @@ action, new external service, or significant expansion beyond the tactical.
 ## Current Tacticals
 
 - [000 — Read-only library and extractor comparison](000-read-only-library-comparison.md)
-  — proposed first application walking skeleton: Python API, generated
+  — implemented first application walking skeleton awaiting explicit
+  maintainer interaction acceptance: Python API, generated
   TypeScript client, React library/document workspace, exact output grouping,
   and word/numeric diff over existing cached artifacts.
-

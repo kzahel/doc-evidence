@@ -1,7 +1,8 @@
 # Product Vision and Application Architecture
 
 **Last updated:** 2026-08-01  
-**Status:** Approved direction; application implementation not yet started
+**Status:** Approved direction; first read-only application slice implemented,
+awaiting maintainer interaction acceptance
 
 ## Product Statement
 
@@ -577,10 +578,10 @@ desktop packaging follow this milestone.
 
 ### Open implementation decisions
 
-- Validate Tactical 000's proposed FastAPI/Pydantic adapter and choose the
-  durable-workspace persistence library before the first write-enabled slice.
-- Validate Tactical 000's proposed Vite and TanStack Query frontend
-  composition through the first vertical slice.
+- Choose the durable-workspace persistence library before the first
+  write-enabled slice. Tactical 000 validated the FastAPI/Pydantic adapter.
+- Tactical 000 validated the Vite, React, TanStack Query, narrow Zustand, and
+  CSS Modules frontend composition; the maintainer interaction gate remains.
 - Whether catalog and durable workspace state begin in separate database files
   or separate logical stores with a tested split path.
 - The first diff algorithms and alignment libraries.

@@ -94,6 +94,31 @@ Use the `doc-evidence` command for FTS queries. A system `sqlite3` shell may be
 linked against a different SQLite build that cannot load the FTS5 table even
 when the Python runtime reported by `doc-evidence doctor` supports it.
 
+## Local Read-only Application
+
+Build once from the repository root:
+
+```sh
+uv sync && npm ci --prefix web && npm run build --prefix web
+```
+
+Then launch against an existing configured/cataloged workspace:
+
+```sh
+uv run doc-evidence serve --config /path/to/case.yaml
+```
+
+The server binds an ephemeral `127.0.0.1` port and opens the exact launch URL.
+The credential is generated for that process, delivered in a URL fragment,
+captured only in browser memory, removed immediately from visible/history
+state, and required for every API, render, and raw-artifact request. It is not
+printed, persisted, or placed in a query string.
+
+The Tactical 000 interface is read-only. It can search the rebuildable
+catalog, render requested PDF pages into versioned derived cache entries,
+compare existing extractor runs, and preview bounded raw artifacts. It cannot
+edit sources, persist review decisions, or start extraction jobs.
+
 ## Duplicates
 
 ```sh

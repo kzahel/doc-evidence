@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import payloads from "../../contracts/representative-payloads.json";
 import type { ComparisonResult, WorkspaceSummary } from "../src/api/runtime";
+import { navigationFromSearch } from "../src/state/workspaceStore";
 
 describe("contracts and component boundaries", () => {
   it("validates shared representative payload shapes in TypeScript", () => {
@@ -24,5 +25,17 @@ describe("contracts and component boundaries", () => {
       expect(content, filename).not.toContain("@tauri");
       expect(content, filename).not.toContain("node:fs");
     }
+  });
+
+  it("parses bounded direct document links", () => {
+    const documentId = `sha256:${"a".repeat(64)}`;
+    expect(navigationFromSearch(`?document=${documentId}&page=7`)).toEqual({
+      documentId,
+      page: 7,
+    });
+    expect(navigationFromSearch("?document=../../private&page=-2")).toEqual({
+      documentId: null,
+      page: 1,
+    });
   });
 });

@@ -68,6 +68,28 @@ describe("comparison workspace", () => {
     expect(screen.getByText("ocrmypdf-tesseract")).toBeInTheDocument();
   });
 
+  it("opens raw artifacts in a bounded preview", async () => {
+    const user = userEvent.setup();
+    const withArtifact = structuredClone(pageGroups);
+    withArtifact.groups[0]!.runs[0]!.raw_artifacts = [
+      {
+        artifact_id: "artifact:fixture",
+        label: "raw.txt",
+        media_type: "text/plain",
+        size_bytes: 16,
+      },
+    ];
+    wrapper(<OutputGroups data={withArtifact} />);
+
+    await user.click(screen.getByText("poppler"));
+    await user.click(screen.getByRole("button", { name: /raw\.txt/ }));
+    const dialog = await screen.findByRole("dialog", { name: /Raw artifact: raw\.txt/ });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByTitle(/Raw artifact preview/)).toHaveAttribute("sandbox", "");
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(dialog).not.toBeInTheDocument();
+  });
+
   it("switches diff density, navigates numbers, and changes the baseline", async () => {
     const user = userEvent.setup();
     wrapper(<ComparisonPanel documentId={documentId} page={1} groups={groups} />);

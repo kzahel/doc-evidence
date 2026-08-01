@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRuntime } from "../api/RuntimeProvider";
 import type { OutputGroup, PageGroups } from "../api/runtime";
@@ -16,14 +16,19 @@ function ArtifactButton({ artifactId, label }: { artifactId: string; label: stri
   const runtime = useRuntime();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ mediaType: string; url: string } | null>(null);
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview]);
   async function open() {
     setBusy(true);
     setError(null);
     try {
       const blob = await runtime.getArtifact(artifactId);
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setPreview({ mediaType: blob.type || "application/octet-stream", url });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -31,12 +36,38 @@ function ArtifactButton({ artifactId, label }: { artifactId: string; label: stri
     }
   }
   return (
-    <span>
+    <>
       <button className={styles.artifact} type="button" disabled={busy} onClick={open}>
         {busy ? "Opening…" : label}
       </button>
       {error && <span className={styles.artifactError}>{error}</span>}
-    </span>
+      {preview && (
+        <div className={styles.previewBackdrop} role="presentation">
+          <section
+            aria-label={`Raw artifact: ${label}`}
+            aria-modal="true"
+            className={styles.previewDialog}
+            role="dialog"
+          >
+            <header>
+              <div>
+                <strong>{label}</strong>
+                <span>{preview.mediaType}</span>
+              </div>
+              <div>
+                <a download={label.split(" · ")[0] ?? "artifact"} href={preview.url}>
+                  Download
+                </a>
+                <button type="button" onClick={() => setPreview(null)}>
+                  Close
+                </button>
+              </div>
+            </header>
+            <iframe sandbox="" src={preview.url} title={`Raw artifact preview: ${label}`} />
+          </section>
+        </div>
+      )}
+    </>
   );
 }
 

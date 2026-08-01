@@ -1,7 +1,8 @@
 # Master Plan
 
 **Last updated:** 2026-08-01
-**Status:** Phase 2 implemented; local application direction approved
+**Status:** Phase 2 and read-only application slice implemented; maintainer
+interaction acceptance pending
 
 ## Objective
 
@@ -82,21 +83,24 @@ Poppler passed 6, OCRmyPDF/Tesseract 9, Docling 8, and Marker 8. The run emitted
 seven seconds. These are smoke-test results, not extractor rankings; human
 page-level calibration remains pending in the external case workspace.
 
-### Application milestone — planned next
+### Application milestone — read-only slice implemented
 
 - Add a Python-owned localhost API over the existing catalog and artifact
-  store.
+  store. — implemented
 - Add a React/TypeScript application for browsing and searching the cached
-  library.
+  library. — implemented
 - Make extractor comparison and discrepancy review a first-class workspace.
-- Group equivalent outputs and provide versioned word, numeric, and structural
-  diffs.
+  — implemented for read-only review
+- Group equivalent outputs and provide versioned word and numeric diffs.
+  — implemented; structural/spatial diff deferred
 - Persist human tags and review decisions separately from extractor output.
-- Generate frontend API types from Python-owned contracts.
+- Generate frontend API types from Python-owned contracts. — implemented
 
-The milestone is intentionally read-oriented at first. Running arbitrary new
-pipelines, structured candidate observations, domain packs, and Tauri
-packaging follow after the library and comparison vertical slice is useful.
+The read-only vertical slice passes automated and private integration gates;
+explicit maintainer interaction acceptance remains before durable review
+writes begin. Running arbitrary new pipelines, structured candidate
+observations, domain packs, and Tauri packaging follow only after that
+decision.
 See [Product vision and application architecture](product-vision-and-architecture.md).
 The bounded first implementation plan is
 [Tactical 000](tactical/000-read-only-library-comparison.md).
@@ -137,17 +141,19 @@ The bounded first implementation plan is
 6. Duplicate analysis.
 7. Benchmark runner. — complete
 8. OCR and advanced parser adapters. — complete
-9. Local application foundation and read-only library.
-10. First-class comparison and durable review workflow.
+9. Local application foundation and read-only library. — implemented
+10. First-class comparison workspace. — read-only interaction implemented;
+    durable review pending
 11. Observation and downstream-promotion workflows.
 
 ## Open Implementation Decisions
 
-- Validate Tactical 000's proposed FastAPI/Pydantic adapter; choose the
-  durable-workspace persistence library before the first write-enabled slice.
+- Choose the durable-workspace persistence library and migration boundary
+  before the first write-enabled slice.
 - The physical split between rebuildable catalog data and durable workspace
   state.
-- The initial versioned text, numeric, and spatial diff implementations.
+- Whether the directional v1 token diff should gain a symmetric summary, plus
+  the initial spatial diff contract.
 - Python and heavyweight-extractor packaging under a future Tauri shell.
 - Whether a vector index ever provides enough benefit to maintain.
 - Which advanced extractor becomes the preferred table/layout parser.

@@ -10,21 +10,25 @@ facts do not belong in this Git repository.
 
 ## Status
 
-Phases 1 and 2 are implemented. In addition to deterministic inventory,
+Phases 1 and 2 and the first read-only application slice are implemented. In
+addition to deterministic inventory,
 content-addressed Poppler extraction, duplicate detection, and SQLite/FTS
 search, the tool can run OCRmyPDF/Tesseract, Docling, and Marker as isolated
 experts; preserve each raw output; flag page- and number-level disagreements;
 and generate a local human-calibration review pack and scorecard.
 
-The next product milestone is a Python-backed localhost application with a
-React/TypeScript interface for browsing the cached library, comparing
-extractor output, and preserving durable human review decisions. The same
-contracts should support future offline Tauri packaging.
+The repository now includes a Python-backed authenticated localhost
+application with a React/TypeScript interface for browsing and searching the
+cached library, opening rendered pages, grouping exact extractor output, and
+reviewing versioned word/numeric comparisons. The next product boundary is
+durable human review state; the same contracts should support future offline
+Tauri packaging.
 
-The first proposed implementation slice is
+The implemented slice is
 [Tactical 000: read-only library and extractor comparison](docs/tactical/000-read-only-library-comparison.md).
-It deliberately stops before durable review writes, pipeline execution, and
-desktop packaging.
+Its automated and private integration gates pass, but it remains open until
+the maintainer explicitly accepts the live interaction. It stops before
+durable review writes, pipeline execution, and desktop packaging.
 
 Read these first:
 
@@ -61,6 +65,22 @@ uv run doc-evidence doctor
 uv run python -m unittest discover -s tests
 ```
 
+Install and build the local application from a source checkout:
+
+```sh
+uv sync && npm ci --prefix web && npm run build --prefix web
+```
+
+Launch it against an external case configuration:
+
+```sh
+uv run doc-evidence serve --config /path/to/case.yaml
+```
+
+The launch command binds an ephemeral loopback port, opens a browser with an
+in-memory credential, removes the credential from the displayed URL, and
+never writes it to the case workspace.
+
 The diagnostic command reports which external tools are currently available:
 
 ```sh
@@ -74,9 +94,6 @@ bootstrap script after their system dependencies are available:
 ./scripts/bootstrap-phase2-extractors.sh
 ```
 
-The first-class web application is planned but not implemented. Do not expect
-the proposed `serve` command or `web/` workspace until Tactical 000 lands.
-
 ## Commands
 
 Current commands:
@@ -87,6 +104,7 @@ doc-evidence config-check --config PATH
 doc-evidence inventory --config PATH [COLLECTION ...]
 doc-evidence search --config PATH QUERY [--mode literal|fts]
 doc-evidence duplicates --config PATH
+doc-evidence serve --config PATH
 doc-evidence benchmark-check --suite PATH
 doc-evidence benchmark-run --config PATH --suite PATH
 doc-evidence benchmark-score --report PATH --review PATH

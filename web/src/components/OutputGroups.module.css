@@ -185,6 +185,77 @@
   margin-left: 0.3rem;
 }
 
+.previewBackdrop {
+  align-items: center;
+  background: rgb(18 29 35 / 78%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1.5rem;
+  position: fixed;
+  z-index: 100;
+}
+
+.previewDialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 28%);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: min(50rem, calc(100vh - 3rem));
+  overflow: hidden;
+  width: min(70rem, calc(100vw - 3rem));
+}
+
+.previewDialog > header {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.7rem 0.8rem;
+}
+
+.previewDialog > header > div {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.previewDialog > header strong {
+  color: var(--ink);
+  max-width: 42rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewDialog > header span {
+  color: var(--muted);
+}
+
+.previewDialog a,
+.previewDialog button {
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  font-size: 0.68rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.previewDialog a {
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+.previewDialog iframe {
+  background: white;
+  border: 0;
+  height: 100%;
+  width: 100%;
+}
+
 .output {
   background: var(--code);
   border-top: 1px solid var(--border);

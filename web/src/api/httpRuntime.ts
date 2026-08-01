@@ -81,6 +81,11 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
         parseAs: "blob",
         signal,
       });
+      if (response.ok && response.headers.get("content-length") === "0") {
+        return new Blob([], {
+          type: response.headers.get("content-type") ?? "application/octet-stream",
+        });
+      }
       if (!(data instanceof Blob)) throw failure(error, response);
       return data;
     },

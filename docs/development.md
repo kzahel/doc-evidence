@@ -11,7 +11,39 @@ uv run doc-evidence doctor
 uv run python -m unittest discover -s tests
 uvx ruff check src tests
 uvx ruff format --check src tests
+uvx pyright
+uv build
 ```
+
+## Web Application
+
+Install pinned frontend dependencies and create the production bundle:
+
+```sh
+npm ci --prefix web
+npm run typecheck --prefix web
+npm run test --prefix web
+npm run build --prefix web
+```
+
+Regenerate contracts after changing Python API models, or verify that the
+checked outputs have not drifted:
+
+```sh
+npm run contracts:generate --prefix web
+npm run contracts:check --prefix web
+```
+
+Launch the production-like Python composition with:
+
+```sh
+uv run doc-evidence serve --config /path/to/case.yaml
+```
+
+Product React components consume the hand-owned runtime and must not import
+endpoint strings or platform APIs. Use deterministic fixture runtimes for
+component tests and a background/headless Playwright pass for rendered-browser
+integration.
 
 ## Dependency Policy
 

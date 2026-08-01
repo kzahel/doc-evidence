@@ -21,9 +21,26 @@ interface WorkspaceState {
   setDocumentOffset: (offset: number) => void;
 }
 
+export function navigationFromSearch(search: string): {
+  documentId: string | null;
+  page: number;
+} {
+  const params = new URLSearchParams(search);
+  const documentId = params.get("document");
+  const parsedPage = Number(params.get("page") ?? "1");
+  return {
+    documentId: documentId && /^sha256:[0-9a-f]{64}$/.test(documentId) ? documentId : null,
+    page: Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+  };
+}
+
+const initialNavigation = navigationFromSearch(
+  typeof window === "undefined" ? "" : window.location.search,
+);
+
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
-  selectedDocumentId: null,
-  page: 1,
+  selectedDocumentId: initialNavigation.documentId,
+  page: initialNavigation.page,
   baselineGroupId: null,
   comparisonGroupId: null,
   diffMode: "differences",
