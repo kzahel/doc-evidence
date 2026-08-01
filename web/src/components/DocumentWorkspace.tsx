@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useRuntime } from "../api/RuntimeProvider";
@@ -26,6 +33,10 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
   const runtime = useRuntime();
   const page = useWorkspaceStore((state) => state.page);
   const setPage = useWorkspaceStore((state) => state.setPage);
+  const sourcePanePercent = useWorkspaceStore((state) => state.sourcePanePercent);
+  const setSourcePanePercent = useWorkspaceStore((state) => state.setSourcePanePercent);
+  const resetSourcePanePercent = useWorkspaceStore((state) => state.resetSourcePanePercent);
+  const inspectionRef = useRef<HTMLElement>(null);
   const documentQuery = useQuery({
     queryKey: ["document", documentId],
     queryFn: ({ signal }) => runtime.getDocument(documentId, signal),
@@ -44,6 +55,44 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
     enabled: renderable,
   });
   const imageUrl = useBlobUrl(renderQuery.data);
+
+  function updatePaneFromPointer(clientX: number) {
+    const bounds = inspectionRef.current?.getBoundingClientRect();
+    if (!bounds || bounds.width === 0) return;
+    setSourcePanePercent(((clientX - bounds.left) / bounds.width) * 100);
+  }
+
+  function beginPaneResize(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updatePaneFromPointer(event.clientX);
+  }
+
+  function continuePaneResize(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      updatePaneFromPointer(event.clientX);
+    }
+  }
+
+  function endPaneResize(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function resizePaneWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const increment = event.shiftKey ? 5 : 2;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      setSourcePanePercent(sourcePanePercent - increment);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      setSourcePanePercent(sourcePanePercent + increment);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      resetSourcePanePercent();
+    }
+  }
 
   if (documentQuery.isLoading) return <LoadingState label="Opening document" />;
   if (documentQuery.error) return <FailureState title="Document unavailable" error={documentQuery.error} />;
@@ -111,7 +160,11 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
           pages. Its source occurrence and immutable identity remain available above.
         </EmptyState>
       ) : (
-        <section className={styles.inspection}>
+        <section
+          className={styles.inspection}
+          ref={inspectionRef}
+          style={{ "--source-pane-width": `${sourcePanePercent}%` } as CSSProperties}
+        >
           <section className={styles.visual} aria-label="Rendered source page">
             <div className={styles.sectionHeading}>
               <div>
@@ -138,6 +191,25 @@ export function DocumentWorkspace({ documentId }: { documentId: string }) {
               </ul>
             </details>
           </section>
+          <div
+            aria-label="Resize source and extraction panes"
+            aria-orientation="vertical"
+            aria-valuemax={72}
+            aria-valuemin={28}
+            aria-valuenow={Math.round(sourcePanePercent)}
+            aria-valuetext={`${Math.round(sourcePanePercent)} percent source page`}
+            className={styles.resizeHandle}
+            onDoubleClick={resetSourcePanePercent}
+            onKeyDown={resizePaneWithKeyboard}
+            onPointerDown={beginPaneResize}
+            onPointerMove={continuePaneResize}
+            onPointerUp={endPaneResize}
+            role="separator"
+            tabIndex={0}
+            title="Drag to resize. Use arrow keys to adjust or Home/double-click to reset."
+          >
+            <span aria-hidden="true">⋮</span>
+          </div>
           <section className={styles.outputs}>
             {groupsQuery.isLoading && (
               <LoadingState label="Loading extractor representations" />

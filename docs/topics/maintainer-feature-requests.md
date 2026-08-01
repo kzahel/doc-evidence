@@ -43,7 +43,7 @@ Source documents remain immutable.
 
 ### Collapsible navigation sidebar
 
-**Status:** OPEN.
+**Status:** IN PROGRESS — authorized as the final Tactical 000 layout pass.
 
 The document-library sidebar should be collapsible and expandable so the
 source page and extraction comparison can use more horizontal space. The
@@ -57,7 +57,7 @@ The implementation should decide and test:
 
 ### Extraction text presentation modes
 
-**Status:** OPEN.
+**Status:** IN PROGRESS — authorized as the final Tactical 000 layout pass.
 
 Extraction output should support both:
 
@@ -80,7 +80,7 @@ line lengths, and extractor-provided table/layout metadata.
 
 ### Resizable source and extraction panes
 
-**Status:** OPEN.
+**Status:** IN PROGRESS — authorized as the final Tactical 000 layout pass.
 
 The divider between the rendered source document and extracted/comparison
 content should be draggable so the user can allocate space according to the
@@ -142,4 +142,3 @@ The next tactical should be chosen after live review. Extraction execution can
 be a focused tactical before durable review events if it is now the higher
 priority, but its job-state, cache, cancellation, and security contracts must
 be designed explicitly.
-

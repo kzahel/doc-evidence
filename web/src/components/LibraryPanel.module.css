@@ -14,6 +14,54 @@
   padding: 1.2rem 1.15rem 0.8rem;
 }
 
+.headingActions {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.collapseButton,
+.expandButton {
+  background: var(--surface-raised);
+  border-color: var(--border);
+  color: var(--accent-strong);
+}
+
+.collapseButton {
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.28rem 0.45rem;
+}
+
+.panel.collapsed {
+  align-items: center;
+  overflow: hidden;
+  padding: 0.55rem 0.35rem;
+}
+
+.expandButton {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.45rem 0.35rem;
+  width: 100%;
+}
+
+.expandButton > span:first-child {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.collapsedLabel {
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+}
+
 .heading h1 {
   font-size: 1.25rem;
   margin: 0.1rem 0 0;
@@ -171,5 +219,20 @@
     border-right: 0;
     height: auto;
     max-height: 42vh;
+  }
+
+  .panel.collapsed {
+    height: 3rem;
+    max-height: none;
+    padding: 0.3rem 0.65rem;
+  }
+
+  .expandButton {
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .collapsedLabel {
+    writing-mode: horizontal-tb;
   }
 }

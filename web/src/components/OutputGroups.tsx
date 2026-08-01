@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 
 import { useRuntime } from "../api/RuntimeProvider";
 import type { OutputGroup, PageGroups } from "../api/runtime";
+import {
+  resolveTextPresentation,
+  type ResolvedTextPresentation,
+  type TextPresentationMode,
+} from "../presentation/textPresentation";
 import { useWorkspaceStore } from "../state/workspaceStore";
 import styles from "./OutputGroups.module.css";
 
@@ -71,7 +76,15 @@ function ArtifactButton({ artifactId, label }: { artifactId: string; label: stri
   );
 }
 
-function GroupCard({ group, index }: { group: OutputGroup; index: number }) {
+function GroupCard({
+  group,
+  index,
+  presentation,
+}: {
+  group: OutputGroup;
+  index: number;
+  presentation: ResolvedTextPresentation;
+}) {
   const baseline = useWorkspaceStore((state) => state.baselineGroupId);
   const comparison = useWorkspaceStore((state) => state.comparisonGroupId);
   const setGroups = useWorkspaceStore((state) => state.setComparisonGroups);
@@ -149,13 +162,43 @@ function GroupCard({ group, index }: { group: OutputGroup; index: number }) {
           </details>
         ))}
       </div>
-      <pre className={styles.output}>{group.text || "(No normalized text on this page)"}</pre>
+      <pre
+        className={`${styles.output} ${styles[presentation]}`}
+        data-presentation={presentation}
+      >
+        {group.text || "(No normalized text on this page)"}
+      </pre>
     </article>
   );
 }
 
 export function OutputGroups({ data }: { data: PageGroups }) {
   const runCount = data.groups.reduce((total, group) => total + group.runs.length, 0);
+  const selectedPresentation = useWorkspaceStore((state) => state.textPresentationMode);
+  const setSelectedPresentation = useWorkspaceStore(
+    (state) => state.setTextPresentationMode,
+  );
+  const presentation = resolveTextPresentation(
+    selectedPresentation,
+    data.groups.map((group) => group.text),
+  );
+  const options: { label: string; mode: TextPresentationMode; title: string }[] = [
+    {
+      label: "Auto",
+      mode: "auto",
+      title: "Choose a reading or aligned layout from the extracted text",
+    },
+    {
+      label: "Reading",
+      mode: "reading",
+      title: "Use a proportional font and wrap long lines",
+    },
+    {
+      label: "Aligned",
+      mode: "aligned",
+      title: "Preserve spacing in monospace and scroll long lines horizontally",
+    },
+  ];
   return (
     <section className={styles.section} aria-label="Extractor representations">
       <div className={styles.intro}>
@@ -169,9 +212,38 @@ export function OutputGroups({ data }: { data: PageGroups }) {
           extractors. Exact agreement saves review time; it does not establish correctness.
         </p>
       </div>
+      <div className={styles.presentationToolbar}>
+        <div>
+          <strong>Text layout</strong>
+          <span>
+            {selectedPresentation === "auto"
+              ? `Auto selected ${presentation.mode}: ${presentation.reason}.`
+              : `${presentation.reason}.`}
+          </span>
+        </div>
+        <div className={styles.presentationOptions} role="group" aria-label="Extraction text layout">
+          {options.map((option) => (
+            <button
+              aria-pressed={selectedPresentation === option.mode}
+              className={selectedPresentation === option.mode ? styles.activePresentation : ""}
+              key={option.mode}
+              title={option.title}
+              type="button"
+              onClick={() => setSelectedPresentation(option.mode)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className={styles.stack}>
         {data.groups.map((group, index) => (
-          <GroupCard key={group.group_id} group={group} index={index} />
+          <GroupCard
+            key={group.group_id}
+            group={group}
+            index={index}
+            presentation={presentation.mode}
+          />
         ))}
       </div>
       {data.assertions.length > 0 && (

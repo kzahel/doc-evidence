@@ -10,9 +10,18 @@ interface Props {
   documents: DocumentPage;
   search: SearchPage | null;
   searching: boolean;
+  collapsed: boolean;
+  onCollapsedChange: (collapsed: boolean) => void;
 }
 
-export function LibraryPanel({ workspace, documents, search, searching }: Props) {
+export function LibraryPanel({
+  workspace,
+  documents,
+  search,
+  searching,
+  collapsed,
+  onCollapsedChange,
+}: Props) {
   const selectedDocumentId = useWorkspaceStore((state) => state.selectedDocumentId);
   const selectDocument = useWorkspaceStore((state) => state.selectDocument);
   const committedQuery = useWorkspaceStore((state) => state.searchQuery);
@@ -30,6 +39,22 @@ export function LibraryPanel({ workspace, documents, search, searching }: Props)
 
   const isSearch = Boolean(committedQuery);
   const rows = search?.items ?? [];
+  if (collapsed) {
+    return (
+      <aside className={`${styles.panel} ${styles.collapsed}`} aria-label="Document library">
+        <button
+          aria-label="Expand document library"
+          className={styles.expandButton}
+          title="Expand document library"
+          type="button"
+          onClick={() => onCollapsedChange(false)}
+        >
+          <span aria-hidden="true">›</span>
+          <span className={styles.collapsedLabel} aria-hidden="true">Library</span>
+        </button>
+      </aside>
+    );
+  }
   return (
     <aside className={styles.panel} aria-label="Document library">
       <div className={styles.heading}>
@@ -37,7 +62,18 @@ export function LibraryPanel({ workspace, documents, search, searching }: Props)
           <p className={styles.eyebrow}>Cached library</p>
           <h1>{workspace.document_count} documents</h1>
         </div>
-        <span className={styles.sourceCount}>{workspace.source_occurrence_count} sources</span>
+        <div className={styles.headingActions}>
+          <span className={styles.sourceCount}>{workspace.source_occurrence_count} sources</span>
+          <button
+            aria-label="Collapse document library"
+            className={styles.collapseButton}
+            title="Collapse document library"
+            type="button"
+            onClick={() => onCollapsedChange(true)}
+          >
+            ‹
+          </button>
+        </div>
       </div>
       <form className={styles.search} onSubmit={submit}>
         <label htmlFor="library-search">Search extracted text</label>

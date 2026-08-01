@@ -3,6 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useRuntime } from "../api/RuntimeProvider";
 import type { ComparisonResult, DiffToken, OutputGroup } from "../api/runtime";
+import {
+  resolveTextPresentation,
+  type ResolvedTextPresentation,
+} from "../presentation/textPresentation";
 import { useWorkspaceStore } from "../state/workspaceStore";
 import { EmptyState, FailureState, LoadingState } from "./AsyncState";
 import styles from "./ComparisonPanel.module.css";
@@ -24,7 +28,13 @@ function Tokens({ tokens }: { tokens: DiffToken[] }) {
   );
 }
 
-function DiffView({ result }: { result: ComparisonResult }) {
+function DiffView({
+  result,
+  presentation,
+}: {
+  result: ComparisonResult;
+  presentation: ResolvedTextPresentation;
+}) {
   const mode = useWorkspaceStore((state) => state.diffMode);
   const numericIndex = useWorkspaceStore((state) => state.numericIndex);
   const setNumericIndex = useWorkspaceStore((state) => state.setNumericIndex);
@@ -86,16 +96,22 @@ function DiffView({ result }: { result: ComparisonResult }) {
             >
               <div className={styles.operation}>{segment.operation}</div>
               {segment.operation === "equal" ? (
-                <pre><Tokens tokens={segment.left} /></pre>
+                <pre className={styles[presentation]} data-presentation={presentation}>
+                  <Tokens tokens={segment.left} />
+                </pre>
               ) : (
                 <div className={styles.sides}>
                   <div>
                     <span className={styles.sideLabel}>Baseline</span>
-                    <pre><Tokens tokens={segment.left} /></pre>
+                    <pre className={styles[presentation]} data-presentation={presentation}>
+                      <Tokens tokens={segment.left} />
+                    </pre>
                   </div>
                   <div>
                     <span className={styles.sideLabel}>Comparison</span>
-                    <pre><Tokens tokens={segment.right} /></pre>
+                    <pre className={styles[presentation]} data-presentation={presentation}>
+                      <Tokens tokens={segment.right} />
+                    </pre>
                   </div>
                 </div>
               )}
@@ -120,6 +136,11 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
   const setGroups = useWorkspaceStore((state) => state.setComparisonGroups);
   const mode = useWorkspaceStore((state) => state.diffMode);
   const setMode = useWorkspaceStore((state) => state.setDiffMode);
+  const selectedPresentation = useWorkspaceStore((state) => state.textPresentationMode);
+  const presentation = resolveTextPresentation(
+    selectedPresentation,
+    groups.map((group) => group.text),
+  );
 
   const baseline = groups.find((group) => group.group_id === baselineId) ?? groups[0];
   const requestedComparison = groups.find((group) => group.group_id === comparisonId);
@@ -227,7 +248,7 @@ export function ComparisonPanel({ documentId, page, groups }: Props) {
           </div>
           {query.isLoading && <LoadingState label="Aligning extractor outputs" />}
           {query.error && <FailureState title="Comparison failed" error={query.error} />}
-          {query.data && <DiffView result={query.data} />}
+          {query.data && <DiffView result={query.data} presentation={presentation.mode} />}
         </>
       )}
     </section>

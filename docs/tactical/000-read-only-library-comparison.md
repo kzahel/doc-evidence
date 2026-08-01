@@ -442,3 +442,28 @@ Poppler for PDFs only. The four-expert outputs exist for the five-document
 private benchmark suite, not the full catalog, and standalone images are only
 inventoried. Turning the declared OCR/layout policy into resumable broad
 execution remains outside Tactical 000's read-only UI scope.
+
+### Second maintainer layout follow-up
+
+On 2026-08-01 the maintainer requested a final bounded read-only layout pass
+before discussing extraction execution. This follow-up is authorized within
+Tactical 000 with these frozen decisions:
+
+- the library is expanded by default and can collapse to a narrow, visibly
+  restorable rail;
+- library visibility, source/output split, and text presentation are
+  session-local Zustand state rather than durable workspace preferences;
+- the desktop source/output split uses an accessible draggable separator,
+  arrow-key adjustment, bounded pane sizes, and a reset gesture;
+- narrow layouts remain stacked and do not expose a meaningless vertical
+  resize handle;
+- extraction text offers Auto, Reading, and Aligned modes;
+- Reading uses a proportional font and wrapping, while Aligned uses monospace,
+  preserves whitespace, does not wrap, and exposes horizontal scrolling;
+- Auto uses a small deterministic whitespace/table heuristic and always
+  remains overridable; its resolved choice and reason are visible; and
+- the selected presentation also applies to pairwise diff text.
+
+This follow-up adds no API routes, jobs, persistent state, new dependencies,
+or source/artifact mutations. Component tests and headless Playwright must
+cover the interactions at desktop and narrow widths.

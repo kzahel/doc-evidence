@@ -18,6 +18,8 @@ export function App() {
   const searchMode = useWorkspaceStore((state) => state.searchMode);
   const fontScale = useWorkspaceStore((state) => state.fontScale);
   const setFontScale = useWorkspaceStore((state) => state.setFontScale);
+  const libraryCollapsed = useWorkspaceStore((state) => state.libraryCollapsed);
+  const setLibraryCollapsed = useWorkspaceStore((state) => state.setLibraryCollapsed);
   const workspace = useQuery({
     queryKey: ["workspace"],
     queryFn: ({ signal }) => runtime.getWorkspace(signal),
@@ -113,12 +115,14 @@ export function App() {
           </div>
         </div>
       </header>
-      <div className={styles.body}>
+      <div className={`${styles.body} ${libraryCollapsed ? styles.bodyCollapsed : ""}`}>
         <LibraryPanel
           workspace={workspace.data}
           documents={documents.data}
           search={search.data ?? null}
           searching={search.isFetching}
+          collapsed={libraryCollapsed}
+          onCollapsedChange={setLibraryCollapsed}
         />
         {selectedDocumentId ? (
           <DocumentWorkspace documentId={selectedDocumentId} />

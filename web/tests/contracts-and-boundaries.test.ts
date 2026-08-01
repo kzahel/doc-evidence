@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest";
 
 import payloads from "../../contracts/representative-payloads.json";
 import type { ComparisonResult, WorkspaceSummary } from "../src/api/runtime";
-import { navigationFromSearch, useWorkspaceStore } from "../src/state/workspaceStore";
+import {
+  clampSourcePanePercent,
+  navigationFromSearch,
+  useWorkspaceStore,
+} from "../src/state/workspaceStore";
 
 describe("contracts and component boundaries", () => {
   it("validates shared representative payload shapes in TypeScript", () => {
@@ -49,5 +53,11 @@ describe("contracts and component boundaries", () => {
     expect(useWorkspaceStore.getState().fontScale).toBe(1.3);
     useWorkspaceStore.getState().setComparisonGroups("group:native", "group:native");
     expect(useWorkspaceStore.getState().comparisonGroupId).toBeNull();
+  });
+
+  it("bounds the session-local source pane split", () => {
+    expect(clampSourcePanePercent(5)).toBe(28);
+    expect(clampSourcePanePercent(43.26)).toBe(43.3);
+    expect(clampSourcePanePercent(99)).toBe(72);
   });
 });

@@ -61,6 +61,7 @@ describe("comparison workspace", () => {
       comparisonGroupId: "group:layout",
       diffMode: "differences",
       numericIndex: 0,
+      textPresentationMode: "auto",
     });
   });
 
@@ -99,6 +100,27 @@ describe("comparison workspace", () => {
     expect(screen.getByTitle(/Raw artifact preview/)).toHaveAttribute("sandbox", "");
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(dialog).not.toBeInTheDocument();
+  });
+
+  it("switches between reading and alignment-preserving extraction text", async () => {
+    const user = userEvent.setup();
+    const view = wrapper(<OutputGroups data={pageGroups} />);
+    expect(screen.getByRole("button", { name: "Auto" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByText(/Auto selected reading/)).toBeInTheDocument();
+    expect(view.container.querySelector('pre[data-presentation="reading"]')).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Aligned" }));
+    expect(screen.getByRole("button", { name: "Aligned" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(view.container.querySelector('pre[data-presentation="aligned"]')).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reading" }));
+    expect(view.container.querySelector('pre[data-presentation="reading"]')).toBeInTheDocument();
   });
 
   it("switches diff density, navigates numbers, and keeps the sides distinct", async () => {

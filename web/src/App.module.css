@@ -85,6 +85,10 @@
   grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
 }
 
+.bodyCollapsed {
+  grid-template-columns: 3rem minmax(0, 1fr);
+}
+
 @media (max-width: 850px) {
   .topbar {
     height: auto;

@@ -155,13 +155,25 @@
 }
 
 .segment pre {
-  font-family: var(--mono);
   font-size: 0.68rem;
   line-height: 1.5;
   margin: 0;
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  overflow: auto;
   padding: 0.6rem;
+}
+
+.segment pre.reading {
+  font-family: var(--sans);
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.segment pre.aligned {
+  font-family: var(--mono);
+  overflow-wrap: normal;
+  white-space: pre;
+  word-break: normal;
 }
 
 .sides {
@@ -172,6 +184,10 @@
 
 .sides > div + div {
   border-left: 1px solid var(--border);
+}
+
+.sides > div {
+  min-width: 0;
 }
 
 .sideLabel {

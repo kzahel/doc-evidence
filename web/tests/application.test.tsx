@@ -6,7 +6,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../src/App";
 import { FixtureRuntime } from "../src/api/fixtureRuntime";
 import { RuntimeProvider } from "../src/api/RuntimeProvider";
-import { useWorkspaceStore } from "../src/state/workspaceStore";
+import {
+  DEFAULT_SOURCE_PANE_PERCENT,
+  useWorkspaceStore,
+} from "../src/state/workspaceStore";
 import { detail, documentId, documents, pageGroups, workspace } from "./fixtures";
 
 function renderApp(runtime: FixtureRuntime) {
@@ -27,6 +30,9 @@ describe("application states", () => {
       page: 1,
       searchQuery: "",
       fontScale: 1.2,
+      libraryCollapsed: false,
+      sourcePanePercent: DEFAULT_SOURCE_PANE_PERCENT,
+      textPresentationMode: "auto",
     });
   });
 
@@ -79,5 +85,34 @@ describe("application states", () => {
     );
     expect(await screen.findByText(/This PDF is image-only/)).toBeInTheDocument();
     expect(screen.getByText(/opening the document does not start OCR/)).toBeInTheDocument();
+  });
+
+  it("collapses the library and adjusts the evidence pane split by keyboard", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents,
+        details: { [documentId]: detail },
+        groups: { [`${documentId}|1`]: pageGroups },
+      }),
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Collapse document library" }));
+    expect(screen.getByRole("button", { name: "Expand document library" })).toBeInTheDocument();
+    expect(useWorkspaceStore.getState().libraryCollapsed).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Expand document library" }));
+    expect(screen.getByRole("button", { name: "Collapse document library" })).toBeInTheDocument();
+
+    const separator = await screen.findByRole("separator", {
+      name: "Resize source and extraction panes",
+    });
+    separator.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(useWorkspaceStore.getState().sourcePanePercent).toBe(47);
+    await user.keyboard("{Home}");
+    expect(useWorkspaceStore.getState().sourcePanePercent).toBe(
+      DEFAULT_SOURCE_PANE_PERCENT,
+    );
   });
 });
