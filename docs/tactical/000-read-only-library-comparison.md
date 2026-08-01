@@ -364,8 +364,8 @@ slices:
 2. `edd5803` — checked OpenAPI/TypeScript contracts, hand-owned runtime,
    React/Vite application, TanStack Query/Zustand state split, library,
    document, equivalence, comparison, assertion, and fixture-test views; and
-3. a final integration/polish commit recorded in Git history after this
-   execution record, covering direct links, unsupported-file selection,
+3. `df94d73` — final integration and polish covering direct links,
+   unsupported-file selection,
    sandboxed raw-artifact preview, zero-byte artifacts, responsive validation,
    and documentation.
 
