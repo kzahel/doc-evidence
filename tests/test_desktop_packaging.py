@@ -14,6 +14,7 @@ from doc_evidence.desktop_packaging import (
     _files_containing,
     _installed_homebrew_bottle,
     _load_inputs,
+    _python_native_inventory,
     _requires_corresponding_source,
     _rust_license_expression,
     _spdx_license,
@@ -226,6 +227,34 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertTrue(_requires_corresponding_source("LGPL-2.1-or-later"))
         self.assertTrue(_requires_corresponding_source("MPL-2.0"))
         self.assertFalse(_requires_corresponding_source("Apache-2.0 OR MIT"))
+
+    def test_python_native_inventory_distinguishes_nested_libraries(self) -> None:
+        native = [
+            {"path": "python/bin/python3", "dependencies": []},
+            {
+                "path": "python/lib/python3.12/site-packages/demo/_core.so",
+                "dependencies": [],
+            },
+            {
+                "path": "python/lib/python3.12/site-packages/demo/.dylibs/libx.dylib",
+                "dependencies": ["/usr/lib/libSystem.B.dylib"],
+            },
+        ]
+        manifest = [
+            {
+                "path": item["path"],
+                "component_id": "cpython" if index == 0 else "python-demo",
+                "sha256": str(index) * 64,
+                "bytes": index + 1,
+            }
+            for index, item in enumerate(native)
+        ]
+
+        records = _python_native_inventory(native, manifest)
+
+        self.assertFalse(records[0]["wheel_owned"])
+        self.assertFalse(records[1]["nested_dependency"])
+        self.assertTrue(records[2]["nested_dependency"])
 
 
 if __name__ == "__main__":

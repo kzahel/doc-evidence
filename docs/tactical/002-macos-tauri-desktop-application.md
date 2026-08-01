@@ -1095,8 +1095,8 @@ It now reports three substantive release blockers:
 
 - pypdfium2's aggregate license metadata still needs a reviewed SPDX
   conclusion rather than `NOASSERTION`;
-- 77 Mach-O objects owned by Python wheels need their embedded third-party
-  components, versions, licenses, and source offers flattened and reconciled;
+- 32 third-party libraries nested inside Python wheels need their components,
+  versions, licenses, and source offers flattened and reconciled;
 - 19 Rust crates need repository-level license texts that their published
   crate archives omit.
 
@@ -1120,13 +1120,20 @@ archive is correctly excluded. Native libraries nested inside Python wheels
 remain part of the separate flattening blocker and are not implied complete by
 this top-level pass.
 
+The native-object inventory now binds every one of the 77 Python-tree Mach-O
+objects to its exact bundle-manifest owner and hash. Twelve belong to the
+standalone CPython runtime and 65 belong to Python distributions; 33 of those
+wheel objects are the distributions' own extension modules, while 32 are
+separate libraries under wheel-owned `.dylibs` directories or PDFium. Only the
+last group remains in the nested-component blocker.
+
 This is a deliberately blocked preflight, not legal clearance. It confirms
 that signing credentials are not the next immediate dependency: the component
 and source record must become release-complete before a signed public artifact
 would be acceptable.
 
-The generated preflight archive measures 152,611,969 bytes with SHA-256
-`8c4f910d3f1fe8a30b54011bec6764b5972d92c0295154f07b0980226baf5d2d`.
+The generated preflight archive measures 152,618,960 bytes with SHA-256
+`2c3bed99eea874d9363b79ddd2d0b0af1847839b02b9207acf5b3019249380e1`.
 It describes application tree
 `64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`
 and bundle manifest

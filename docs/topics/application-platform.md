@@ -296,8 +296,10 @@ all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
 SBOMs. Formula selection is bound to the installed package version, source
 hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
 recipes are reusable from an ignored cache. The preflight remains fail-closed
-for publication: pypdfium2 needs a reviewed composite SPDX conclusion; 77
-Python-wheel Mach-O objects need flattened component/source reconciliation;
+for publication: pypdfium2 needs a reviewed composite SPDX conclusion; 32
+third-party libraries nested in Python wheels need flattened component/source
+reconciliation (the other 45 Python native objects now have exact top-level
+ownership);
 19 Rust crates need repository-level license texts that their published crate
 archives omit. Required top-level copyleft/MPL source archives are now
 hash-verified and embedded. The

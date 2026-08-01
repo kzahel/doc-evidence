@@ -2760,6 +2760,43 @@ def _embed_source_archives(
     return embedded, blockers
 
 
+def _python_native_inventory(
+    native_files: Sequence[Mapping[str, Any]],
+    manifest_files: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    owners = {
+        str(item["path"]): item
+        for item in manifest_files
+        if isinstance(item, Mapping) and str(item.get("path", "")).startswith("python/")
+    }
+    records = []
+    for item in native_files:
+        path = str(item.get("path", ""))
+        if not path.startswith("python/"):
+            continue
+        owner = owners.get(path)
+        if owner is None:
+            raise RuntimeError(f"Python native object lacks manifest ownership: {path}")
+        component_id = str(owner["component_id"])
+        wheel_owned = component_id.startswith("python-")
+        nested_dependency = wheel_owned and (
+            "/.dylibs/" in path or "/pypdfium2_raw/libpdfium.dylib" in path
+        )
+        records.append(
+            {
+                "path": path,
+                "sha256": str(owner["sha256"]),
+                "bytes": int(owner["bytes"]),
+                "component_id": component_id,
+                "wheel_owned": wheel_owned,
+                "nested_dependency": nested_dependency,
+                "description": str(item.get("description", "")),
+                "dependencies": list(item.get("dependencies") or []),
+            }
+        )
+    return records
+
+
 def generate_compliance_preflight(
     app: Path,
     destination: Path,
@@ -2999,18 +3036,22 @@ def generate_compliance_preflight(
             }
             _write_json(staged / "doc-evidence.spdx.json", spdx)
 
-            python_native = [
-                item["path"]
-                for item in app_audit["runtime"]["native_files"]
-                if str(item["path"]).startswith("python/")
+            python_native = _python_native_inventory(
+                app_audit["runtime"]["native_files"], manifest["files"]
+            )
+            _write_json(staged / "python-native-objects.json", python_native)
+            wheel_native = [item for item in python_native if item["wheel_owned"]]
+            nested_native = [
+                item for item in python_native if item["nested_dependency"]
             ]
             blockers.extend(
                 [
                     {
                         "code": "unflattened-python-wheel-native-components",
                         "detail": (
-                            f"{len(python_native)} Python-wheel Mach-O objects need "
-                            "complete nested component/source reconciliation"
+                            f"{len(nested_native)} nested native libraries across "
+                            "Python wheels need complete component/source "
+                            "reconciliation"
                         ),
                     },
                 ]
@@ -3046,6 +3087,8 @@ def generate_compliance_preflight(
                 "homebrew_source_record_count": len(homebrew_records),
                 "embedded_python_sbom_count": len(embedded_python_sboms),
                 "python_native_object_count": len(python_native),
+                "python_wheel_native_object_count": len(wheel_native),
+                "python_nested_native_dependency_count": len(nested_native),
                 "rust_dependency_count": len(rust_records),
                 "node_dependency_count": len(node_records),
                 "rust_missing_license_text_count": len(missing_rust_licenses),
