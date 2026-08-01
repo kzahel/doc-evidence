@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 
 from doc_evidence.config import AppConfig
+from doc_evidence.contracts.desktop import (
+    DesktopAddCollectionRequest,
+    DesktopCollectionResult,
+    DesktopCreateLibraryRequest,
+    DesktopLibraryResult,
+    DesktopRegisterLibraryRequest,
+)
 
 CollectionPreflightKind = Literal[
     "add_sibling",
@@ -24,6 +31,22 @@ class CollectionPreflight:
     candidate: Path
     affected_collection_ids: tuple[str, ...]
     message: str
+
+
+class DesktopLibraryControl(Protocol):
+    """Trusted native-path operations; never expose this port to browser auth."""
+
+    def register_existing(
+        self, request: DesktopRegisterLibraryRequest
+    ) -> DesktopLibraryResult: ...
+
+    def create_managed(
+        self, request: DesktopCreateLibraryRequest
+    ) -> DesktopLibraryResult: ...
+
+    def add_collection(
+        self, request: DesktopAddCollectionRequest
+    ) -> DesktopCollectionResult: ...
 
 
 def _overlap(left: Path, right: Path) -> bool:

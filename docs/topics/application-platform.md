@@ -252,9 +252,11 @@ process ownership.
 Tactical 002 now adds a dedicated macOS arm64 desktop-sidecar composition. It
 uses independent runtime and Rust/Python-only host credentials, a strict
 ephemeral-port ready record, an authenticated versioned runtime handshake, an
-originless host-control handshake, and parent-EOF shutdown. The ordinary
-localhost composition remains unchanged; native path operations and the Tauri
-supervisor have not landed yet.
+originless host-control handshake, and parent-EOF shutdown. Its trusted Python
+control adapter now implements managed-library creation, idempotent existing-
+config registration, and bounded managed collection changes without returning
+absolute paths to React. The ordinary localhost composition remains unchanged;
+the Tauri dialogs and supervisor have not landed yet.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

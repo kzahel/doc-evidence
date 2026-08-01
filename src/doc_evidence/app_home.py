@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import uuid
 from collections.abc import Mapping
@@ -24,6 +25,11 @@ LEGACY_LIBRARY_NAMESPACE = uuid.UUID("63faf6f2-c052-4e23-b992-cdeeb7e52af4")
 
 AppHomeSource = Literal["environment", "desktop_host", "platform_default"]
 StoreMode = Literal["managed", "adopted"]
+
+
+def _managed_collection_id(name: str) -> str:
+    identifier = re.sub(r"[^a-z0-9_-]+", "-", name.casefold()).strip("-_")
+    return (identifier or "documents")[:80].rstrip("-_") or "documents"
 
 
 def legacy_library_id(config_path: Path) -> str:
@@ -348,6 +354,95 @@ class LibraryRegistry:
                     if make_default or state.default_library_id is None
                     else state.default_library_id
                 ),
+                last_library_id=library_id,
+            )
+        )
+        return descriptor
+
+    def create_managed_library(
+        self,
+        source: Path,
+        *,
+        name: str,
+    ) -> LibraryDescriptor:
+        """Create app-owned descriptor/config state for one trusted source root."""
+
+        resolved_source = source.expanduser().resolve()
+        if not resolved_source.is_dir():
+            raise ApplicationStateError(
+                "managed library source must be an available directory"
+            )
+        if (
+            resolved_source == self.home.root
+            or resolved_source.is_relative_to(self.home.root)
+            or self.home.root.is_relative_to(resolved_source)
+        ):
+            raise ApplicationStateError(
+                "managed library source may not overlap the application home"
+            )
+        library_name = name.strip()
+        if not library_name or len(library_name) > 200:
+            raise ApplicationStateError("library name must contain 1-200 characters")
+        state = self.load()
+        if len(state.libraries) >= MAX_REGISTERED_LIBRARIES:
+            raise ApplicationStateError("application registry is full")
+
+        library_id = str(uuid.uuid4())
+        library_root = self.libraries_root / library_id
+        if library_root.exists():
+            raise ApplicationStateError("new managed library identity already exists")
+        config_path = library_root / "config.yaml"
+        descriptor_path = library_root / "library.yaml"
+        collection_id = _managed_collection_id(resolved_source.name)
+        config_value = {
+            "schema_version": 1,
+            "collections": [
+                {
+                    "id": collection_id,
+                    "source": str(resolved_source),
+                    "include": ["**/*"],
+                    "exclude": ["**/.DS_Store"],
+                }
+            ],
+            "store": {"path": "."},
+            "languages": ["eng", "deu"],
+            "extraction": {
+                "baseline": "poppler",
+                "ocr_when": "image_only",
+                "layout_when": "complex",
+                "normalized_text_duplicates": True,
+            },
+            "search": {"sqlite_fts": True, "vector_index": False},
+        }
+        atomic_write_text(
+            config_path,
+            yaml.safe_dump(config_value, sort_keys=False),
+        )
+        config = load_config(config_path)
+        descriptor = LibraryDescriptor(
+            library_id=library_id,
+            name=library_name,
+            store_mode="managed",
+            config_path=config.path,
+            store_path=config.store,
+            descriptor_path=descriptor_path,
+        )
+        atomic_write_text(
+            descriptor_path,
+            yaml.safe_dump(descriptor.value(), sort_keys=False),
+        )
+        now = isoformat_z()
+        known = KnownLibrary(
+            library_id=library_id,
+            name=library_name,
+            descriptor_path=descriptor_path,
+            store_mode="managed",
+            last_opened_at=now,
+        )
+        self.save(
+            AppState(
+                libraries=(*state.libraries, known),
+                default_library_id=library_id,
                 last_library_id=library_id,
             )
         )

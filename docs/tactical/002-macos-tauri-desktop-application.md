@@ -917,3 +917,27 @@ server, including credential swapping, browser-origin rejection, secret/path
 absence in retained startup evidence, and parent-EOF shutdown. The full 66-
 test Python suite, Ruff format/check, Pyright, generated-contract drift,
 frontend typecheck, and all 26 frontend tests pass at this boundary.
+
+The third landed slice implements the Python side of native library
+authorization:
+
+- an originless host-control surface accepts absolute paths only under the
+  independent Rust/Python credential and never exposes those paths in its
+  result contracts;
+- a selected source folder can create a named managed library with stable ID,
+  app-owned descriptor/config/store, initialized unified database, and the
+  frozen `eng`/`deu` baseline policy;
+- an existing configuration is registered idempotently without rewriting the
+  external file;
+- managed libraries support sibling collection addition and confirmed parent
+  replacement after the existing overlap preflight; adopted configurations
+  remain read-only; and
+- active/queued extraction work blocks a configuration refresh, while an idle
+  cached composition is safely stopped and reloaded after atomic validation.
+
+The full suite now has 70 passing Python tests. Focused tests verify source and
+adopted-config immutability, response path secrecy, app-home store ownership,
+database creation, idempotent registration, parent-replacement confirmation,
+stable library identity, credential separation, and browser-origin rejection.
+Ruff, Pyright, contract drift, frontend typecheck, and all 26 frontend tests
+also pass.

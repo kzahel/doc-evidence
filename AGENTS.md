@@ -294,10 +294,12 @@ authorized on 2026-08-01. Apache-2.0 source licensing and strict bundle/pack
 manifest schemas are the first landed slice. A dedicated macOS arm64 Python
 sidecar now adds independent runtime/host credentials, bounded ready and
 handshake records, exact-origin runtime access, originless host control, and
-parent-EOF shutdown. Continue local implementation and validation without
-touching signing credentials, GitHub release setup, notarization, updater
-setup, or publication unless the maintainer explicitly authorizes that
-external lane.
+parent-EOF shutdown. The trusted Python control adapter now creates managed
+libraries, registers existing configurations without rewriting them, and
+applies bounded managed collection changes without returning paths to React.
+Continue local implementation and validation without touching signing
+credentials, GitHub release setup, notarization, updater setup, or publication
+unless the maintainer explicitly authorizes that external lane.
 `docs/tactical/002-macos-tauri-desktop-application.md` is the proposed next
 implementation boundary. It plans a self-contained, Developer ID-signed and
 notarized macOS arm64 application with a stapled ticket, distributed in a DMG

@@ -82,6 +82,49 @@ class DesktopControlHandshake(DesktopContractModel):
     ]
 
 
+class DesktopRegisterLibraryRequest(DesktopContractModel):
+    config_path: str = Field(min_length=1, max_length=4096)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class DesktopCreateLibraryRequest(DesktopContractModel):
+    source_path: str = Field(min_length=1, max_length=4096)
+    name: str = Field(min_length=1, max_length=200)
+
+
+class DesktopAddCollectionRequest(DesktopContractModel):
+    library_id: str = Field(min_length=1, max_length=200)
+    source_path: str = Field(min_length=1, max_length=4096)
+    confirm_parent_replacement: bool = False
+
+
+class DesktopLibraryResult(DesktopContractModel):
+    schema_version: Literal[1] = 1
+    outcome: Literal["created", "registered", "already_registered", "updated"]
+    library_id: str
+    name: str
+    store_mode: Literal["managed", "adopted"]
+    status: Literal["ready", "unavailable", "integrity_error"]
+    status_detail: str | None
+    collection_count: int = Field(ge=0)
+
+
+class DesktopCollectionResult(DesktopContractModel):
+    schema_version: Literal[1] = 1
+    preflight_kind: Literal[
+        "add_sibling",
+        "replace_children",
+        "already_covered",
+        "same_root",
+        "store_overlap",
+        "unavailable",
+    ]
+    changed: bool
+    confirmation_required: bool
+    affected_collection_ids: list[str]
+    library: DesktopLibraryResult
+
+
 def require_macos_arm64() -> tuple[Literal["macos"], Literal["arm64"]]:
     machine = platform.machine().casefold()
     if sys.platform != "darwin" or machine not in {"arm64", "aarch64"}:

@@ -8,9 +8,10 @@ Topic: library-management
 known-library registry, adopted descriptors, CLI activation, unified library
 persistence, inventory generations, and collection preflight are implemented.
 Shared UI selection and explicit library-scoped job identity are implemented;
-explicit maintainer interaction acceptance remains. Tactical 002 now plans
-native Tauri folder selection and packaged startup but is not authorized or
-started. Store relocation remains later scope.
+explicit maintainer interaction acceptance remains. Tactical 002's trusted
+Python host-control operations for native-selected paths are implemented;
+Tauri dialogs and packaged startup remain in progress. Store relocation
+remains later scope.
 
 ## Purpose
 
@@ -382,9 +383,10 @@ resolution, isolated testing, the registry/library contracts, legacy library
 adoption, explicit identity, non-overlapping collections, generation/content
 separation, and the initial known-library web UI needed by the job system.
 
-Later tacticals own native Tauri creation/open/folder-picker flows,
-security-scoped bookmarks, library/store relocation, managed-store deletion
-and recovery, portable library export/import polish, and multi-window behavior.
+Tactical 002 owns the current native Tauri creation/open/folder-picker flow.
+Later tacticals own security-scoped bookmarks, library/store relocation,
+managed-store deletion and recovery, portable library export/import polish,
+and multi-window behavior.
 
 ## Implementation Evidence
 
@@ -416,3 +418,13 @@ queries by library ID, includes it in deep links, lists/selects ready libraries,
 shows unavailable/integrity states, and exposes collection availability plus
 the trusted CLI/native preflight boundary. An empty registry now launches an
 actionable library home instead of failing during server composition.
+
+Tactical 002 now implements the trusted half of the native path boundary.
+The separately authenticated, originless desktop-control adapter can register
+an existing configuration without rewriting it, create an app-owned managed
+library and database from a selected source folder, and apply sibling or
+confirmed parent-replacement collection changes only to managed libraries.
+It never returns an absolute path to the product runtime. Collection changes
+are rejected while jobs are queued/running, preserve library identity, and
+atomically replace a validated managed configuration. The Rust dialogs and
+React behavioral operations remain the next composition slice.

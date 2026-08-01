@@ -291,3 +291,19 @@ class LocalLibraryManager(LibraryManager):
         for scheduler in list(self._schedulers.values()):
             scheduler.stop()
         self._schedulers.clear()
+
+    def prepare_configuration_change(self, library_id: str) -> None:
+        """Drop cached composition only when no queued/running work can retarget."""
+
+        service = self._jobs.get(library_id)
+        if service is not None:
+            counts = service.counts()
+            if counts.queued or counts.active:
+                raise ApplicationStateError(
+                    "library configuration cannot change while extraction jobs are active"
+                )
+        scheduler = self._schedulers.pop(library_id, None)
+        if scheduler is not None:
+            scheduler.stop()
+        self._applications.pop(library_id, None)
+        self._jobs.pop(library_id, None)

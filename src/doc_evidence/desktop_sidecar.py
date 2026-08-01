@@ -15,6 +15,7 @@ from pathlib import Path
 
 import uvicorn
 
+from doc_evidence.adapters.local_desktop import LocalDesktopLibraryControl
 from doc_evidence.adapters.local_libraries import LocalLibraryManager
 from doc_evidence.api.app import create_app
 from doc_evidence.app_home import LibraryRegistry, resolve_application_home
@@ -111,7 +112,17 @@ def run(
         application_home_source=home.source,
         baseline_pack=None,
     )
-    control_handshake = DesktopControlHandshake(capabilities=[])
+    control_handshake = DesktopControlHandshake(
+        capabilities=[
+            "register_existing_library",
+            "create_managed_library",
+            "add_collection",
+        ]
+    )
+    library_control = LocalDesktopLibraryControl(
+        registry=registry,
+        manager=manager,
+    )
 
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -126,6 +137,7 @@ def run(
         desktop_handshake=handshake,
         host_control_token=credentials.host_control_token,
         desktop_control_handshake=control_handshake,
+        desktop_library_control=library_control,
     )
     server = uvicorn.Server(
         uvicorn.Config(

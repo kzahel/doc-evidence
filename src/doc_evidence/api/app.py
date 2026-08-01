@@ -23,6 +23,7 @@ from doc_evidence.application.jobs import (
 )
 from doc_evidence.application.libraries import LibraryManager
 from doc_evidence.application.library import LibraryApplication
+from doc_evidence.application.library_management import DesktopLibraryControl
 from doc_evidence.contracts.api import (
     ApiProblem,
     AppSummary,
@@ -63,8 +64,13 @@ from doc_evidence.contracts.api import (
     WorkspaceSummary,
 )
 from doc_evidence.contracts.desktop import (
+    DesktopAddCollectionRequest,
+    DesktopCollectionResult,
     DesktopControlHandshake,
+    DesktopCreateLibraryRequest,
     DesktopHandshake,
+    DesktopLibraryResult,
+    DesktopRegisterLibraryRequest,
     create_desktop_handshake,
 )
 from doc_evidence.errors import (
@@ -153,6 +159,7 @@ def create_app(
     desktop_handshake: DesktopHandshake | None = None,
     host_control_token: str | None = None,
     desktop_control_handshake: DesktopControlHandshake | None = None,
+    desktop_library_control: DesktopLibraryControl | None = None,
 ) -> FastAPI:
     origins = frozenset(allowed_origins or set())
 
@@ -817,6 +824,39 @@ def create_app(
         @control_router.get("/handshake", response_model=DesktopControlHandshake)
         def desktop_host_handshake() -> DesktopControlHandshake:
             return desktop_control_handshake
+
+        @control_router.post(
+            "/libraries/register-existing",
+            response_model=DesktopLibraryResult,
+        )
+        def desktop_register_existing(
+            body: DesktopRegisterLibraryRequest,
+        ) -> DesktopLibraryResult:
+            if desktop_library_control is None:
+                raise NotFoundError("desktop library control is not active")
+            return desktop_library_control.register_existing(body)
+
+        @control_router.post(
+            "/libraries/create-managed",
+            response_model=DesktopLibraryResult,
+        )
+        def desktop_create_managed(
+            body: DesktopCreateLibraryRequest,
+        ) -> DesktopLibraryResult:
+            if desktop_library_control is None:
+                raise NotFoundError("desktop library control is not active")
+            return desktop_library_control.create_managed(body)
+
+        @control_router.post(
+            "/libraries/add-collection",
+            response_model=DesktopCollectionResult,
+        )
+        def desktop_add_collection(
+            body: DesktopAddCollectionRequest,
+        ) -> DesktopCollectionResult:
+            if desktop_library_control is None:
+                raise NotFoundError("desktop library control is not active")
+            return desktop_library_control.add_collection(body)
 
         app.include_router(control_router)
 
