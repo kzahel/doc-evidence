@@ -8,10 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from doc_evidence.catalog import build_catalog
 from doc_evidence.config import AppConfig
 from doc_evidence.discovery import discover_files
 from doc_evidence.media import detect_media_type
+from doc_evidence.persistence import ensure_library_database
+from doc_evidence.persistence.library_database import ScanFingerprint
 from doc_evidence.poppler import PageText, PdfExtraction, PopplerExtractor
 from doc_evidence.util import (
     atomic_write_json,
@@ -104,6 +105,7 @@ class InventoryResult:
     summary: dict[str, Any]
     manifest_path: Path
     catalog_path: Path
+    generation_id: str
 
 
 def _blob_dir(store: Path, content_sha256: str) -> Path:
@@ -336,6 +338,10 @@ def _summary(
 def run_inventory(
     config: AppConfig,
     requested_collections: list[str] | tuple[str, ...] = (),
+    *,
+    library_id: str | None = None,
+    library_name: str | None = None,
+    full_hash_verification: bool = False,
 ) -> InventoryResult:
     selected = config.select_collections(requested_collections)
     started_at = isoformat_z()
@@ -348,6 +354,18 @@ def run_inventory(
     )
     run_id = f"{compact_timestamp()}-{run_key[:12]}"
     config.store.mkdir(parents=True, exist_ok=True)
+    database = ensure_library_database(
+        config,
+        library_id=library_id,
+        name=library_name,
+    )
+    generation_id = database.begin_generation(
+        run_id=run_id,
+        config_hash=config.config_hash,
+        selected_collections=(collection.id for collection in selected),
+        started_at=started_at,
+        full_hash_verification=full_hash_verification,
+    )
 
     discovery_warnings: list[dict[str, str]] = []
     discovered = [
@@ -359,19 +377,71 @@ def run_inventory(
 
     errors: list[dict[str, str]] = []
     grouped_sources: dict[str, list[SourceAlias]] = defaultdict(list)
+    fingerprints: list[ScanFingerprint] = []
+    fingerprint_cache_hits = 0
     for item in discovered:
         try:
             observed_at = isoformat_z()
-            file_hash = hash_file(item.path)
+            before = item.path.stat()
+            cached_sha256 = None
+            if not full_hash_verification:
+                cached_sha256 = database.cached_fingerprint(
+                    collection_id=item.collection_id,
+                    relative_path=item.relative_path,
+                    resolved_path=item.path.resolve(),
+                    device=before.st_dev,
+                    inode=before.st_ino,
+                    size_bytes=before.st_size,
+                    modified_ns=before.st_mtime_ns,
+                    changed_ns=before.st_ctime_ns,
+                )
+            if cached_sha256 is None:
+                file_hash = hash_file(item.path)
+                content_sha256 = file_hash.content_sha256
+                size_bytes = file_hash.size_bytes
+                modified_ns = file_hash.modified_ns
+            else:
+                fingerprint_cache_hits += 1
+                content_sha256 = cached_sha256
+                size_bytes = before.st_size
+                modified_ns = before.st_mtime_ns
+            after = item.path.stat()
+            if (
+                before.st_dev,
+                before.st_ino,
+                before.st_size,
+                before.st_mtime_ns,
+                before.st_ctime_ns,
+            ) != (
+                after.st_dev,
+                after.st_ino,
+                after.st_size,
+                after.st_mtime_ns,
+                after.st_ctime_ns,
+            ):
+                raise OSError(f"file changed while inventorying: {item.path}")
             source = SourceAlias(
                 collection_id=item.collection_id,
                 relative_path=item.relative_path,
                 path=item.path,
-                size_bytes=file_hash.size_bytes,
-                modified_ns=file_hash.modified_ns,
+                size_bytes=size_bytes,
+                modified_ns=modified_ns,
                 observed_at=observed_at,
             )
-            grouped_sources[file_hash.content_sha256].append(source)
+            grouped_sources[content_sha256].append(source)
+            fingerprints.append(
+                ScanFingerprint(
+                    collection_id=item.collection_id,
+                    relative_path=item.relative_path,
+                    resolved_path=str(item.path.resolve()),
+                    device=after.st_dev,
+                    inode=after.st_ino,
+                    size_bytes=after.st_size,
+                    modified_ns=after.st_mtime_ns,
+                    changed_ns=after.st_ctime_ns,
+                    content_sha256=content_sha256,
+                )
+            )
         except OSError as error:
             errors.append(
                 {
@@ -416,6 +486,8 @@ def run_inventory(
         byte_groups,
         text_groups,
     )
+    summary["fingerprint_cache_hits"] = fingerprint_cache_hits
+    summary["full_hash_verification"] = full_hash_verification
 
     manifest_dir = config.store / "manifests" / run_id
     manifest_path = manifest_dir / "manifest.jsonl"
@@ -431,12 +503,14 @@ def run_inventory(
     run_record = {
         "schema_version": INVENTORY_SCHEMA_VERSION,
         "run_id": run_id,
+        "generation_id": generation_id,
         "started_at": started_at,
         "completed_at": completed_at,
         "config_path": str(config.path),
         "config_hash": config.config_hash,
         "collection_ids": [collection.id for collection in selected],
         "summary": summary,
+        "full_hash_verification": full_hash_verification,
         "poppler": poppler.descriptor,
     }
     errors_text = "".join(
@@ -456,7 +530,7 @@ def run_inventory(
         config.store / "manifests" / "latest-duplicates.json", duplicate_report
     )
 
-    catalog_path = config.store / "catalog.sqlite"
+    catalog_path = database.path
     result = InventoryResult(
         run_id=run_id,
         config_hash=config.config_hash,
@@ -471,6 +545,12 @@ def run_inventory(
         summary=summary,
         manifest_path=manifest_path,
         catalog_path=catalog_path,
+        generation_id=generation_id,
     )
-    build_catalog(result, catalog_path, config.search.sqlite_fts)
+    database.publish_generation(
+        result=result,
+        generation_id=generation_id,
+        config=config,
+        fingerprints=fingerprints,
+    )
     return result

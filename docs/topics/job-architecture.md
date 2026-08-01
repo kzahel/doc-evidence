@@ -4,8 +4,9 @@ Topic: job-architecture
 
 **Last updated:** 2026-08-01
 
-**Status:** Approved architecture; implementation is planned in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md).
+**Status:** Tactical 001 implementation in progress. Unified persistence and
+atomic catalog membership generations are implemented; durable jobs, worker
+supervision, recovery, and operational UI remain in progress.
 
 ## Purpose
 
@@ -93,9 +94,9 @@ Large binaries, complete extractor output, page renders, and full logs remain
 files in the artifact store. SQLite stores identities, relationships, states,
 bounded event details, and artifact references.
 
-The existing `catalog.sqlite` is an atomic rebuildable snapshot. Tactical 001
-must replace that active-file replacement behavior with stable content-derived
-tables and catalog membership generations inside `doc-evidence.sqlite`.
+The former `catalog.sqlite` active-file replacement has been replaced with
+stable content-derived tables and catalog membership generations inside
+`doc-evidence.sqlite`.
 Inventory builds a new inactive membership generation, validates it, switches
 the active generation in one short transaction, and garbage-collects older
 membership separately. Job and future review tables are therefore not

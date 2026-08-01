@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -67,6 +68,8 @@ search:
             config = load_config(config_path)
 
             first_result = run_inventory(config)
+            self.assertEqual(first_result.catalog_path.name, "doc-evidence.sqlite")
+            self.assertFalse((config.store / "catalog.sqlite").exists())
             summary = first_result.summary
             self.assertEqual(summary["discovered_files"], 5)
             self.assertEqual(summary["indexed_source_files"], 5)
@@ -113,6 +116,36 @@ search:
             second_result = run_inventory(config)
             self.assertEqual(second_result.summary["poppler_cache_hits"], 3)
             self.assertEqual(second_result.summary["poppler_cache_misses"], 0)
+            self.assertEqual(second_result.summary["fingerprint_cache_hits"], 5)
+            self.assertNotEqual(first_result.generation_id, second_result.generation_id)
+            connection = sqlite3.connect(second_result.catalog_path)
+            try:
+                states = dict(
+                    connection.execute(
+                        "SELECT generation_id, status FROM inventory_generations"
+                    )
+                )
+                self.assertEqual(states[first_result.generation_id], "superseded")
+                self.assertEqual(states[second_result.generation_id], "active")
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM content_objects"
+                    ).fetchone()[0],
+                    4,
+                )
+                self.assertEqual(
+                    connection.execute("PRAGMA integrity_check").fetchone()[0],
+                    "ok",
+                )
+                self.assertEqual(
+                    connection.execute("PRAGMA foreign_key_check").fetchall(), []
+                )
+            finally:
+                connection.close()
+
+            verified = run_inventory(config, full_hash_verification=True)
+            self.assertEqual(verified.summary["fingerprint_cache_hits"], 0)
+            self.assertTrue(verified.summary["full_hash_verification"])
             self.assertEqual(
                 hashlib.sha256(first.read_bytes()).hexdigest(), original_hash
             )

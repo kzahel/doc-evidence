@@ -862,3 +862,28 @@ Implemented the platform-neutral desktop ownership foundation:
 Focused application-home, malformed-state, identity-disagreement, isolation,
 configuration, CLI, Ruff, and Pyright validation pass. Unified persistence,
 library-scoped UI/API, jobs, workers, and operational views remain in progress.
+
+### Slice 2 — unified library persistence and inventory generations
+
+Implemented the durable database and scope-projection foundation:
+
+- one WAL-backed, foreign-keyed, schema-versioned `doc-evidence.sqlite` per
+  stable library identity with transactional initialization;
+- generation-independent content, extraction-run, normalized-page, FTS, and
+  artifact-registration tables;
+- generation-scoped collection snapshots, source occurrences, active
+  membership, duplicate membership, and scan fingerprints;
+- inactive inventory construction followed by validated atomic activation,
+  with interrupted builds retaining the previous active generation;
+- read-only import of an existing legacy `catalog.sqlite`, which remains
+  untouched rollback material and receives no dual writes;
+- strong filesystem fingerprint hints plus explicit `inventory --full-hash`;
+- collection preflight outcomes for sibling, parent expansion, covered child,
+  same root, unavailable folder, and source/store overlap; and
+- unified literal/FTS search, duplicate, document, run, source, and artifact
+  reads through the existing local workspace adapter.
+
+Focused inventory, migration metadata, identity mismatch, legacy import,
+scope-expansion reuse, atomic-generation interruption, collection preflight,
+application integration, Ruff, and Pyright validation pass. Library-scoped
+UI/API, jobs, supervised workers, and operational views remain in progress.

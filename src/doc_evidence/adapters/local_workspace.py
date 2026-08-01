@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from doc_evidence import __version__
+from doc_evidence.app_home import legacy_library_id
 from doc_evidence.application.library import BinaryArtifact, RunPages
 from doc_evidence.config import AppConfig
 from doc_evidence.contracts.api import (
@@ -29,15 +30,20 @@ from doc_evidence.contracts.api import (
     WorkspaceSummary,
 )
 from doc_evidence.errors import CatalogError, NotFoundError, RequestError
+from doc_evidence.persistence import ensure_library_database
 from doc_evidence.rendering import PageRenderer
 from doc_evidence.util import hash_file, hash_json
 
 
 class LocalWorkspace:
-    def __init__(self, config: AppConfig):
+    def __init__(self, config: AppConfig, library_id: str | None = None):
         self.config = config
+        self.library_id = library_id or legacy_library_id(config.path)
         self.store = config.store.resolve()
-        self.catalog_path = self.store / "catalog.sqlite"
+        self.catalog_path = ensure_library_database(
+            config,
+            library_id=self.library_id,
+        ).path
         if not self.catalog_path.is_file():
             raise CatalogError(
                 f"catalog does not exist: {self.catalog_path}; run inventory first"
@@ -65,25 +71,35 @@ class LocalWorkspace:
             SELECT d.*,
                    first_source.collection_id,
                    first_source.relative_path,
-                   (SELECT COUNT(*) - 1 FROM sources all_sources
-                    WHERE all_sources.document_id = d.document_id)
+                   (SELECT COUNT(*) - 1 FROM source_occurrences all_sources
+                    WHERE all_sources.generation_id = active.active_generation_id
+                      AND all_sources.content_sha256 = d.content_sha256)
                    +
-                   (SELECT COUNT(DISTINCT peers.document_id)
+                   (SELECT COUNT(DISTINCT peers.content_sha256)
                     FROM duplicate_members mine
                     JOIN duplicate_members peers
-                      ON peers.kind = mine.kind
+                      ON peers.generation_id = mine.generation_id
+                     AND peers.kind = mine.kind
                      AND peers.group_key = mine.group_key
-                    WHERE mine.document_id = d.document_id
-                      AND peers.document_id != d.document_id)
+                    WHERE mine.generation_id = active.active_generation_id
+                      AND mine.content_sha256 = d.content_sha256
+                      AND peers.content_sha256 != d.content_sha256)
                    AS duplicate_count
-            FROM documents d
-            JOIN sources first_source
+            FROM content_objects d
+            JOIN library_metadata active ON active.singleton = 1
+            JOIN source_occurrences first_source
               ON first_source.rowid = (
-                  SELECT source.rowid FROM sources source
-                  WHERE source.document_id = d.document_id
+                  SELECT source.rowid FROM source_occurrences source
+                  WHERE source.generation_id = active.active_generation_id
+                    AND source.content_sha256 = d.content_sha256
                   ORDER BY source.collection_id, source.relative_path
                   LIMIT 1
               )
+            WHERE EXISTS (
+                SELECT 1 FROM generation_documents member
+                WHERE member.generation_id = active.active_generation_id
+                  AND member.content_sha256 = d.content_sha256
+            )
         """
 
     def _document_summary(self, row: sqlite3.Row) -> DocumentSummary:
@@ -101,20 +117,47 @@ class LocalWorkspace:
         )
 
     def _catalog_metadata(self, connection: sqlite3.Connection) -> dict[str, str]:
-        rows = connection.execute(
-            "SELECT key, value FROM catalog_metadata ORDER BY key"
-        ).fetchall()
-        return {str(row["key"]): str(row["value"]) for row in rows}
+        row = connection.execute(
+            """
+            SELECT m.*, g.inventory_run_id, g.completed_at, g.summary_json,
+                   g.selected_collections_json
+            FROM library_metadata m
+            LEFT JOIN inventory_generations g
+              ON g.generation_id = m.active_generation_id
+            WHERE m.singleton = 1
+            """
+        ).fetchone()
+        if row is None:
+            return {}
+        return {
+            "schema_version": "1",
+            "library_id": str(row["library_id"]),
+            "config_hash": str(row["config_hash"]),
+            "fts_enabled": str(row["fts_enabled"]),
+            "inventory_run_id": str(row["inventory_run_id"] or ""),
+            "created_at": str(row["completed_at"] or ""),
+            "selected_collections": str(row["selected_collections_json"] or "[]"),
+            "summary": str(row["summary_json"] or "{}"),
+        }
 
     def workspace(self) -> WorkspaceSummary:
         connection = self._connect()
         try:
             metadata = self._catalog_metadata(connection)
+            generation_id = connection.execute(
+                "SELECT active_generation_id FROM library_metadata WHERE singleton = 1"
+            ).fetchone()[0]
             document_count = int(
-                connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+                connection.execute(
+                    "SELECT COUNT(*) FROM generation_documents WHERE generation_id = ?",
+                    (generation_id,),
+                ).fetchone()[0]
             )
             source_count = int(
-                connection.execute("SELECT COUNT(*) FROM sources").fetchone()[0]
+                connection.execute(
+                    "SELECT COUNT(*) FROM source_occurrences WHERE generation_id = ?",
+                    (generation_id,),
+                ).fetchone()[0]
             )
         finally:
             connection.close()
@@ -138,7 +181,15 @@ class LocalWorkspace:
         connection = self._connect()
         try:
             total = int(
-                connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
+                connection.execute(
+                    """
+                    SELECT COUNT(*) FROM generation_documents
+                    WHERE generation_id = (
+                        SELECT active_generation_id FROM library_metadata
+                        WHERE singleton = 1
+                    )
+                    """
+                ).fetchone()[0]
             )
             rows = connection.execute(
                 self._summary_query()
@@ -161,7 +212,7 @@ class LocalWorkspace:
         connection = self._connect()
         try:
             row = connection.execute(
-                self._summary_query() + " WHERE d.document_id = ?",
+                self._summary_query() + " AND d.document_id = ?",
                 (document_id,),
             ).fetchone()
             if row is None:
@@ -170,23 +221,30 @@ class LocalWorkspace:
                 """
                 SELECT collection_id, relative_path, size_bytes, modified_ns,
                        observed_at
-                FROM sources WHERE document_id = ?
+                FROM source_occurrences
+                WHERE generation_id = (
+                    SELECT active_generation_id FROM library_metadata WHERE singleton = 1
+                ) AND content_sha256 = ?
                 ORDER BY collection_id, relative_path
                 """,
-                (document_id,),
+                (document_id.removeprefix("sha256:"),),
             ).fetchall()
             duplicate_rows = connection.execute(
                 """
                 SELECT kind, group_key, COUNT(*) AS member_count
                 FROM duplicate_members
-                WHERE (kind, group_key) IN (
+                WHERE generation_id = (
+                    SELECT active_generation_id FROM library_metadata WHERE singleton = 1
+                ) AND (kind, group_key) IN (
                     SELECT kind, group_key FROM duplicate_members
-                    WHERE document_id = ?
+                    WHERE generation_id = (
+                        SELECT active_generation_id FROM library_metadata WHERE singleton = 1
+                    ) AND content_sha256 = ?
                 )
                 GROUP BY kind, group_key
                 ORDER BY kind, group_key
                 """,
-                (document_id,),
+                (document_id.removeprefix("sha256:"),),
             ).fetchall()
         except sqlite3.Error as error:
             raise CatalogError(f"cannot read document: {error}") from error
@@ -229,15 +287,41 @@ class LocalWorkspace:
                     SELECT p.document_id, p.page_number, p.text,
                            first_source.collection_id,
                            first_source.relative_path
-                    FROM pages p
-                    JOIN sources first_source
+                    FROM (
+                        SELECT c.document_id, rp.content_sha256, rp.page_number,
+                               rp.text, er.extractor_id,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY rp.content_sha256, rp.page_number
+                                   ORDER BY CASE WHEN er.extractor_id = 'poppler'
+                                                 THEN 0 ELSE 1 END,
+                                            er.extractor_id, er.run_id
+                               ) AS representation_rank
+                        FROM run_pages rp
+                        JOIN extraction_runs er
+                          ON er.content_sha256 = rp.content_sha256
+                         AND er.run_id = rp.run_id
+                        JOIN content_objects c
+                          ON c.content_sha256 = rp.content_sha256
+                        JOIN generation_documents member
+                          ON member.content_sha256 = rp.content_sha256
+                         AND member.generation_id = (
+                             SELECT active_generation_id FROM library_metadata
+                             WHERE singleton = 1
+                         )
+                        WHERE er.status = 'ok'
+                          AND instr(lower(rp.text), lower(?)) > 0
+                    ) p
+                    JOIN source_occurrences first_source
                       ON first_source.rowid = (
-                          SELECT source.rowid FROM sources source
-                          WHERE source.document_id = p.document_id
+                          SELECT source.rowid FROM source_occurrences source
+                          WHERE source.generation_id = (
+                              SELECT active_generation_id FROM library_metadata
+                              WHERE singleton = 1
+                          ) AND source.content_sha256 = p.content_sha256
                           ORDER BY source.collection_id, source.relative_path
                           LIMIT 1
                       )
-                    WHERE instr(lower(p.text), lower(?)) > 0
+                    WHERE p.representation_rank = 1
                     ORDER BY p.document_id, p.page_number
                     LIMIT ?
                     """,
@@ -255,23 +339,31 @@ class LocalWorkspace:
                 ]
             else:
                 enabled = connection.execute(
-                    "SELECT value FROM catalog_metadata WHERE key = 'fts_enabled'"
+                    "SELECT fts_enabled FROM library_metadata WHERE singleton = 1"
                 ).fetchone()
-                if enabled is None or enabled["value"] != "1":
+                if enabled is None or enabled["fts_enabled"] != 1:
                     raise RequestError("this catalog was built without SQLite FTS")
                 try:
                     rows = connection.execute(
                         """
-                        SELECT f.document_id, f.page_number,
-                               snippet(pages_fts, 2, '[', ']', ' … ', 24) AS snippet,
+                        SELECT 'sha256:' || f.content_sha256 AS document_id,
+                               f.page_number,
+                               snippet(pages_fts, 4, '[', ']', ' … ', 24) AS snippet,
                                bm25(pages_fts) AS score,
                                first_source.collection_id,
                                first_source.relative_path
                         FROM pages_fts f
-                        JOIN sources first_source
+                        JOIN generation_documents member
+                          ON member.content_sha256 = f.content_sha256
+                         AND member.generation_id = (
+                             SELECT active_generation_id FROM library_metadata
+                             WHERE singleton = 1
+                         )
+                        JOIN source_occurrences first_source
                           ON first_source.rowid = (
-                              SELECT source.rowid FROM sources source
-                              WHERE source.document_id = f.document_id
+                              SELECT source.rowid FROM source_occurrences source
+                              WHERE source.generation_id = member.generation_id
+                                AND source.content_sha256 = f.content_sha256
                               ORDER BY source.collection_id, source.relative_path
                               LIMIT 1
                           )
@@ -578,7 +670,17 @@ class LocalWorkspace:
                 ids = [
                     row["document_id"]
                     for row in connection.execute(
-                        "SELECT document_id FROM documents ORDER BY document_id"
+                        """
+                    SELECT c.document_id
+                    FROM content_objects c
+                    JOIN generation_documents member
+                      ON member.content_sha256 = c.content_sha256
+                     AND member.generation_id = (
+                         SELECT active_generation_id FROM library_metadata
+                         WHERE singleton = 1
+                     )
+                    ORDER BY c.document_id
+                    """
                     )
                 ]
             finally:

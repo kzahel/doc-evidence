@@ -20,9 +20,16 @@ from doc_evidence.util import atomic_write_json, atomic_write_text, isoformat_z
 APP_STATE_SCHEMA_VERSION = 1
 LIBRARY_DESCRIPTOR_SCHEMA_VERSION = 1
 MAX_REGISTERED_LIBRARIES = 100
+LEGACY_LIBRARY_NAMESPACE = uuid.UUID("63faf6f2-c052-4e23-b992-cdeeb7e52af4")
 
 AppHomeSource = Literal["environment", "desktop_host", "platform_default"]
 StoreMode = Literal["managed", "adopted"]
+
+
+def legacy_library_id(config_path: Path) -> str:
+    """Assign stable identity to a legacy descriptor without rewriting it."""
+
+    return str(uuid.uuid5(LEGACY_LIBRARY_NAMESPACE, str(config_path.resolve())))
 
 
 @dataclass(frozen=True)
@@ -308,7 +315,7 @@ class LibraryRegistry:
                 return descriptor
         if len(state.libraries) >= MAX_REGISTERED_LIBRARIES:
             raise ApplicationStateError("application registry is full")
-        library_id = str(uuid.uuid4())
+        library_id = legacy_library_id(config.path)
         library_name = (name or config.path.parent.name or "Document Library").strip()
         if not library_name or len(library_name) > 200:
             raise ApplicationStateError("library name must contain 1-200 characters")

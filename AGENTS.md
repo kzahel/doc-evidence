@@ -227,6 +227,9 @@ next product priority.
 maintainer explicitly authorized end-to-end execution. Application-home
 resolution, an atomic known-library registry, legacy-config adoption, and
 ordinary launch from the last/default library are the first landed boundary.
+The unified per-library database, stable content/run/page/FTS projections,
+atomic inventory generations, incremental/full hashing, legacy catalog import,
+and collection preflight are the second landed boundary.
 Persistent review writes and Tauri packaging remain outside Tactical 001.
 
 ## Validation and Commits

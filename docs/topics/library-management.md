@@ -4,12 +4,11 @@ Topic: library-management
 
 **Last updated:** 2026-08-01
 
-**Status:** Approved desktop-first architecture; its application-home,
-known-library registry, adopted-descriptor, and CLI activation foundation is
-implemented in the first slice of
-[Tactical 001](../tactical/001-durable-extraction-jobs.md). Unified library
-persistence and UI selection remain in progress. Native Tauri folder
-selection, packaging, and store relocation remain later tacticals.
+**Status:** Tactical 001 implementation in progress. Application-home,
+known-library registry, adopted descriptors, CLI activation, unified library
+persistence, inventory generations, and collection preflight are implemented.
+UI selection remains in progress. Native Tauri folder selection, packaging,
+and store relocation remain later tacticals.
 
 ## Purpose
 
@@ -237,9 +236,10 @@ Non-overlapping sibling folders are normal collections and require no special
 deduplication behavior. Byte-identical content across siblings still resolves
 to one content identity with multiple legitimate source occurrences.
 
-The current implementation does not yet reject overlapping configured roots;
-Tactical 001 must add the validation before write-enabled library management
-is accepted.
+Configuration loading rejects overlapping canonical collection roots and
+source/store overlap. The framework-independent preflight classifies sibling,
+same-root, already-covered child, parent-replacement, unavailable, and store-
+overlap outcomes without changing scope.
 
 ## Scope Changes and Artifact Reuse
 
@@ -386,3 +386,13 @@ registration and inspection; and ordinary `serve` startup from the selected
 library. Adoption does not rewrite the external configuration or relocate its
 store. Malformed registry or descriptor identity disagreement blocks opening
 without silently replacing state.
+
+The second slice establishes one WAL-backed, schema-versioned
+`doc-evidence.sqlite` per adopted library. Inventory builds and validates an
+inactive membership generation, then switches the active pointer in one short
+transaction; an interrupted build leaves the prior generation visible.
+Content, extraction-run, normalized-page, and FTS projections remain stable
+across scope changes. Strong local fingerprints can reuse a prior SHA-256,
+while `inventory --full-hash` bypasses every hint. Parent expansion, legacy
+catalog import without mutation or dual writes, database/descriptor identity,
+and search/inventory reuse are covered by focused integration tests.

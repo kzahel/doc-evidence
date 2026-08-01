@@ -13,6 +13,7 @@ from pathlib import Path
 
 from doc_evidence import __version__
 from doc_evidence.app_home import LibraryRegistry, resolve_application_home
+from doc_evidence.application.library_management import preflight_collection_root
 from doc_evidence.benchmark import load_suite, run_benchmark, score_review
 from doc_evidence.catalog import list_duplicate_groups, search_catalog
 from doc_evidence.config import load_config
@@ -99,6 +100,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "collections",
         nargs="*",
         help="Collection IDs; omit to inventory every configured collection.",
+    )
+    inventory.add_argument(
+        "--full-hash",
+        action="store_true",
+        help="Rehash every source instead of using strong local fingerprints.",
     )
     inventory.add_argument("--json", action="store_true")
 
@@ -193,6 +199,14 @@ def _build_parser() -> argparse.ArgumentParser:
     library_activate.add_argument("library_id")
     library_activate.add_argument("--default", action="store_true")
     library_activate.add_argument("--json", action="store_true")
+
+    collection_preflight = subparsers.add_parser(
+        "collection-preflight",
+        help="Classify a proposed collection root without changing library scope.",
+    )
+    collection_preflight.add_argument("--config", required=True, type=Path)
+    collection_preflight.add_argument("--source", required=True, type=Path)
+    collection_preflight.add_argument("--json", action="store_true")
     return parser
 
 
@@ -266,6 +280,31 @@ def _print_library_activate(library_id: str, make_default: bool, as_json: bool) 
     return 0
 
 
+def _print_collection_preflight(
+    config_path: Path,
+    source: Path,
+    as_json: bool,
+) -> int:
+    result = preflight_collection_root(load_config(config_path), source)
+    output = {
+        "kind": result.kind,
+        "candidate": str(result.candidate),
+        "affected_collection_ids": list(result.affected_collection_ids),
+        "message": result.message,
+    }
+    if as_json:
+        print(json.dumps(output, indent=2, ensure_ascii=False, sort_keys=True))
+    else:
+        print(f"Outcome: {result.kind}")
+        print(f"Candidate: {result.candidate}")
+        if result.affected_collection_ids:
+            print(f"Affected: {', '.join(result.affected_collection_ids)}")
+        print(result.message)
+    if result.kind in {"store_overlap", "unavailable"}:
+        return 1
+    return 0
+
+
 def _print_config(config_path: Path, as_json: bool) -> int:
     config = load_config(config_path)
     output = {
@@ -296,11 +335,21 @@ def _print_config(config_path: Path, as_json: bool) -> int:
     return 0
 
 
-def _print_inventory(config_path: Path, collections: list[str], as_json: bool) -> int:
+def _print_inventory(
+    config_path: Path,
+    collections: list[str],
+    full_hash: bool,
+    as_json: bool,
+) -> int:
     config = load_config(config_path)
-    result = run_inventory(config, collections)
+    result = run_inventory(
+        config,
+        collections,
+        full_hash_verification=full_hash,
+    )
     output = {
         "run_id": result.run_id,
+        "generation_id": result.generation_id,
         "collections": result.collection_ids,
         "manifest": str(result.manifest_path),
         "catalog": str(result.catalog_path),
@@ -446,7 +495,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "config-check":
             return _print_config(args.config, args.json)
         if args.command == "inventory":
-            return _print_inventory(args.config, args.collections, args.json)
+            return _print_inventory(
+                args.config,
+                args.collections,
+                args.full_hash,
+                args.json,
+            )
         if args.command == "search":
             return _print_search(
                 args.config,
@@ -476,6 +530,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _print_library_activate(
                 args.library_id,
                 args.default,
+                args.json,
+            )
+        if args.command == "collection-preflight":
+            return _print_collection_preflight(
+                args.config,
+                args.source,
                 args.json,
             )
         if args.command == "serve":

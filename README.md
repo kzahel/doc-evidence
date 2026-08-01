@@ -40,9 +40,9 @@ The delivery sequence is deliberate:
 
 1. **Implemented:** deterministic inventory, content-addressed extraction and
    benchmarking, plus the read-only localhost library/comparison application.
-2. **Approved next:** desktop-style application home and remembered libraries,
-   unified per-library persistence, durable extraction jobs, recovery, and
-   operational UI in Tactical 001.
+2. **In progress:** desktop-style application home, remembered libraries, and
+   unified per-library persistence are implemented; durable extraction jobs,
+   recovery, and operational UI continue in Tactical 001.
 3. **Following product slice:** durable human review events and portable review
    state, kept separate from regenerable extractor output.
 4. **Later distribution slice:** a Tauri/Python-sidecar prototype followed by
@@ -84,9 +84,10 @@ The approved implementation plan for the next boundary is
 [Tactical 001: durable extraction jobs and operational UI](docs/tactical/001-durable-extraction-jobs.md),
 owned by the living [library management](docs/topics/library-management.md)
 and [job architecture](docs/topics/job-architecture.md) topics.
-Implementation is in progress. Its first boundary provides platform app-home
-resolution, an atomic known-library registry, stable adopted-library identity,
-and ordinary startup from the last/default registered library.
+Implementation is in progress. Its landed boundaries provide platform
+app-home resolution, an atomic known-library registry, stable adopted-library
+identity, ordinary startup from the last/default registered library, and one
+schema-versioned SQLite database with atomic inventory generations.
 
 Read these first:
 
@@ -168,12 +169,13 @@ Current commands:
 ```text
 doc-evidence doctor
 doc-evidence config-check --config PATH
-doc-evidence inventory --config PATH [COLLECTION ...]
+doc-evidence inventory --config PATH [COLLECTION ...] [--full-hash]
 doc-evidence search --config PATH QUERY [--mode literal|fts]
 doc-evidence duplicates --config PATH
 doc-evidence library-register --config PATH [--name NAME]
 doc-evidence libraries
 doc-evidence library-activate LIBRARY_ID [--default]
+doc-evidence collection-preflight --config PATH --source PATH
 doc-evidence serve [--config PATH]
 doc-evidence benchmark-check --suite PATH
 doc-evidence benchmark-run --config PATH --suite PATH
@@ -200,18 +202,17 @@ Case configuration stays with the case, not this repository. See
 Relative paths are resolved relative to the configuration file, making a case
 workspace movable without teaching this tool its layout.
 
-The planned desktop library foundation will remember known and default
-libraries in the platform application-data directory. Setting
-`DOC_EVIDENCE_HOME` will override that complete app-owned directory for
-isolated testing and development without relocating external collections.
-That behavior is specified for Tactical 001 and is not implemented yet.
+The desktop library foundation remembers known and default libraries in the
+platform application-data directory. Setting `DOC_EVIDENCE_HOME` overrides
+that complete app-owned directory for isolated testing and development
+without relocating external collections.
 
 ## Phase 1 Output
 
 The configured store contains:
 
 ```text
-catalog.sqlite
+doc-evidence.sqlite
 blobs/<hash-prefix>/<sha256>/
   metadata.json
   runs/poppler/<run-key>/
@@ -227,10 +228,11 @@ manifests/<inventory-run-id>/
   errors.jsonl
 ```
 
-The catalog is a rebuildable snapshot of the collections selected by the most
-recent inventory command. Successful extraction artifacts are reused when the
-source hash, Poppler versions, extraction configuration, and output schema are
-unchanged.
+The active catalog membership is an atomically selected generation inside the
+single library database. Stable content, extractor runs, pages, and FTS rows
+are reused across membership generations when their identities are unchanged.
+An untouched legacy `catalog.sqlite`, when present, remains rollback material
+and is never dual-written.
 
 Phase 2 adds extractor-specific runs below each content blob and private review
 runs below `benchmarks/<suite-id>/runs/<benchmark-run-id>/`. The generated

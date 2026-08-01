@@ -57,17 +57,45 @@ Inventory selected collections:
 uv run doc-evidence inventory --config /path/to/case.yaml records-2023
 ```
 
+Force canonical SHA-256 verification for every observed source instead of
+using unchanged filesystem fingerprint hints:
+
+```sh
+uv run doc-evidence inventory --config /path/to/case.yaml --full-hash
+```
+
 The command:
 
 1. traverses sources without following symlinks;
-2. hashes readable files with SHA-256;
+2. hashes readable files with SHA-256, reusing a prior digest only when path,
+   device, inode, size, modification time, and change time all match;
 3. groups byte-identical path aliases;
 4. classifies common media types;
 5. runs or reuses Poppler extraction for unique PDFs;
 6. hashes non-empty whitespace-normalized text for content-equivalent
    duplicate detection;
 7. writes timestamped manifests and reports; and
-8. atomically replaces the rebuildable SQLite catalog snapshot.
+8. builds an inactive membership generation in `doc-evidence.sqlite` and
+   atomically activates it after validation.
+
+Stable content, extraction-run, page, and FTS rows are independent of an
+inventory generation. Collection paths and visible membership belong to the
+active generation. If construction is interrupted, the previous generation
+remains active. An existing legacy `catalog.sqlite` is imported read-only on
+first open and left byte-for-byte untouched for rollback; it is not kept in
+dual-write synchronization.
+
+Preflight a trusted CLI/native folder selection without changing scope:
+
+```sh
+uv run doc-evidence collection-preflight \
+  --config /path/to/case.yaml --source /path/to/proposed/folder
+```
+
+The result distinguishes a normal sibling, a root already covered by the
+library, a parent expansion that would replace child roots, and invalid
+source/store overlap. The localhost browser API does not accept arbitrary
+filesystem paths.
 
 The current inventory composition always runs the Poppler baseline for PDFs.
 `ocr_when: image_only` and `layout_when: complex` currently express intended
