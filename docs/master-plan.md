@@ -3,7 +3,7 @@
 **Last updated:** 2026-08-01
 **Status:** Phase 2, read-only application, desktop library foundation, and
 durable extraction jobs implemented; Tactical 001 maintainer acceptance
-pending; macOS Tauri distribution proposed in Tactical 002
+pending; Tactical 002 unattended local macOS packaging underway
 
 ## Objective
 
@@ -125,7 +125,10 @@ Poppler/Tesseract/OCRmyPDF baseline pack. It reuses sibling conventions for
 nested signing, notarization, a DMG, signed updater metadata, release
 finalization, and checksums. Heavy extractors, downloads/plugins, alternative
 release channels, Windows, and Linux remain later scope.
-Tactical 002 implementation has not been authorized or started.
+The maintainer authorized Tactical 002's unattended local unsigned/ad-hoc
+implementation and validation on 2026-08-01. Signing credentials, GitHub
+release setup, notarization, updater setup, and publication remain outside the
+current lane and require a later explicit action.
 
 ### Phase 3 — Candidate understanding
 

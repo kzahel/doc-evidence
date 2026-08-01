@@ -5,9 +5,9 @@ Topic: application-platform
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
 is complete; automated, isolated-browser, and authorized private-library gates
 pass, with explicit maintainer interaction acceptance remaining. Tactical 002
-is the proposed macOS arm64 Tauri distribution; its implementation has not
-been authorized or started, and its external GitHub/update targets require
-confirmation before release setup.
+unattended local unsigned/ad-hoc implementation is underway. Signing,
+notarization, updater credentials, GitHub release setup, and publication have
+not been authorized and their external targets still require confirmation.
 
 ## Scope
 
@@ -200,7 +200,7 @@ tactical.
 - Tactical 001 starts with bounded polling for job updates. A later event
   stream remains optional and does not own durable correctness.
 - Tauri packaging, Python runtime staging, and the small baseline extractor
-  pack are planned in Tactical 002 but have not been prototyped.
+  pack are being implemented through Tactical 002's unattended local lane.
 - Developer ID signing, notarization/stapling, DMG/updater artifacts, and
   release finalization are also Tactical 002 scope, following the pinned
   sibling conventions. Optional extractor-pack discovery/downloads and
@@ -278,9 +278,9 @@ record is in
 ## Recommended Next Work
 
 Complete the explicit maintainer interaction acceptance in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md). The maintainer has
-selected an Apache-2.0 macOS arm64 distribution as the next planned
-implementation boundary; review and explicitly authorize
-[Tactical 002](../tactical/002-macos-tauri-desktop-application.md) before code
-work. Durable review events remain a separate later tactical and are not
-authorized by the packaging plan.
+[Tactical 001](../tactical/001-durable-extraction-jobs.md). Continue the
+authorized unattended local unsigned/ad-hoc lane in
+[Tactical 002](../tactical/002-macos-tauri-desktop-application.md), stopping
+before credential provisioning, GitHub release setup, signing, notarization,
+updater setup, or publication. Durable review events remain a separate later
+tactical and are not authorized by the packaging plan.

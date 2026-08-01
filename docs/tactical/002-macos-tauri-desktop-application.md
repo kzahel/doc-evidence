@@ -6,9 +6,12 @@ Topic: library-management
 
 Topic: job-architecture
 
-**Status:** Product and distribution direction approved; implementation not
-yet authorized or started. The exact GitHub release target and updater route
-must be confirmed before external release setup.
+**Status:** Product and distribution direction approved. The maintainer
+authorized unattended local unsigned/ad-hoc implementation and validation on
+2026-08-01. Signing, notarization, credential provisioning, GitHub release
+setup, updater setup, and publication remain deliberately unstarted. The exact
+GitHub release target and updater route must be confirmed before that external
+lane begins.
 
 ## Motivation and User-Visible Outcome
 
@@ -131,9 +134,10 @@ execution evidence.
   are not suitable for the initial application.
 - Marker model weights also carry use, redistribution, and output terms that
   are unacceptable for a silently bundled default.
-- The repository currently has no `LICENSE`, Tauri project, standalone runtime
-  staging, desktop sidecar command, bundle manifest, SBOM, or third-party
-  notices.
+- Apache-2.0 project licensing and checked desktop bundle/extractor-pack
+  manifest schemas landed as the first implementation slice. The repository
+  still has no Tauri project, standalone runtime staging, desktop sidecar
+  command, generated bundle manifest, SBOM, or third-party notices.
 - This checkout currently has no Git remote. Before generating a release tag,
   provisioning GitHub Actions secrets, configuring the update route, or
   publishing an artifact, confirm the exact Doc Evidence GitHub repository and
@@ -875,4 +879,19 @@ signing, installer, or dynamic-library models are identical.
 
 ## Execution Record
 
-Implementation has not started.
+Implementation began on 2026-08-01 under an explicitly bounded unattended
+local lane. The maintainer asked for the implementation and validation to go as
+far as possible without signing credentials or GitHub secret setup.
+
+The first landed slice:
+
+- licenses original project source under Apache-2.0;
+- records SPDX metadata in the Python and frontend packages;
+- adds strict documented and wheel-packaged desktop bundle and extractor-pack
+  manifest schemas; and
+- adds drift tests for project license declarations, schema parity, JSON
+  Schema validity, required license conclusions, and bundle-contained paths.
+
+Validation for that slice passed its focused Ruff checks, three focused unit
+tests, and `uv build`. No credential, remote, signing, notarization, updater,
+release, or publication operation was attempted.

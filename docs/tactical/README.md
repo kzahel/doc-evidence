@@ -52,7 +52,8 @@ action, new external service, or significant expansion beyond the tactical.
   atomic artifact publication, recovery, document execution controls,
   activity center, bounded batch, and concurrency/debug UI.
 - [002 — macOS Tauri desktop distribution](002-macos-tauri-desktop-application.md)
-  — proposed, but not yet authorized or started. It plans an Apache-2.0 macOS
+  — unattended local unsigned/ad-hoc implementation is underway; release
+  credentials and publication remain unstarted. It plans an Apache-2.0 macOS
   arm64 application with a thin Tauri shell,
   standalone Python sidecar, native library authorization, and a small
   Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack. It adapts proven

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://doc-evidence.local/schemas/extractor-pack-manifest.schema.json",
+  "title": "Doc Evidence extractor pack manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "pack_id",
+    "version",
+    "platform",
+    "architecture",
+    "tools",
+    "language_data",
+    "python_components",
+    "native_libraries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "doc-evidence.extractor-pack-manifest.v1"
+    },
+    "pack_id": {
+      "const": "baseline-macos-arm64"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "platform": {
+      "const": "macos"
+    },
+    "architecture": {
+      "const": "arm64"
+    },
+    "tools": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tool" }
+    },
+    "language_data": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/languageData" }
+    },
+    "python_components": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "native_libraries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/nativeLibrary" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool_id",
+        "version",
+        "executable",
+        "sha256",
+        "license_concluded",
+        "component_id"
+      ],
+      "properties": {
+        "tool_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "executable": { "$ref": "#/$defs/relativePath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "license_concluded": { "type": "string", "minLength": 1 },
+        "component_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "languageData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["language", "path", "sha256", "license_concluded"],
+      "properties": {
+        "language": { "enum": ["eng", "deu", "osd"] },
+        "path": { "$ref": "#/$defs/relativePath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "license_concluded": { "const": "Apache-2.0" }
+      }
+    },
+    "nativeLibrary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "component_id", "architectures"],
+      "properties": {
+        "path": { "$ref": "#/$defs/relativePath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "component_id": { "type": "string", "minLength": 1 },
+        "architectures": {
+          "type": "array",
+          "contains": { "const": "arm64" },
+          "items": { "enum": ["arm64", "x86_64"] },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

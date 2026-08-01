@@ -17,7 +17,7 @@ the same product services rather than the final ownership or distribution
 model.
 
 ```text
-Tauri desktop shell (future, thin)
+Tauri desktop shell (implementation in progress, thin)
   native lifecycle, folder authorization, sidecar supervision, distribution
                               |
                               v
@@ -56,10 +56,12 @@ The delivery sequence is deliberate:
    extraction controls, bounded batches, and the global operational activity
    and diagnostics UI are implemented. Fault/restart, isolated-browser, and
    authorized private-integration gates pass for Tactical 001.
-3. **Proposed next slice; not yet authorized:** an Apache-2.0, signed and
-   notarized macOS arm64 distribution with a thin Tauri shell, native folder
-   authorization, standalone Python sidecar, small Ghostscript-free
-   Poppler/Tesseract/OCRmyPDF baseline pack, DMG, and signed updater metadata.
+3. **In progress:** an Apache-2.0 macOS arm64 distribution with a thin Tauri
+   shell, native folder authorization, standalone Python sidecar, and small
+   Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack. The current
+   authorized lane covers unattended local unsigned/ad-hoc implementation and
+   validation. Signing, notarization, updater credentials, GitHub setup, and
+   publication remain deliberately unstarted.
 4. **Later slices:** durable human review state; optional language/extractor
    packs; additional release channels; and platform-specific Windows and Linux
    applications.
@@ -67,7 +69,7 @@ The delivery sequence is deliberate:
 Desktop distribution is therefore an explicit destination. Its first bounded
 implementation plan is
 [Tactical 002: macOS Tauri desktop distribution](docs/tactical/002-macos-tauri-desktop-application.md),
-which is ready for review but has not been authorized or started. See
+whose unattended local packaging lane is now being implemented. See
 [Product vision and application architecture](docs/product-vision-and-architecture.md),
 [Application platform](docs/topics/application-platform.md), and
 [Desktop library management](docs/topics/library-management.md).
@@ -140,7 +142,9 @@ pack. It excludes Ghostscript, Docling, Marker, heavyweight model runtimes,
 and downloads/plugins. It adapts the proven sibling conventions for nested
 Mach-O signing, Developer ID notarization, DMG and updater generation, release
 finalization, and published checksums. Windows/Linux packaging remains later.
-No Tactical 002 implementation has started.
+Tactical 002 implementation has started with the project license and checked
+bundle/pack manifest contracts. No signing credential, GitHub release, updater,
+notarization, or publication action has been performed.
 
 The external acceptance harness used an explicitly authorized registered
 library in the platform-default application home. It exercised a missing OCR
@@ -303,3 +307,12 @@ file or constrained preview, and exports a JSON review overlay.
 An unchanged small multi-extractor benchmark reuses all cached expert artifacts
 and completes in seconds; the initial model-backed pass takes minutes and is
 intended only for a representative suite.
+
+## License
+
+Original Doc Evidence source is licensed under the
+[Apache License 2.0](LICENSE). Bundled extractors, runtimes, language data, and
+other third-party components retain their own licenses; desktop distributions
+include a component manifest, corresponding notices, and applicable source
+material rather than treating the project license as a relicense of those
+components.
