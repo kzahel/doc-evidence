@@ -426,5 +426,10 @@ library and database from a selected source folder, and apply sibling or
 confirmed parent-replacement collection changes only to managed libraries.
 It never returns an absolute path to the product runtime. Collection changes
 are rejected while jobs are queued/running, preserve library identity, and
-atomically replace a validated managed configuration. The Rust dialogs and
-React behavioral operations remain the next composition slice.
+atomically replace a validated managed configuration.
+
+The shared React empty-home and managed-library settings surfaces now consume
+path-free `DocEvidenceRuntime` operations for new, existing, and added-
+collection flows. The desktop runtime invokes narrow Rust commands; localhost
+and fixture runtimes honestly report native authorization unavailable. Native
+dialog implementation remains in the Rust shell slice.

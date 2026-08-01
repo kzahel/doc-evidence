@@ -14,9 +14,7 @@ const container = document.getElementById("root");
 if (!container) throw new Error("Application root is missing");
 const root = createRoot(container);
 
-try {
-  const launchToken = consumeLaunchToken();
-  const runtime = createHttpRuntime(window.location.origin, launchToken);
+function renderApplication(runtime: import("./api/runtime").DocEvidenceRuntime) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: 1, staleTime: 15_000 },
@@ -33,6 +31,24 @@ try {
       </ErrorBoundary>
     </StrictMode>,
   );
-} catch (error) {
-  root.render(<FailureState title="Secure local launch required" error={error} />);
 }
+
+async function bootstrap() {
+  try {
+    if ("__TAURI_INTERNALS__" in window) {
+      const { createDesktopRuntime } = await import("./api/desktopRuntime");
+      const desktop = await createDesktopRuntime();
+      renderApplication(desktop.runtime);
+      await desktop.monitor((message) => {
+        root.render(<FailureState title="Desktop engine stopped" error={message} />);
+      });
+      return;
+    }
+    const launchToken = consumeLaunchToken();
+    renderApplication(createHttpRuntime(window.location.origin, launchToken));
+  } catch (error) {
+    root.render(<FailureState title="Secure local launch required" error={error} />);
+  }
+}
+
+void bootstrap();

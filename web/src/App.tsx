@@ -67,6 +67,44 @@ export function App() {
       ]);
     },
   });
+  const refreshNativeLibrary = async (result: {
+    outcome: "completed" | "cancelled";
+    libraryId: string | null;
+    status: "ready" | "unavailable" | "integrity_error" | null;
+  }) => {
+    if (result.outcome !== "completed") return;
+    if (result.libraryId && result.status === "ready") {
+      selectLibrary(result.libraryId);
+    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["app"] }),
+      queryClient.invalidateQueries({ queryKey: ["libraries"] }),
+    ]);
+  };
+  const createManagedLibrary = useMutation({
+    mutationFn: () => runtime.createManagedLibrary(),
+    onSuccess: refreshNativeLibrary,
+  });
+  const registerExistingLibrary = useMutation({
+    mutationFn: () => runtime.registerExistingLibrary(),
+    onSuccess: refreshNativeLibrary,
+  });
+  const addCollection = useMutation({
+    mutationFn: (libraryId: string) => runtime.addCollection(libraryId),
+    onSuccess: async (result) => {
+      if (result.outcome !== "completed" || !result.libraryId) return;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["libraries"] }),
+        queryClient.invalidateQueries({ queryKey: ["library", result.libraryId] }),
+      ]);
+    },
+  });
+  const nativeOperationError =
+    createManagedLibrary.error ?? registerExistingLibrary.error ?? addCollection.error;
+  const nativeOperationPending =
+    createManagedLibrary.isPending ||
+    registerExistingLibrary.isPending ||
+    addCollection.isPending;
 
   useEffect(() => {
     if (!appSummary.data || !libraries.data || activeLibraryId) return;
@@ -114,12 +152,47 @@ export function App() {
   if (!libraries.data || libraries.data.items.length === 0) {
     return (
       <EmptyState>
-        No libraries are registered. Run doc-evidence library-register --config PATH,
-        then restart; native folder selection arrives with the desktop shell.
+        <strong>No libraries are registered.</strong>
+        {runtime.hostCapabilities.createManagedLibrary ||
+        runtime.hostCapabilities.registerExistingLibrary ? (
+          <span className={styles.nativeActions}>
+            {runtime.hostCapabilities.createManagedLibrary && (
+              <button
+                disabled={nativeOperationPending}
+                type="button"
+                onClick={() => createManagedLibrary.mutate()}
+              >
+                New library…
+              </button>
+            )}
+            {runtime.hostCapabilities.registerExistingLibrary && (
+              <button
+                disabled={nativeOperationPending}
+                type="button"
+                onClick={() => registerExistingLibrary.mutate()}
+              >
+                Open existing…
+              </button>
+            )}
+          </span>
+        ) : (
+          <span>
+            Run doc-evidence library-register --config PATH, then restart. Native
+            folder selection is available in the desktop application.
+          </span>
+        )}
+        {nativeOperationError && <span role="alert">{nativeOperationError.message}</span>}
       </EmptyState>
     );
   }
-  if (!activeLibraryId) return <LoadingState label="Opening library" />;
+  if (!activeLibraryId) {
+    return (
+      <EmptyState>
+        <strong>No registered library is ready to open.</strong>
+        <span>Inspect the library status below or register an inventoried library.</span>
+      </EmptyState>
+    );
+  }
   if (libraryDetail.error) return <FailureState title="Library unavailable" error={libraryDetail.error} />;
   if (workspace.isLoading || documents.isLoading || libraryDetail.isLoading) return <LoadingState />;
   if (workspace.error) return <FailureState title="Workspace unavailable" error={workspace.error} />;
@@ -189,6 +262,7 @@ export function App() {
             {failingChecks.length > 0 && <span className={styles.diagnostic}>{failingChecks.length} diagnostic warning(s)</span>}
           </div>
           {activation.error && <span className={styles.diagnostic}>{activation.error.message}</span>}
+          {nativeOperationError && <span className={styles.diagnostic}>{nativeOperationError.message}</span>}
         </div>
       </header>
       {libraryDetail.data && (
@@ -226,10 +300,21 @@ export function App() {
               </span>
             ))}
             <p>
-              Collection changes require a trusted CLI or future native folder selection.
+              Collection changes require a trusted CLI or native folder selection.
               Preflight distinguishes sibling additions, parent expansion, covered children,
               and source/store overlap without accepting browser-supplied paths.
             </p>
+            {runtime.hostCapabilities.addCollection && activeLibrary?.store_mode === "managed" && (
+              <span className={styles.nativeActions}>
+                <button
+                  disabled={nativeOperationPending}
+                  type="button"
+                  onClick={() => addCollection.mutate(activeLibraryId)}
+                >
+                  Add collection…
+                </button>
+              </span>
+            )}
           </div>
         </details>
       )}

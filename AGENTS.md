@@ -297,6 +297,9 @@ handshake records, exact-origin runtime access, originless host control, and
 parent-EOF shutdown. The trusted Python control adapter now creates managed
 libraries, registers existing configurations without rewriting them, and
 applies bounded managed collection changes without returning paths to React.
+The React runtime now exposes matching path-free native operations, with Tauri
+imports isolated to the lazy desktop adapter and bounded empty-home/settings
+controls in the shared product.
 Continue local implementation and validation without touching signing
 credentials, GitHub release setup, notarization, updater setup, or publication
 unless the maintainer explicitly authorizes that external lane.

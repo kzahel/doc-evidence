@@ -39,7 +39,38 @@ export interface SearchInput {
   limit?: number;
 }
 
+export interface HostCapabilities {
+  readonly createManagedLibrary: boolean;
+  readonly registerExistingLibrary: boolean;
+  readonly addCollection: boolean;
+}
+
+export interface NativeLibraryOperation {
+  readonly outcome: "completed" | "cancelled";
+  readonly libraryId: string | null;
+  readonly status: "ready" | "unavailable" | "integrity_error" | null;
+}
+
+export interface NativeCollectionOperation {
+  readonly outcome: "completed" | "cancelled";
+  readonly libraryId: string | null;
+  readonly changed: boolean;
+  readonly preflightKind: string | null;
+}
+
+export const unavailableHostCapabilities: HostCapabilities = {
+  createManagedLibrary: false,
+  registerExistingLibrary: false,
+  addCollection: false,
+};
+
+export class NativeHostUnavailableError extends Error {}
+
 export interface DocEvidenceRuntime {
+  readonly hostCapabilities: HostCapabilities;
+  createManagedLibrary(): Promise<NativeLibraryOperation>;
+  registerExistingLibrary(): Promise<NativeLibraryOperation>;
+  addCollection(libraryId: string): Promise<NativeCollectionOperation>;
   getApp(signal?: AbortSignal): Promise<AppSummary>;
   listLibraries(signal?: AbortSignal): Promise<KnownLibraryList>;
   getLibrary(libraryId: string, signal?: AbortSignal): Promise<LibraryDetail>;

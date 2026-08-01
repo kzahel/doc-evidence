@@ -31,6 +31,23 @@ describe("contracts and component boundaries", () => {
     }
   });
 
+  it("confines Tauri imports to the desktop runtime adapter", () => {
+    const root = path.resolve(import.meta.dirname, "../src");
+    const visit = (directory: string) => {
+      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const target = path.join(directory, entry.name);
+        if (entry.isDirectory()) visit(target);
+        else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
+          const content = fs.readFileSync(target, "utf8");
+          if (content.includes("@tauri-apps/")) {
+            expect(path.relative(root, target)).toBe("api/desktopRuntime.ts");
+          }
+        }
+      }
+    };
+    visit(root);
+  });
+
   it("parses bounded direct document links", () => {
     const documentId = `sha256:${"a".repeat(64)}`;
     expect(navigationFromSearch(`?library=fixture-library&document=${documentId}&page=7`)).toEqual({

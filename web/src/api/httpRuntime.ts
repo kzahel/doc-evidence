@@ -1,5 +1,10 @@
 import { createGeneratedClient } from "./generated/client";
-import type { DocEvidenceRuntime, SearchInput } from "./runtime";
+import {
+  NativeHostUnavailableError,
+  unavailableHostCapabilities,
+  type DocEvidenceRuntime,
+  type SearchInput,
+} from "./runtime";
 
 function failure(error: unknown, response?: Response): Error {
   if (error && typeof error === "object" && "message" in error) {
@@ -13,6 +18,16 @@ function failure(error: unknown, response?: Response): Error {
 export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvidenceRuntime {
   const client = createGeneratedClient(baseUrl, launchToken);
   return {
+    hostCapabilities: unavailableHostCapabilities,
+    async createManagedLibrary() {
+      throw new NativeHostUnavailableError("Native library creation is unavailable in this host.");
+    },
+    async registerExistingLibrary() {
+      throw new NativeHostUnavailableError("Native library registration is unavailable in this host.");
+    },
+    async addCollection() {
+      throw new NativeHostUnavailableError("Native collection selection is unavailable in this host.");
+    },
     async getApp(signal) {
       const { data, error, response } = await client.GET("/api/v1/app", { signal });
       if (!data) throw failure(error, response);

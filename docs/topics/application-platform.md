@@ -255,8 +255,12 @@ ephemeral-port ready record, an authenticated versioned runtime handshake, an
 originless host-control handshake, and parent-EOF shutdown. Its trusted Python
 control adapter now implements managed-library creation, idempotent existing-
 config registration, and bounded managed collection changes without returning
-absolute paths to React. The ordinary localhost composition remains unchanged;
-the Tauri dialogs and supervisor have not landed yet.
+absolute paths to React. The shared runtime now exposes matching behavioral
+native operations, and the isolated desktop adapter validates the authenticated
+handshake before composing the unchanged HTTP runtime. Empty-home and managed-
+library settings surfaces consume those operations without a path or Tauri
+import. The ordinary localhost composition remains unchanged; the Rust dialogs
+and supervisor have not landed yet.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

@@ -100,6 +100,22 @@
   padding: 0.2rem 0.4rem;
 }
 
+.nativeActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.nativeActions button {
+  background: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent), black 12%);
+  color: white;
+  font: inherit;
+  padding: 0.45rem 0.7rem;
+}
+
 .librarySettings {
   background: #eef3f4;
   border-bottom: 1px solid var(--line);

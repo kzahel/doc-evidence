@@ -941,3 +941,25 @@ database creation, idempotent registration, parent-replacement confirmation,
 stable library identity, credential separation, and browser-origin rejection.
 Ruff, Pyright, contract drift, frontend typecheck, and all 26 frontend tests
 also pass.
+
+The fourth landed slice composes those operations into the shared frontend
+without teaching product components about Tauri:
+
+- `DocEvidenceRuntime` now declares host capabilities and behavioral managed-
+  library, existing-library, and collection-selection operations with no path
+  parameter;
+- the localhost and fixture adapters report native selection unavailable,
+  while one isolated desktop adapter owns every `@tauri-apps/api` import;
+- desktop bootstrap accepts only an authenticated ephemeral loopback runtime,
+  validates exact protocol/application/API/platform/architecture/pack
+  handshake agreement, and retains the bearer only in the HTTP adapter;
+- empty-home and managed-library settings surfaces offer bounded native
+  actions, handle picker cancellation, refresh explicit library state, and
+  preserve the CLI guidance under a non-native host; and
+- a sidecar-failure event replaces the product with one visible bounded
+  failure rather than silently continuing against a dead process.
+
+Frontend typecheck, all 31 component/runtime/boundary tests, and the production
+Vite build pass. The production output contains one small lazy desktop-runtime
+chunk; the main product bundle remains shared. A source-boundary test rejects
+Tauri imports outside that adapter.

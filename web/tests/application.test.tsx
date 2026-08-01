@@ -86,6 +86,38 @@ describe("application states", () => {
     expect(screen.getByText(/doc-evidence library-register --config PATH/)).toBeInTheDocument();
   });
 
+  it("offers behavioral native library actions without exposing paths", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents,
+        app: {
+          schema_version: 1,
+          active_library_id: null,
+          default_library_id: null,
+          last_library_id: null,
+        },
+        libraries: { schema_version: 1, items: [] },
+        hostCapabilities: {
+          createManagedLibrary: true,
+          registerExistingLibrary: true,
+          addCollection: true,
+        },
+        nativeLibraryOperation: {
+          outcome: "cancelled",
+          libraryId: null,
+          status: null,
+        },
+      }),
+    );
+    const create = await screen.findByRole("button", { name: "New library…" });
+    expect(screen.getByRole("button", { name: "Open existing…" })).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("source_path");
+    await user.click(create);
+    await waitFor(() => expect(create).not.toBeDisabled());
+  });
+
   it("switches explicit library identity and exposes collection settings", async () => {
     const user = userEvent.setup();
     const secondLibrary = {

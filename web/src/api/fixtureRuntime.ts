@@ -26,6 +26,9 @@ import type {
   QueueState,
   AttemptDiagnostics,
   JobBatchCancellationResponse,
+  HostCapabilities,
+  NativeCollectionOperation,
+  NativeLibraryOperation,
 } from "./runtime";
 
 export interface FixtureRuntimeData {
@@ -51,6 +54,9 @@ export interface FixtureRuntimeData {
   batchPreflight?: ExtractionBatchPreflight;
   attemptDiagnostics?: Record<string, AttemptDiagnostics>;
   batchCancellation?: JobBatchCancellationResponse;
+  hostCapabilities?: HostCapabilities;
+  nativeLibraryOperation?: NativeLibraryOperation;
+  nativeCollectionOperation?: NativeCollectionOperation;
 }
 
 export function comparisonKey(input: ComparisonRequest): string {
@@ -59,6 +65,30 @@ export function comparisonKey(input: ComparisonRequest): string {
 
 export class FixtureRuntime implements DocEvidenceRuntime {
   constructor(private readonly data: FixtureRuntimeData) {}
+
+  get hostCapabilities(): HostCapabilities {
+    return this.data.hostCapabilities ?? {
+      createManagedLibrary: false,
+      registerExistingLibrary: false,
+      addCollection: false,
+    };
+  }
+
+  async createManagedLibrary(): Promise<NativeLibraryOperation> {
+    this.check();
+    if (!this.data.nativeLibraryOperation) throw new Error("Fixture native library operation not configured");
+    return this.data.nativeLibraryOperation;
+  }
+
+  async registerExistingLibrary(): Promise<NativeLibraryOperation> {
+    return this.createManagedLibrary();
+  }
+
+  async addCollection(): Promise<NativeCollectionOperation> {
+    this.check();
+    if (!this.data.nativeCollectionOperation) throw new Error("Fixture native collection operation not configured");
+    return this.data.nativeCollectionOperation;
+  }
 
   private check(): void {
     if (this.data.error) throw this.data.error;
