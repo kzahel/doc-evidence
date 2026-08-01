@@ -299,7 +299,8 @@ recipes are reusable from an ignored cache. The preflight remains fail-closed
 for publication: pypdfium2 needs a reviewed composite SPDX conclusion; 77
 Python-wheel Mach-O objects need flattened component/source reconciliation;
 19 Rust crates need repository-level license texts that their published crate
-archives omit; and required copyleft/MPL source archives need embedding. The
+archives omit. Required top-level copyleft/MPL source archives are now
+hash-verified and embedded. The
 aggregate SPDX already includes all 253 target-resolved Rust dependencies and
 11 conservative production Node dependencies, with 426 available license
 files and exact registry source checksums.

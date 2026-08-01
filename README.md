@@ -215,7 +215,8 @@ npm ci --prefix desktop
 ./scripts/build-macos-desktop review
 ./scripts/build-macos-desktop dmg
 ./scripts/build-macos-desktop review-dmg
-./scripts/build-macos-desktop compliance-preflight --resolve-formulas
+./scripts/build-macos-desktop compliance-preflight \
+  --resolve-formulas --download-sources
 ```
 
 The resulting application is
@@ -236,10 +237,12 @@ for the eventual signed and notarized release image.
 licenses/notices, exact Homebrew source and bottle SBOMs, exact historical
 formula recipes, embedded Python-wheel SBOMs, manifests, and build recipes.
 Formula resolution is explicit because it reads bounded public Homebrew/GitHub
-metadata and then reuses a verified ignored cache. The report currently keeps
-`release_ready: false`: do not publish until every listed native-wheel,
-supplemental crate-license, source-archive, and reviewed-license blocker is
-closed.
+metadata and then reuses a verified ignored cache. Source download is likewise
+explicit: it hash-verifies and embeds the conveyed top-level GPL/LGPL/MPL
+source archives while permissive components retain exact source records. The
+report currently keeps `release_ready: false`: do not publish until every
+listed native-wheel, supplemental crate-license, and reviewed-license blocker
+is closed.
 
 Register an external case configuration once, then launch the selected
 last/default library:

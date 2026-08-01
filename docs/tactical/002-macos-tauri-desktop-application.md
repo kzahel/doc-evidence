@@ -1091,16 +1091,14 @@ revisions by requiring the installed package version, upstream source hash,
 bottle hash, architecture/OS bottle tag, and matching formula bytes in the
 same Homebrew Core commit. Formula metadata and recipes are retained in the
 preflight, while a hash-validated ignored cache prevents repeat API use.
-It now reports four substantive release blockers:
+It now reports three substantive release blockers:
 
 - pypdfium2's aggregate license metadata still needs a reviewed SPDX
   conclusion rather than `NOASSERTION`;
 - 77 Mach-O objects owned by Python wheels need their embedded third-party
   components, versions, licenses, and source offers flattened and reconciled;
 - 19 Rust crates need repository-level license texts that their published
-  crate archives omit; and
-- required GPL/LGPL/MPL source archives and source-form offers are not yet
-  embedded in the compliance output.
+  crate archives omit.
 
 The broad compiled/frontend dependency gap is otherwise closed. Target-filtered
 Cargo metadata and `Cargo.lock` contribute 253 exact crates; the conservative
@@ -1111,13 +1109,24 @@ inventory are retained. The remaining 19-crate blocker is explicit because
 those crates declare a license but omit its text from their published archive;
 the preflight does not silently substitute an unreviewed generic template.
 
+An explicit corresponding-source pass closes the top-level source-archive
+gap. It selects the conveyed Homebrew, Python, and Rust components whose
+license conclusions contain GPL/LGPL/MPL obligations, downloads through an
+ignored cache, requires the previously recorded SHA-256, and embeds 19 exact
+archives plus preserved PyPI metadata. They total 153,833,269 bytes. Apache
+and other permissive components retain exact source URLs/hashes but do not
+inflate this asset; in particular, the 638 MB all-languages tessdata source
+archive is correctly excluded. Native libraries nested inside Python wheels
+remain part of the separate flattening blocker and are not implied complete by
+this top-level pass.
+
 This is a deliberately blocked preflight, not legal clearance. It confirms
 that signing credentials are not the next immediate dependency: the component
 and source record must become release-complete before a signed public artifact
 would be acceptable.
 
-The generated preflight archive measures 920,670 bytes with SHA-256
-`204cc65e3e57b887ce0db8104cb7bf25ea96d8ce72cd7df7804215885477887d`.
+The generated preflight archive measures 152,611,969 bytes with SHA-256
+`8c4f910d3f1fe8a30b54011bec6764b5972d92c0295154f07b0980226baf5d2d`.
 It describes application tree
 `64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`
 and bundle manifest

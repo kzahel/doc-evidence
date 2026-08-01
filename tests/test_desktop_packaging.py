@@ -14,6 +14,7 @@ from doc_evidence.desktop_packaging import (
     _files_containing,
     _installed_homebrew_bottle,
     _load_inputs,
+    _requires_corresponding_source,
     _rust_license_expression,
     _spdx_license,
     compliance_root,
@@ -222,6 +223,9 @@ class DesktopPackagingTest(unittest.TestCase):
             "MIT OR Apache-2.0",
         )
         self.assertEqual(_rust_license_expression("MPL-2.0"), "MPL-2.0")
+        self.assertTrue(_requires_corresponding_source("LGPL-2.1-or-later"))
+        self.assertTrue(_requires_corresponding_source("MPL-2.0"))
+        self.assertFalse(_requires_corresponding_source("Apache-2.0 OR MIT"))
 
 
 if __name__ == "__main__":

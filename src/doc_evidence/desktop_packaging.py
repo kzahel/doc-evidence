@@ -2587,6 +2587,179 @@ def _write_dependency_notices(
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _requires_corresponding_source(license_value: str) -> bool:
+    normalized = license_value.upper()
+    return "GPL" in normalized or "MPL" in normalized
+
+
+def _pypi_source_record(
+    *,
+    component_id: str,
+    name: str,
+    version: str,
+    license_value: str,
+    metadata_destination: Path,
+) -> dict[str, Any]:
+    url = f"https://pypi.org/pypi/{urllib.parse.quote(name)}/{version}/json"
+    metadata = json.loads(_download_bounded(url))
+    urls = metadata.get("urls")
+    if not isinstance(urls, list):
+        raise TypeError(f"PyPI source metadata is invalid: {name} {version}")
+    sources = [
+        item
+        for item in urls
+        if isinstance(item, Mapping) and item.get("packagetype") == "sdist"
+    ]
+    if len(sources) != 1:
+        raise RuntimeError(f"PyPI source archive is ambiguous: {name} {version}")
+    source = sources[0]
+    filename = source.get("filename")
+    source_url = source.get("url")
+    digests = source.get("digests")
+    sha256 = digests.get("sha256") if isinstance(digests, Mapping) else None
+    if (
+        not isinstance(filename, str)
+        or Path(filename).name != filename
+        or not isinstance(source_url, str)
+        or not source_url.startswith("https://files.pythonhosted.org/")
+        or not isinstance(sha256, str)
+        or not _is_lower_hex(sha256, 64)
+    ):
+        raise RuntimeError(f"PyPI source archive is invalid: {name} {version}")
+    metadata_destination.parent.mkdir(parents=True, exist_ok=True)
+    _write_json(metadata_destination, metadata)
+    return {
+        "component_id": component_id,
+        "name": name,
+        "version": version,
+        "license_concluded": license_value,
+        "url": source_url,
+        "sha256": sha256,
+        "cache_name": f"python-{filename}",
+        "metadata_path": f"source-metadata/pypi/{metadata_destination.name}",
+        "metadata_sha256": sha256_file(metadata_destination),
+    }
+
+
+def _source_archive_records(
+    *,
+    components: Sequence[Mapping[str, Any]],
+    homebrew: Sequence[Mapping[str, Any]],
+    rust: Sequence[Mapping[str, Any]],
+    inputs: Mapping[str, Any],
+    metadata_destination: Path,
+) -> list[dict[str, Any]]:
+    records: dict[str, dict[str, Any]] = {}
+    for item in homebrew:
+        license_value = str(item.get("license_concluded") or "")
+        if not _requires_corresponding_source(license_value):
+            continue
+        name = str(item["name"])
+        version = str(item["version"])
+        source_url = str(item["source_url"])
+        suffix = Path(urllib.parse.urlparse(source_url).path).name
+        record = {
+            "component_id": str(item["component_id"]),
+            "name": name,
+            "version": version,
+            "license_concluded": license_value,
+            "url": source_url,
+            "sha256": str(item["source_sha256"]),
+            "cache_name": f"homebrew-{name}-{version}-{suffix}",
+        }
+        records[record["component_id"]] = record
+    for item in rust:
+        license_value = str(item["license_declared"])
+        if not _requires_corresponding_source(license_value):
+            continue
+        name = str(item["name"])
+        version = str(item["version"])
+        component_id = f"rust-{name}-{version}"
+        records[component_id] = {
+            "component_id": component_id,
+            "name": name,
+            "version": version,
+            "license_concluded": license_value,
+            "url": str(item["source_url"]),
+            "sha256": str(item["source_sha256"]),
+            "cache_name": f"rust-{name}-{version}.crate",
+        }
+    for component in components:
+        component_id = str(component["component_id"])
+        license_value = str(component["license_concluded"])
+        if not component_id.startswith("python-") or not _requires_corresponding_source(
+            license_value
+        ):
+            continue
+        records[component_id] = _pypi_source_record(
+            component_id=component_id,
+            name=str(component["name"]),
+            version=str(component["version"]),
+            license_value=license_value,
+            metadata_destination=metadata_destination / f"{component_id}.json",
+        )
+    baseline = inputs.get("baseline_pack")
+    declared_sources = (
+        baseline.get("source_archives") if isinstance(baseline, Mapping) else None
+    )
+    if not isinstance(declared_sources, list):
+        raise TypeError("baseline source archive inventory is invalid")
+    components_by_id = {
+        str(component["component_id"]): component for component in components
+    }
+    for raw in declared_sources:
+        if not isinstance(raw, Mapping):
+            raise TypeError("declared baseline source archive is invalid")
+        component_id = str(raw["component_id"])
+        component = components_by_id.get(component_id)
+        if component is None or not _requires_corresponding_source(
+            str(component["license_concluded"])
+        ):
+            continue
+        record = {
+            **dict(raw),
+            "name": str(component["name"]),
+            "license_concluded": str(component["license_concluded"]),
+        }
+        cache_name = record.get("cache_name")
+        if not isinstance(cache_name, str) or Path(cache_name).name != cache_name:
+            url_name = Path(urllib.parse.urlparse(str(record["url"])).path).name
+            record["cache_name"] = f"{component_id}-{url_name}"
+        records[component_id] = record
+    return [records[key] for key in sorted(records)]
+
+
+def _embed_source_archives(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    cache: Path,
+    destination: Path,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    embedded = []
+    blockers = []
+    for record in records:
+        try:
+            archive = acquire_declared_archive(record, cache)
+        except (OSError, RuntimeError, urllib.error.URLError) as error:
+            blockers.append(
+                {
+                    "code": "source-archive-unavailable",
+                    "detail": f"{record['component_id']}: {error}",
+                }
+            )
+            continue
+        copied = destination / str(record["cache_name"])
+        _copy_compliance_file(archive, copied)
+        embedded.append(
+            {
+                **dict(record),
+                "path": copied.relative_to(destination.parent).as_posix(),
+                "bytes": copied.stat().st_size,
+            }
+        )
+    return embedded, blockers
+
+
 def generate_compliance_preflight(
     app: Path,
     destination: Path,
@@ -2594,6 +2767,7 @@ def generate_compliance_preflight(
     repository: Path | None = None,
     replace: bool = False,
     resolve_formulas: bool = False,
+    download_sources: bool = False,
 ) -> dict[str, Any]:
     _require_host()
     bundle = app.resolve()
@@ -2770,6 +2944,23 @@ def generate_compliance_preflight(
                     }
                 )
 
+            source_archives: list[dict[str, Any]] = []
+            if download_sources:
+                source_records = _source_archive_records(
+                    components=components,
+                    homebrew=homebrew_records,
+                    rust=rust_records,
+                    inputs=_load_inputs(repo),
+                    metadata_destination=staged / "source-metadata" / "pypi",
+                )
+                source_archives, source_blockers = _embed_source_archives(
+                    source_records,
+                    cache=repo / "results" / "desktop" / "cache" / "sources",
+                    destination=staged / "corresponding-source",
+                )
+                blockers.extend(source_blockers)
+                _write_json(staged / "corresponding-source.json", source_archives)
+
             recipe_paths = (
                 "scripts/build-macos-desktop",
                 "desktop/packaging/macos-arm64.json",
@@ -2822,15 +3013,18 @@ def generate_compliance_preflight(
                             "complete nested component/source reconciliation"
                         ),
                     },
+                ]
+            )
+            if not download_sources:
+                blockers.append(
                     {
                         "code": "source-archives-not-embedded",
                         "detail": (
                             "Exact source records exist, but required copyleft/MPL "
                             "source archives are not yet embedded in this output"
                         ),
-                    },
-                ]
-            )
+                    }
+                )
             if not resolve_formulas:
                 blockers.append(
                     {
@@ -2855,6 +3049,10 @@ def generate_compliance_preflight(
                 "rust_dependency_count": len(rust_records),
                 "node_dependency_count": len(node_records),
                 "rust_missing_license_text_count": len(missing_rust_licenses),
+                "source_archive_count": len(source_archives),
+                "source_archive_bytes": sum(
+                    int(item["bytes"]) for item in source_archives
+                ),
                 "blockers": blockers,
             }
             _write_json(staged / "compliance-preflight.json", report)
@@ -2898,6 +3096,7 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     compliance.add_argument("--output", type=Path)
     compliance.add_argument("--replace", action="store_true")
     compliance.add_argument("--resolve-formulas", action="store_true")
+    compliance.add_argument("--download-sources", action="store_true")
     args = parser.parse_args(arguments)
     repository = repository_root()
     if args.operation == "stage":
@@ -2936,6 +3135,7 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
             repository=repository,
             replace=bool(args.replace),
             resolve_formulas=bool(args.resolve_formulas),
+            download_sources=bool(args.download_sources),
         )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
