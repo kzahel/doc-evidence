@@ -1,7 +1,7 @@
 # Master Plan
 
 **Last updated:** 2026-08-01
-**Status:** Phase 0 scaffold
+**Status:** Phase 1 implemented; first private-corpus validation pending
 
 ## Objective
 
@@ -28,14 +28,14 @@ core.
 
 ## Phases
 
-### Phase 0 — Contracts and scaffold
+### Phase 0 — Contracts and scaffold — complete
 
 - Establish repository and data boundaries.
 - Define configuration, manifest, and observation schemas.
 - Provide a minimal CLI, tests, and diagnostics.
 - Specify benchmark categories and metrics.
 
-### Phase 1 — Deterministic inventory
+### Phase 1 — Deterministic inventory — implemented
 
 - Load and validate case configuration.
 - Traverse explicitly configured collections.
@@ -44,6 +44,13 @@ core.
 - Detect byte-identical and normalized-text-equivalent documents.
 - Write content-addressed sidecars and a rebuildable SQLite catalog.
 - Add exact and SQLite full-text search.
+
+The implementation is covered by generated-PDF integration tests for source
+immutability, exact duplicates, normalized-text duplicates, image-only
+classification, artifact-cache reuse, schema-valid manifests, literal search,
+and SQLite FTS5 search. It still requires reconciliation against the initial
+private 2023 corpus baseline before the phase is considered operationally
+validated.
 
 ### Phase 2 — OCR and parser comparison
 

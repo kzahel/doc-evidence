@@ -10,9 +10,10 @@ facts do not belong in this Git repository.
 
 ## Status
 
-Phase 0 scaffold. The repository currently defines the architecture, schemas,
-benchmark method, safety boundary, and a minimal diagnostic command. It does
-not yet index documents.
+Phase 1 deterministic inventory is implemented. The tool validates YAML case
+configuration, inventories and hashes configured collections, extracts PDF
+metadata and embedded text through Poppler, caches content-addressed artifacts,
+detects duplicates, builds a SQLite/FTS catalog, and searches page text.
 
 Read these first:
 
@@ -20,6 +21,7 @@ Read these first:
 2. [Architecture](docs/architecture.md)
 3. [Data contracts](docs/data-contracts.md)
 4. [Benchmark plan](docs/benchmarking.md)
+5. [Phase 1 operations](docs/operations.md)
 
 ## Core Principles
 
@@ -50,20 +52,20 @@ The diagnostic command reports which external tools are currently available:
 uv run doc-evidence doctor --json
 ```
 
-## Intended Commands
+## Commands
 
 The exact CLI is still a contract under development. The intended shape is:
 
 ```text
 doc-evidence doctor
-doc-evidence inventory --config PATH [COLLECTION]
-doc-evidence extract --config PATH [COLLECTION]
-doc-evidence benchmark --config PATH --suite NAME
-doc-evidence search --config PATH QUERY
-doc-evidence observations --config PATH [COLLECTION]
+doc-evidence config-check --config PATH
+doc-evidence inventory --config PATH [COLLECTION ...]
+doc-evidence search --config PATH QUERY [--mode literal|fts]
+doc-evidence duplicates --config PATH
 ```
 
-Only `doctor` and version reporting exist in the initial scaffold.
+`inventory` includes the Phase 1 Poppler extraction step. OCR, advanced layout
+parsers, benchmarking commands, and semantic observations remain later phases.
 
 ## Configuration
 
@@ -73,3 +75,29 @@ Case configuration stays with the case, not this repository. See
 
 Relative paths are resolved relative to the configuration file, making a case
 workspace movable without teaching this tool its layout.
+
+## Phase 1 Output
+
+The configured store contains:
+
+```text
+catalog.sqlite
+blobs/<hash-prefix>/<sha256>/
+  metadata.json
+  runs/poppler/<run-key>/
+    run.json
+    text.txt
+    pages.json
+    raw Poppler stdout/stderr
+manifests/<inventory-run-id>/
+  manifest.jsonl
+  run.json
+  summary.json
+  duplicates.json
+  errors.jsonl
+```
+
+The catalog is a rebuildable snapshot of the collections selected by the most
+recent inventory command. Successful extraction artifacts are reused when the
+source hash, Poppler versions, extraction configuration, and output schema are
+unchanged.

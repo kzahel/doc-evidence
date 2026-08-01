@@ -19,6 +19,10 @@ Downstream domain facts are outside the generic core.
 defines the initial content-oriented manifest. It keeps one document identity
 separate from its path aliases and extraction status.
 
+Each manifest source path is relative to its configured collection root. The
+manifest records observed size and modification time but does not treat those
+values as content identity. The SHA-256 digest remains canonical.
+
 ## Observations
 
 [`schemas/observation.schema.json`](../schemas/observation.schema.json) defines
@@ -61,3 +65,6 @@ downstream domain calculation, not an extraction mutation.
 Schemas have explicit integer versions. Backward-incompatible changes require
 a new version and migration or parallel reader. An extractor upgrade does not
 rewrite prior run output; it creates a new run identity.
+
+The runtime configuration schema is packaged with the Python distribution and
+tested for byte equality with the documented schema under `schemas/`.

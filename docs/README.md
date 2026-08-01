@@ -7,6 +7,7 @@ Start with:
 3. [Data contracts](data-contracts.md)
 4. [Benchmarking](benchmarking.md)
 5. [Development](development.md)
+6. [Phase 1 operations](operations.md)
 
 The documents are deliberately explicit about source immutability,
 provenance, cache versioning, and review boundaries. Those constraints are

@@ -50,8 +50,9 @@ comparisons.
 
 ## Storage
 
-The artifact store contains inspectable immutable run outputs. A SQLite
-catalog projects those artifacts into convenient metadata, relationships, and
+The artifact store contains inspectable immutable successful run outputs under
+`blobs/<hash-prefix>/<sha256>/runs/<extractor>/<run-key>/`. A SQLite catalog
+projects those artifacts into convenient metadata, relationships, and
 full-text tables. The database may be deleted and rebuilt from the source
 collections and artifact sidecars.
 
@@ -97,6 +98,11 @@ It does not accept its own candidates. Promotion is a separate review action.
 
 Start with exact text and SQLite FTS. Search results must identify the matching
 document, page, extractor run, and text offsets when available.
+
+The Phase 1 catalog is an atomic snapshot of the collections selected by the
+latest inventory invocation. Running an inventory for a subset intentionally
+replaces the searchable catalog snapshot, while prior content-addressed
+artifacts and timestamped manifests remain available.
 
 ### Downstream adapters
 

@@ -11,7 +11,12 @@
     "size_bytes",
     "media_type",
     "sources",
-    "inventory_status"
+    "inventory_status",
+    "extraction_status",
+    "artifact_path",
+    "warnings",
+    "character_count",
+    "non_whitespace_character_count"
   ],
   "properties": {
     "schema_version": { "const": 1 },
@@ -37,10 +42,24 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["collection_id", "path"],
+        "required": [
+          "collection_id",
+          "path",
+          "size_bytes",
+          "modified_ns",
+          "observed_at"
+        ],
         "properties": {
           "collection_id": { "type": "string" },
           "path": { "type": "string" },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "modified_ns": {
+            "type": "integer",
+            "minimum": 0
+          },
           "observed_at": {
             "type": "string",
             "format": "date-time"
@@ -58,6 +77,23 @@
     "inventory_status": {
       "enum": ["ok", "unreadable", "unsupported", "error"]
     },
+    "extraction_status": {
+      "enum": [
+        "embedded_text",
+        "image_only",
+        "not_supported_phase_1",
+        "error"
+      ]
+    },
+    "extraction_run_id": {
+      "type": ["string", "null"]
+    },
+    "artifact_path": {
+      "type": "string"
+    },
+    "extraction_artifact_path": {
+      "type": ["string", "null"]
+    },
     "warnings": {
       "type": "array",
       "items": { "type": "string" }
@@ -65,6 +101,14 @@
     "normalized_text_hash": {
       "type": ["string", "null"],
       "pattern": "^[0-9a-f]{64}$"
+    },
+    "character_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "non_whitespace_character_count": {
+      "type": "integer",
+      "minimum": 0
     }
   }
 }

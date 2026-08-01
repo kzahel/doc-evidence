@@ -9,6 +9,8 @@ default Python may be newer; `uv` should manage the project interpreter.
 uv sync
 uv run doc-evidence doctor
 uv run python -m unittest discover -s tests
+uvx ruff check src tests
+uvx ruff format --check src tests
 ```
 
 ## Dependency Policy
@@ -45,3 +47,6 @@ PYTHONPATH=src python -m unittest discover -s tests
 
 Integration tests requiring external tools should detect missing dependencies
 and report a skip rather than silently changing behavior.
+
+The test suite generates small synthetic PDFs at runtime; no private or binary
+document fixture is committed.
