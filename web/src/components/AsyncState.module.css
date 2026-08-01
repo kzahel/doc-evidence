@@ -1,0 +1,45 @@
+.state {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  gap: 0.65rem;
+  justify-content: center;
+  min-height: 8rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.state span {
+  max-width: 46rem;
+}
+
+.failure {
+  align-items: flex-start;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  border-radius: 0.75rem;
+  color: var(--danger);
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+}
+
+.empty {
+  border: 1px dashed var(--border-strong);
+  border-radius: 0.75rem;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+  border: 2px solid var(--border);
+  border-right-color: var(--accent);
+  border-radius: 999px;
+  height: 1rem;
+  width: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

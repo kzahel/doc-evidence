@@ -1,0 +1,259 @@
+.section {
+  min-width: 0;
+}
+
+.intro {
+  align-items: end;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+
+.intro h2,
+.intro p {
+  margin: 0;
+}
+
+.intro > p {
+  color: var(--muted);
+  font-size: 0.72rem;
+  max-width: 26rem;
+  text-align: right;
+}
+
+.eyebrow,
+.index {
+  color: var(--accent-strong);
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.15rem;
+  text-transform: uppercase;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chosen {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.card > header {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.75rem 0.8rem;
+}
+
+.card h3 {
+  font-size: 0.86rem;
+  margin: 0;
+}
+
+.roleButtons {
+  display: flex;
+}
+
+.roleButtons button {
+  background: var(--surface);
+  border-color: var(--border);
+  border-radius: 0;
+  color: var(--muted);
+  font-size: 0.64rem;
+  padding: 0.35rem 0.45rem;
+}
+
+.roleButtons button:first-child {
+  border-radius: 0.35rem 0 0 0.35rem;
+}
+
+.roleButtons button:last-child {
+  border-radius: 0 0.35rem 0.35rem 0;
+}
+
+.roleButtons .active {
+  background: var(--accent);
+  color: white;
+}
+
+.runs {
+  border-top: 1px solid var(--border);
+  padding: 0.25rem 0.8rem;
+}
+
+.runs > details + details {
+  border-top: 1px solid var(--border);
+}
+
+.runs summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.66rem;
+  gap: 0.45rem;
+  padding: 0.45rem 0;
+}
+
+.runs summary > span:not(.category) {
+  color: var(--muted);
+}
+
+.category {
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 0.18rem 0.4rem;
+}
+
+.native_text {
+  background: #dce9f4;
+  color: #294e6a;
+}
+
+.ocr_preprocessing {
+  background: #e8e0f5;
+  color: #5a3a78;
+}
+
+.layout_parser {
+  background: #dceee5;
+  color: #275f42;
+}
+
+.other {
+  background: #eee9dc;
+  color: #62532d;
+}
+
+.warning {
+  color: var(--danger) !important;
+}
+
+.runDetails {
+  color: var(--muted);
+  font-size: 0.68rem;
+  padding: 0 0 0.65rem 1rem;
+}
+
+.runDetails code {
+  overflow-wrap: anywhere;
+}
+
+.runDetails pre {
+  background: var(--surface);
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.5rem;
+  white-space: pre-wrap;
+}
+
+.artifacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.artifacts > strong {
+  flex-basis: 100%;
+}
+
+.artifact {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--accent-strong);
+  font-size: 0.62rem;
+  padding: 0.3rem 0.45rem;
+}
+
+.artifactError {
+  color: var(--danger);
+  margin-left: 0.3rem;
+}
+
+.output {
+  background: var(--code);
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  line-height: 1.5;
+  margin: 0;
+  max-height: 18rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 0.8rem;
+  white-space: pre-wrap;
+}
+
+.assertions {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+}
+
+.assertions h3,
+.assertions p {
+  margin: 0 0 0.35rem;
+}
+
+.assertions p,
+.assertions li {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.assertions ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.assertions li {
+  padding: 0.2rem 0;
+}
+
+.pass,
+.fail {
+  border-radius: 999px;
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0.12rem 0.35rem;
+}
+
+.pass {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.fail {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+@media (max-width: 700px) {
+  .intro {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .intro > p {
+    text-align: left;
+  }
+}

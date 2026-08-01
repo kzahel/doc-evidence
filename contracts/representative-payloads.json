@@ -1,0 +1,55 @@
+{
+  "workspace": {
+    "schema_version": 1,
+    "product_version": "0.4.0",
+    "config_hash": "fixture-config",
+    "catalog_inventory_run_id": "fixture-inventory",
+    "catalog_created_at": "2026-08-01T00:00:00Z",
+    "collections": [
+      {
+        "collection_id": "fixture",
+        "source_label": "documents"
+      }
+    ],
+    "document_count": 1,
+    "source_occurrence_count": 1
+  },
+  "comparison": {
+    "document_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "page": 1,
+    "left_run_ref": "run:left",
+    "right_run_ref": "run:right",
+    "normalization_version": "normalized_extraction_v1",
+    "comparison_algorithm_version": "word_numeric_diff_v1",
+    "options": {
+      "sequence_matcher_autojunk": false
+    },
+    "equivalent": false,
+    "segments": [
+      {
+        "index": 0,
+        "operation": "replace",
+        "left": [
+          {
+            "text": "123",
+            "kind": "numeric"
+          }
+        ],
+        "right": [
+          {
+            "text": "128",
+            "kind": "numeric"
+          }
+        ],
+        "contains_numeric": true
+      }
+    ],
+    "numeric_discrepancies": [
+      {
+        "segment_index": 0,
+        "left_values": ["123"],
+        "right_values": ["128"]
+      }
+    ]
+  }
+}

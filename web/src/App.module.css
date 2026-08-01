@@ -1,0 +1,78 @@
+.app {
+  min-height: 100vh;
+}
+
+.topbar {
+  align-items: center;
+  background: var(--ink);
+  color: white;
+  display: flex;
+  height: 3.5rem;
+  justify-content: space-between;
+  padding: 0 1rem;
+}
+
+.brand,
+.safety {
+  align-items: center;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.brand > span:last-child,
+.safety {
+  color: #b9c8d0;
+  font-size: 0.68rem;
+}
+
+.mark {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 0.35rem;
+  display: flex;
+  font-size: 0.65rem;
+  font-weight: 800;
+  height: 1.7rem;
+  justify-content: center;
+  letter-spacing: -0.04em;
+  width: 1.7rem;
+}
+
+.localDot {
+  background: #57c48b;
+  border-radius: 999px;
+  box-shadow: 0 0 0 0.2rem #57c48b26;
+  height: 0.45rem;
+  width: 0.45rem;
+}
+
+.diagnostic {
+  background: #e3af4b2c;
+  border-radius: 999px;
+  color: #f0c46d;
+  padding: 0.2rem 0.4rem;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+}
+
+@media (max-width: 850px) {
+  .topbar {
+    height: auto;
+    min-height: 3.5rem;
+  }
+
+  .brand > span:last-child {
+    display: none;
+  }
+
+  .safety {
+    text-align: right;
+  }
+
+  .body {
+    display: block;
+  }
+}

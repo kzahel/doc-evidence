@@ -14,7 +14,11 @@ from doc_evidence.adapters.local_workspace import LocalWorkspace
 from doc_evidence.api.app import create_app, create_contract_app
 from doc_evidence.application.library import LibraryApplication
 from doc_evidence.config import load_config
-from doc_evidence.contracts.api import ComparisonRequest
+from doc_evidence.contracts.api import (
+    ComparisonRequest,
+    ComparisonResult,
+    WorkspaceSummary,
+)
 from doc_evidence.errors import NotFoundError
 from doc_evidence.inventory import run_inventory
 from tests.helpers import write_hybrid_pdf
@@ -285,6 +289,12 @@ class DependencyDirectionTest(unittest.TestCase):
                 [name for name in imported if name.startswith(forbidden)],
                 path.name,
             )
+
+    def test_shared_representative_payloads_validate_in_python(self) -> None:
+        path = Path(__file__).parents[1] / "contracts" / "representative-payloads.json"
+        payloads = json.loads(path.read_text(encoding="utf-8"))
+        WorkspaceSummary.model_validate(payloads["workspace"])
+        ComparisonResult.model_validate(payloads["comparison"])
 
 
 class ComparisonUnitTest(unittest.TestCase):
