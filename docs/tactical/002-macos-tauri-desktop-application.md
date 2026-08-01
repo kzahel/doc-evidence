@@ -1065,10 +1065,11 @@ read-only at a fresh temporary mount point, runs the full application/runtime/
 OCR audit against the mounted bytes, and detaches normally with one bounded
 force-detach fallback.
 
-`Doc-Evidence_0.4.0_aarch64-unsigned.dmg` measures 73,253,627 bytes and has
-SHA-256 `4e953e692d73ecae7a27356470ac0f9e03dddabbb9727eb9ba9c335e79a9aa1a`.
-The application tree inside it matches the copied-out proof at
-`8e4f581a55bc1a8eeaf9724a903afcb9747cd5c20e8508fa77966043a597a8d2`;
+After the final application license-manifest rebuild,
+`Doc-Evidence_0.4.0_aarch64-unsigned.dmg` measures 73,267,094 bytes and has
+SHA-256 `839a900868ac75de258af34d809bcbbd0e4b792c051deabf8a0152e79ef7a0b8`.
+The application tree inside it matches the current copied-out proof at
+`64baad23f4025f1e6b6ff298923f6e7abfee6a0fb3cb147a173ea2e0db29c8a3`;
 its final mounted smoke again passed exact pack validation and Ghostscript-free
 OCR. This is intentionally unsigned and unnotarized. The production lane still
 follows the pinned sibling signing, bounded-retry, notarization, stapling, and

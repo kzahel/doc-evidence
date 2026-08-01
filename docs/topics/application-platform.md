@@ -287,8 +287,9 @@ data behavior is not yet validated; a relocatable Poppler build or measured
 PDFium replacement remains preferable before claiming that coverage.
 A deterministic local DMG path avoids Finder automation, verifies the
 compressed image, mounts it read-only, re-audits the contained application,
-and detaches it. The resulting 73,253,627-byte unsigned image is validation
-evidence, not a release artifact.
+and detaches it. The current 73,267,094-byte unsigned image contains the exact
+current `64baad23...` application tree and is validation evidence, not a
+release artifact.
 
 The first compliance preflight accounts for 70 top-level staged components,
 all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
