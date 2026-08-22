@@ -22,3 +22,14 @@ sha2 = "0.10"
 tauri = { version = "2.11.5", features = [] }
 tauri-plugin-dialog = "2.7.2"
 tauri-plugin-single-instance = "2.4.3"
+
+# Keep routine dev and test builds small while retaining file/line backtraces.
+[profile.dev]
+debug = "line-tables-only"
+incremental = false
+
+# Opt into full source-level debugger data in an isolated output directory.
+[profile.debugging]
+inherits = "dev"
+opt-level = 0
+debug = "full"
