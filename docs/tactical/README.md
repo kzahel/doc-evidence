@@ -52,11 +52,15 @@ action, new external service, or significant expansion beyond the tactical.
   atomic artifact publication, recovery, document execution controls,
   activity center, bounded batch, and concurrency/debug UI.
 - [002 — macOS Tauri desktop distribution](002-macos-tauri-desktop-application.md)
-  — unattended local unsigned/ad-hoc implementation is underway; release
-  credentials and publication remain unstarted. It plans an Apache-2.0 macOS
-  arm64 application with a thin Tauri shell,
-  standalone Python sidecar, native library authorization, and a small
-  Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack. It adapts proven
-  sibling signing, notarization, DMG, updater, checksum, and release-
-  finalization conventions. Heavyweight extractors, alternative release
-  channels, Windows, and Linux remain later tacticals.
+  — macOS arm64 unsigned foundation implemented and validated: Apache-2.0,
+  thin Tauri shell, standalone Python sidecar, native library authorization,
+  small Ghostscript-free baseline pack, strict final-byte audits, unsigned DMG,
+  and fail-closed compliance preflight. Its planned macOS-only signed lane is
+  superseded by Tactical 003.
+- [003 — macOS and Windows signed desktop release](003-macos-windows-signed-desktop-release.md)
+  — first-release direction selected and implementation plan drafted;
+  implementation and external actions await explicit authorization. It closes
+  compliance, makes the desktop boundary platform-aware, adds the Windows
+  x86_64 runtime/pack/NSIS path, uses Machine Control for exact installed
+  macOS/Windows acceptance, and defines a two-target signed updater/release
+  gate. Linux and heavyweight extractor packs remain later tacticals.

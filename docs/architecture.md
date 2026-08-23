@@ -59,9 +59,9 @@ React + TypeScript UI + Python application services
 ```
 
 Frontend request and response types are generated from Python-owned API
-contracts. A future Tauri shell should supply the platform application-data
-directory, authorize collection folders, and supervise the same local API
-rather than introduce a separate desktop data model. `DOC_EVIDENCE_HOME`
+contracts. The thin Tauri shell supplies the platform application-data
+directory, authorizes collection folders, and supervises the same local API
+rather than introducing a separate desktop data model. `DOC_EVIDENCE_HOME`
 overrides the complete app-owned data root for isolated development, tests,
 and portable local runs.
 

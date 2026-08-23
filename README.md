@@ -17,7 +17,7 @@ the same product services rather than the final ownership or distribution
 model.
 
 ```text
-Tauri desktop shell (thin; local unsigned arm64 proof assembled)
+Tauri desktop shell (thin; macOS arm64 unsigned foundation assembled)
   native lifecycle, folder authorization, sidecar supervision, distribution
                               |
                               v
@@ -34,8 +34,9 @@ extractors, comparison, review, and provenance. React consumes those behaviors
 through a platform-neutral runtime. The thin Tauri shell provides native
 application-data paths, folder grants, process lifecycle, and desktop
 composition without introducing a second document model or moving product
-logic into Rust. The standalone core runtime is now packaged; the baseline
-extractor pack and release-signing lane remain in progress.
+logic into Rust. The macOS arm64 standalone runtime and baseline extractor pack
+are packaged and audited. The first signed-release plan now pairs macOS arm64
+with Windows x86_64; Linux remains deferred.
 
 The intended workflow is agent-assisted and human-accountable. Machines and
 agents extract, validate, reconcile, and assemble provisional values and
@@ -57,20 +58,24 @@ The delivery sequence is deliberate:
    extraction controls, bounded batches, and the global operational activity
    and diagnostics UI are implemented. Fault/restart, isolated-browser, and
    authorized private-integration gates pass for Tactical 001.
-3. **In progress:** an Apache-2.0 macOS arm64 distribution with a thin Tauri
-   shell, native folder authorization, standalone Python sidecar, and small
-   Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack. The current
-   authorized lane covers unattended local unsigned/ad-hoc implementation and
-   validation. Signing, notarization, updater credentials, GitHub setup, and
-   publication remain deliberately unstarted.
-4. **Later slices:** durable human review state; optional language/extractor
-   packs; additional release channels; and platform-specific Windows and Linux
-   applications.
+3. **Implemented unsigned foundation:** an Apache-2.0 macOS arm64 application
+   with a thin Tauri shell, native folder authorization, standalone Python
+   sidecar, small Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack,
+   strict final-byte audits, an unsigned DMG, and fail-closed compliance
+   preflight.
+4. **Planned; not started:** one synchronized first signed release for macOS
+   arm64 and Windows x86_64. The plan closes compliance, adds the Windows
+   runtime/pack/NSIS path, uses disposable Machine Control guests for exact
+   installed-artifact acceptance, and finalizes a two-platform updater feed.
+5. **Later slices:** durable human review state; optional language/extractor
+   packs; additional release channels; and Linux distribution.
 
-Desktop distribution is therefore an explicit destination. Its first bounded
-implementation plan is
+Desktop distribution is therefore an explicit destination. Its implemented
+macOS foundation is recorded in
 [Tactical 002: macOS Tauri desktop distribution](docs/tactical/002-macos-tauri-desktop-application.md),
-whose unattended local packaging lane is now being implemented. See
+and the paired first-release plan is
+[Tactical 003: macOS and Windows signed desktop release](docs/tactical/003-macos-windows-signed-desktop-release.md).
+See
 [Product vision and application architecture](docs/product-vision-and-architecture.md),
 [Application platform](docs/topics/application-platform.md), and
 [Desktop library management](docs/topics/library-management.md).
@@ -134,20 +139,23 @@ actions and representation refresh; the application header provides a polling
 activity center with resource lanes, liveness/deadline detail, batch preflight,
 and cancellation.
 
-The maintainer has selected an Apache-2.0 macOS arm64 desktop distribution as
-the next planned boundary. Tactical 002 freezes a thin Tauri shell, separate
-runtime and host-control credentials, preservation of the existing application
-home, native library/collection selection through Python-owned services, a
-standalone CPython runtime, and only the Poppler/Tesseract/OCRmyPDF baseline
-pack. It excludes Ghostscript, Docling, Marker, heavyweight model runtimes,
-and downloads/plugins. It adapts the proven sibling conventions for nested
-Mach-O signing, Developer ID notarization, DMG and updater generation, release
-finalization, and published checksums. Windows/Linux packaging remains later.
-Tactical 002 now has the thin shell, native authorization, authenticated
-standalone sidecar, pinned CPython staging/audit entry point, and a copied-out
-unsigned arm64 `.app` proof. The baseline extractor pack remains the next local
-slice. No signing credential, GitHub release, updater, notarization, or
-publication action has been performed.
+Tactical 002 now records the implemented Apache-2.0 macOS arm64 unsigned
+foundation: thin Tauri shell, separate runtime and host-control credentials,
+native library/collection selection through Python-owned services, standalone
+CPython, a Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack, strict
+final-byte audits, a mounted unsigned DMG smoke, and fail-closed compliance
+artifacts. Three compliance classes remain unresolved. No signing credential,
+remote release, updater, notarization, or publication action has been
+performed.
+
+The maintainer selected macOS arm64 and Windows x86_64 together for the first
+signed release, with Linux deferred. Tactical 003 freezes the two-platform
+matrix, Windows filesystem and process-tree contracts, standalone Windows
+runtime/baseline pack, per-user NSIS channel, two-target updater metadata, and
+exact-artifact acceptance in disposable Machine Control guests. Its first
+testbed gate is to repair the currently unresolved private Windows target
+identity. The plan is documented; implementation and all external release
+actions await explicit authorization.
 
 The external acceptance harness used an explicitly authorized registered
 library in the platform-default application home. It exercised a missing OCR

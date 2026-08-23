@@ -2,7 +2,7 @@
 
 Topic: job-architecture
 
-**Last updated:** 2026-08-01
+**Last updated:** 2026-08-23
 
 **Status:** Tactical 001 implementation complete. Unified persistence,
 atomic catalog membership generations, extractor registration, supervised
@@ -11,9 +11,10 @@ bounded per-library scheduling, authenticated API/runtime operations, document
 execution controls, bounded batches, and the global activity/debug UI are
 implemented. Fault/restart, isolated-browser, and authorized
 private-integration gates pass; explicit maintainer interaction acceptance
-remains. Tactical 002's unattended local lane now packages the first macOS
-execution environment and baseline extractor pack; signing and publication
-remain deliberately unstarted.
+remains. Tactical 002 packages the first macOS execution environment and
+baseline extractor pack. Tactical 003 plans Windows-native process-tree
+ownership and cross-platform installed-artifact validation; implementation,
+signing, and publication remain unstarted.
 
 ## Purpose
 
@@ -498,8 +499,9 @@ The core recovery invariant is:
   machine-verifiable implementation gates pass.
 - Resource defaults still need broader measurement on supported local
   environments; CPU count alone does not establish safe model concurrency.
-- Cross-platform descendant cleanup must be revalidated when Tauri/Windows
-  packaging begins.
+- Tactical 003 must implement and validate Windows-native kill-on-close process
+  tree ownership for both the Tauri sidecar and each Python attempt. `taskkill`
+  alone is not the correctness contract.
 - Tactical 002's Python sidecar shuts down its manager/schedulers on parent
   EOF, and the Tauri shell now closes that parent channel, waits up to the
   existing scheduler cleanup envelope, then applies a bounded kill. The
@@ -522,3 +524,8 @@ the required platform-neutral foundation from
 packaged macOS adapter over the same job and recovery contracts. Its local
 baseline-pack and sidecar smokes are implemented; it does not authorize a new
 scheduler, queue model, job state, or artifact protocol.
+
+[Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md) owns the
+Windows process-tree adapter and paired installed-artifact gates. It preserves
+the Tactical 001 state machine, retry, cancellation, recovery, and atomic
+publication contracts.

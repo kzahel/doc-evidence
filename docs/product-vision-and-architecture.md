@@ -1,9 +1,10 @@
 # Product Vision and Application Architecture
 
-**Last updated:** 2026-08-01  
+**Last updated:** 2026-08-23
 **Status:** Approved direction; read-only application, desktop library
 management, and durable extraction-job implementation landed; Tactical 001
-maintainer acceptance pending
+maintainer acceptance pending; macOS unsigned desktop foundation landed and
+paired macOS/Windows signed release planned
 
 ## Product Statement
 
@@ -281,7 +282,7 @@ layer.
 
 The frontend build tool and component primitives remain implementation
 choices. They must support static production assets that the Python server and
-a future Tauri shell can both serve.
+the thin Tauri shell can both serve.
 
 ### SQLite and artifact storage
 
@@ -564,7 +565,7 @@ web/
     state/         # transient Zustand stores
     styles/
 schemas/           # persisted JSON contracts
-desktop/           # future Tauri shell
+desktop/           # thin Tauri lifecycle/security shell
 ```
 
 Existing modules should move only when a feature needs the new boundary.
@@ -637,15 +638,16 @@ It is complete when a user can:
 9. Use the application with network access disabled.
 10. Continue using the CLI against the same workspace.
 
-Durable extraction jobs landed before durable review, and the maintainer has
-now selected a bounded signed macOS arm64 Tauri distribution as the next
-planned slice. That implementation order does not mark this product milestone
-complete or weaken the separation between review state and extractor output.
-Durable review is still required for the milestone; candidate semantic fields,
-domain packs, optional extractor packs, alternative release channels, Windows,
-and Linux remain later boundaries. The distribution implementation reuses the
-pinned `atpiano`, Yep Anywhere, JSTorrent, and signing-runbook precedents in
-[References](references.md).
+Durable extraction jobs landed before durable review. The macOS arm64 unsigned
+Tauri foundation and baseline pack then landed, and the maintainer has now
+selected macOS arm64 plus Windows x86_64 for the first signed release while
+deferring Linux. That implementation order does not mark this product
+milestone complete or weaken the separation between review state and extractor
+output. Durable review is still required for the milestone; candidate semantic
+fields, domain packs, optional extractor packs, Linux, and alternative release
+channels remain later boundaries. The distribution implementation reuses the
+pinned `atpiano`, Yep Anywhere, JSTorrent, Desktop Release Kit, Machine Control,
+and signing-runbook precedents in [References](references.md).
 
 ## Decisions
 
@@ -656,7 +658,7 @@ pinned `atpiano`, Yep Anywhere, JSTorrent, and signing-runbook precedents in
 - The primary product model is a single-user desktop library application.
 - The current localhost web application and CLI reuse the same application
   contracts for development and automation.
-- A future Tauri shell owns native lifecycle, application-data resolution, and
+- The thin Tauri shell owns native lifecycle, application-data resolution, and
   folder authorization without owning document logic.
 - Source collections remain immutable and read-only.
 - Python owns the backend, SQLite, job orchestration, and extractor adapters.

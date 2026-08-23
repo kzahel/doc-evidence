@@ -6,12 +6,15 @@ Topic: library-management
 
 Topic: job-architecture
 
-**Status:** Product and distribution direction approved. The maintainer
-authorized unattended local unsigned/ad-hoc implementation and validation on
-2026-08-01. Signing, notarization, credential provisioning, GitHub release
-setup, updater setup, and publication remain deliberately unstarted. The exact
-GitHub release target and updater route must be confirmed before that external
-lane begins.
+**Status:** macOS arm64 unsigned desktop foundation implemented and validated.
+The maintainer authorized the unattended local unsigned/ad-hoc lane on
+2026-08-01; it now includes the thin shell, standalone runtime, baseline
+extractor pack, final-byte audits, unsigned DMG, and fail-closed compliance
+preflight. The originally planned macOS-only signed external lane is
+superseded by
+[Tactical 003](003-macos-windows-signed-desktop-release.md), which owns the
+paired macOS/Windows first signed release. No signing, notarization, credential
+provisioning, release setup, updater setup, or publication has occurred.
 
 ## Motivation and User-Visible Outcome
 
@@ -32,13 +35,13 @@ environment, or an anonymous model cache. The distribution packages the
 existing React product and Python-owned application services behind a thin
 Tauri 2 lifecycle and security shell.
 
-This tactical ends at a Developer ID-signed and notarized macOS arm64
-application with a stapled ticket, packaged as a direct-download DMG with
-signed Tauri updater artifacts, validated release metadata, and a tag-driven
-CI path following the established sibling applications. Unsigned and ad-hoc-
-signed builds remain local and pull-request validation lanes; they are not the
-product milestone. Intel macOS, Windows, Linux, and optional extractor-pack
-distribution require later approved tacticals.
+This tactical originally planned to end at a Developer ID-signed and notarized
+macOS arm64 release. Its durable execution record below preserves that plan and
+the local work performed against it. The maintainer subsequently selected a
+paired macOS arm64 and Windows x86_64 first signed release, so Tactical 003 now
+owns signing, updater, CI, exact-artifact guest acceptance, and publication.
+Intel macOS, Windows arm64, Linux, and optional extractor-pack distribution
+remain outside this tactical.
 
 ## Dependencies and References
 
@@ -863,19 +866,19 @@ maintainer instead of expanding the bundle.
 
 ## Next-Slice Boundary
 
-After explicit acceptance, normal patch releases reuse the checked sibling-
-style version, tag, signing, notarization, updater, checksum, and finalization
-workflow. The next release should record the first live signed `N -> N+1`
-updater round trip when no older Doc Evidence release existed during Tactical
-002. Rollback-channel policy, delta-update optimization, additional release
-hosts, and App Store distribution remain separate decisions.
+The next desktop slice is
+[Tactical 003](003-macos-windows-signed-desktop-release.md). It closes the
+current compliance blockers, removes macOS assumptions from shared desktop
+contracts, adds a Windows x86_64 runtime/pack/installer, restores the Windows
+Machine Control gate, and owns the paired signed release and first public
+publication decision.
 
-Optional language/extractor-pack discovery and downloads require their own
+Optional language/extractor-pack discovery and downloads still require their own
 security, signature, compatibility, license-acceptance, storage, update, and
 rollback design. Docling and especially Marker remain separate decisions.
-Windows and Linux packaging follow later platform-specific tacticals; this
-macOS distribution must not create assumptions that their process, filesystem,
-signing, installer, or dynamic-library models are identical.
+Linux packaging follows a later platform-specific tactical. The macOS
+foundation must not create assumptions that Windows or Linux process,
+filesystem, signing, installer, or dynamic-library models are identical.
 
 ## Execution Record
 

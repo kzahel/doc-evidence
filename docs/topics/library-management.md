@@ -2,16 +2,17 @@
 
 Topic: library-management
 
-**Last updated:** 2026-08-01
+**Last updated:** 2026-08-23
 
 **Status:** Tactical 001 implementation complete. Application-home,
 known-library registry, adopted descriptors, CLI activation, unified library
 persistence, inventory generations, and collection preflight are implemented.
 Shared UI selection and explicit library-scoped job identity are implemented;
 explicit maintainer interaction acceptance remains. Tactical 002's trusted
-Python host-control operations for native-selected paths are implemented;
-Tauri dialogs and packaged startup remain in progress. Store relocation
-remains later scope.
+Python host-control operations, Tauri dialogs, packaged startup, and macOS
+application-data injection are implemented. Tactical 003 plans the Windows
+path, reparse-point, local-drive, and installed-app acceptance boundary. Store
+relocation remains later scope.
 
 ## Purpose
 
@@ -329,7 +330,7 @@ Tactical 001's localhost implementation provides the platform-neutral
 registry, selection, identity, and known-library UI. It uses an explicit
 CLI/development bootstrap to register external paths because an ordinary web
 page cannot safely provide a native filesystem grant. It must not add an API
-that accepts arbitrary browser-supplied paths. A future Tauri adapter supplies
+that accepts arbitrary browser-supplied paths. The Tauri adapter supplies
 authorized folder selections through the same application service.
 
 Existing unscoped Tactical 000 routes may remain temporary compatibility
@@ -383,10 +384,14 @@ resolution, isolated testing, the registry/library contracts, legacy library
 adoption, explicit identity, non-overlapping collections, generation/content
 separation, and the initial known-library web UI needed by the job system.
 
-Tactical 002 owns the current native Tauri creation/open/folder-picker flow.
-Later tacticals own security-scoped bookmarks, library/store relocation,
-managed-store deletion and recovery, portable library export/import polish,
-and multi-window behavior.
+Tactical 002 owns the implemented native Tauri creation/open/folder-picker
+flow and macOS application-data composition. Tactical 003 owns its Windows
+x86_64 adaptation: per-user local application data, case-insensitive canonical
+overlap checks, non-ASCII/long-path fixtures, local fixed-drive support, and
+default rejection of selected reparse-point roots. Later tacticals own
+security-scoped bookmarks, network/removable/cloud-placeholder collections,
+library/store relocation, managed-store deletion and recovery, portable
+library export/import polish, and multi-window behavior.
 
 ## Implementation Evidence
 

@@ -148,9 +148,100 @@ JSTorrent is the primary precedent for the ordinary tag-to-release mechanics:
 
 Adopt the synchronized version/tag convention, signed updater metadata,
 release finalization, checksums, and explicit recovery rules. The first Doc
-Evidence distribution is macOS arm64 only and does not copy JSTorrent's other
-platform installers, torrent sidecars, native-messaging host, or product
-update policy mechanically.
+Evidence signed distribution targets macOS arm64 and Windows x86_64 and does
+not copy JSTorrent's torrent sidecars, native-messaging host, extra platform
+installers, or product update policy mechanically.
+
+## Desktop Release Kit: Cross-Platform Release Reference
+
+Repository: `kzahel/desktop-release-kit`
+
+Normal local checkout: `~/code/desktop-release-kit`
+
+Accepted public revision inspected for Tactical 003:
+`32d7730556ff2cc92221293cf19d1c07201c0a78`
+
+Desktop Release Kit is the primary precedent for the shared updater/feed
+contract and for one signed release campaign spanning macOS and Windows. The
+canary proves the infrastructure; Doc Evidence remains responsible for its own
+application lifecycle, artifacts, updater key, route, repository, UI, and
+acceptance.
+
+Inspect these exact sources before implementing or changing Tactical 003's
+release lane:
+
+- `contract/desktop-update-v1.md` — platform identifiers, signed manifest
+  shape, asset/signature requirements, cache behavior, failure contracts, and
+  the distinction between release and product ownership;
+- `.github/workflows/desktop.yml` — target matrix, signing/notarization,
+  Authenticode, draft-release, updater asset, and finalization flow;
+- `.github/scripts/validate-release.mjs` and its tests — exact target, version,
+  asset, signature, checksum, and unexpected-entry validation;
+- `.github/scripts/write-release-checksums.mjs` and its tests — deterministic
+  checksum publication;
+- `src/updater/` — shared policy, scheduling, and state precedent without
+  requiring Doc Evidence to copy its UI mechanically;
+- `docs/canary-testbed-runbook.md` — installed-candidate and old-to-new guest
+  rehearsal; and
+- `docs/evidence/desktop-v0.1.0-to-v0.1.1.md` — completed signed canary evidence
+  across the supported contract.
+
+Adopt `desktop-update-v1`, exact platform coverage, a draft-first release,
+fail-closed finalization, signed updater metadata, and validation of downloaded
+artifacts. Intentional differences are the Doc Evidence product identity, a
+new per-application updater key/route, only `darwin-aarch64` and
+`windows-x86_64` in the first feed, its standalone Python/extractor pack, and
+its stricter source-immutability and descendant-cleanup gates. Machine Control,
+not release-kit code, owns the guest-control mechanism.
+
+## Machine Control: Desktop Testbed Reference
+
+Repository: `kzahel/machine-control`
+
+Normal local checkout: `~/code/machine-control`
+
+Accepted public revision inspected for Tactical 003:
+`2574469422a6859c80c65022351135d435fc199e`
+
+Machine Control is the public source for cross-platform machine readiness,
+workspace safety, guest execution, application lifecycle, semantic native UI,
+capture, and input behavior. Private dotfiles may choose concrete targets at
+runtime; those identities and connection details never enter this repository.
+
+The planning inspection covered:
+
+- `topics/unified-desktop-client.md` — the common target, workspace, desktop,
+  OS, and testbed command surface;
+- `topics/target-lifecycle-and-readiness.md` — readiness, startup, ownership,
+  and safe-shutdown semantics;
+- `topics/vm-workspaces-and-storage-policy.md` — guarded base, candidate,
+  disposable/isolated workspace, acquire/release, and cleanup contracts;
+- `platforms/macos/README.md` and
+  `platforms/macos/skills/drive-macvm/SKILL.md` — Tart/macOS guest execution,
+  native AX/resident/capture/input facilities, candidate workspaces, and
+  Gatekeeper/installer/admin-flow testing;
+- `platforms/windows/README.md` and
+  `platforms/windows/skills/drive-winvm/SKILL.md` — UTM/QEMU Windows 11 guest
+  execution, WinApp semantic UI, target-native resident/capture/input,
+  candidate workspaces, and safe shutdown; and
+- the accepted macOS/Windows common-client conformance and workspace evidence
+  referenced by those topics.
+
+Use deterministic application and packaged-runtime harnesses for React product
+behavior. Use Machine Control where installed/native behavior matters:
+installer and trust UI, native folder dialogs, focus and single instance,
+sidecar lifecycle, updater restart, uninstall preservation, and final capture.
+Tauri WebView accessibility may expose only the outer frame on Windows; that
+is not a reason to substitute screen coordinates for product-DOM tests.
+
+The read-only planning check on 2026-08-23 found the macOS target available
+with persistent, candidate, and isolated workspace capabilities. The private
+Windows target identity did not resolve, so its readiness and workspace gates
+were unavailable. Tactical 003 begins by repairing or re-pinning that private
+inventory and proving a disposable/candidate acquire/release cycle. This is a
+current environment fact, not a limitation of the accepted Windows platform.
+Do not commit the resolved identity or mutate a guarded base to bypass the
+gate.
 
 ## Canonical Desktop-Signing Operations Runbook
 

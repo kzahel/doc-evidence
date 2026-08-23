@@ -30,7 +30,7 @@ implementation decisions:
 - The current authenticated loopback server and CLI are development,
   automation, and headless compositions of those same services. They are not a
   separate product model.
-- A future Tauri shell is intentionally thin. It will own native lifecycle,
+- The Tauri shell is intentionally thin. It owns native lifecycle,
   application-data injection, folder authorization, Python-sidecar
   supervision, and desktop distribution concerns without moving document or
   evidence logic into Rust or importing Tauri into React product components.
@@ -43,16 +43,22 @@ implementation decisions:
   persistence, durable execution, recovery, and operational UI. Its automated
   and private-integration gates pass; explicit maintainer interaction
   acceptance remains. Durable human review state follows separately.
-- Tactical 002 is the proposed macOS arm64 desktop distribution. It freezes
-  Apache-2.0 project licensing, a thin Tauri shell,
-  separate runtime and host-control credentials, native folder authorization
-  through Python-owned services, standalone CPython, and a small Ghostscript-
-  free Poppler/Tesseract/OCRmyPDF baseline pack. It adapts the signed/notarized
-  release, updater, checksum, and finalization conventions from the existing
-  sibling Tauri applications. It has not been authorized or started.
+- Tactical 002 is the implemented macOS arm64 unsigned desktop foundation. It
+  lands Apache-2.0 project licensing, the thin Tauri shell, separate runtime
+  and host-control credentials, native folder authorization through
+  Python-owned services, standalone CPython, the small Ghostscript-free
+  Poppler/Tesseract/OCRmyPDF baseline pack, strict audits, unsigned DMG, and
+  fail-closed compliance preflight. Its originally planned macOS-only signed
+  lane is superseded by Tactical 003.
+- Tactical 003 is the documented implementation plan for the paired macOS arm64
+  and Windows x86_64 first signed release, with Linux deferred. It owns the
+  Windows platform adaptation, process-tree and path semantics, runtime/pack,
+  per-user NSIS installer, two-platform updater/release finalization, and exact
+  installed-artifact acceptance through Machine Control. Implementation and
+  external release actions still require explicit maintainer authorization.
 - Optional heavyweight-extractor packs, download/plugin management,
-  alternative release channels, and Windows/Linux distribution require later
-  approved tacticals.
+  alternative release channels, and Linux distribution require later approved
+  tacticals.
 
 Do not let a short-term localhost or CLI implementation create a competing
 ownership model, embed platform APIs in product components, or make later
@@ -85,9 +91,12 @@ Before substantive work:
    scope. `docs/tactical/000-read-only-library-comparison.md` is the implemented
    read-only execution record. `docs/tactical/001-durable-extraction-jobs.md`
    is implementation-complete and awaiting explicit maintainer acceptance.
-   `docs/tactical/002-macos-tauri-desktop-application.md` is a proposed plan;
-   do not implement it, its signed-distribution successors, or the durable-
-   review successor without explicit maintainer authorization.
+   `docs/tactical/002-macos-tauri-desktop-application.md` is the implemented
+   macOS unsigned-foundation execution record.
+   `docs/tactical/003-macos-windows-signed-desktop-release.md` is the documented
+   paired-platform plan; do not implement it, perform its external release
+   actions, or implement the durable-review successor without explicit
+   maintainer authorization.
 5. Read `docs/master-plan.md`, `docs/architecture.md`, and
    `docs/data-contracts.md` for the affected core boundary.
 6. Read `docs/benchmarking.md` for extractor/evaluation work and
@@ -143,7 +152,7 @@ Before substantive work:
 - Preserve the CLI and current artifact contracts while building vertical
   application slices. Do not mechanically reorganize all existing modules
   before a working consumer requires the boundary.
-- A future Tauri shell remains thin lifecycle/security composition around the
+- The Tauri shell remains thin lifecycle/security composition around the
   same Python application. Do not import Tauri into product components.
 - Treat a library as the durable user-facing unit: one stable library identity,
   one SQLite database, one artifact store, and one or more explicit read-only
@@ -306,15 +315,22 @@ and single-instance focus, supervises the Python child, and closes stdin before
 bounded termination on app exit. A hash-pinned CPython 3.12.12 standalone
 runtime, frozen production dependencies, license/file manifests, staged/native
 audits, and copied-out unsigned `.app` smoke now pass. The baseline extractor
-pack remains next.
-Continue local implementation and validation without touching signing
-credentials, GitHub release setup, notarization, updater setup, or publication
-unless the maintainer explicitly authorizes that external lane.
-`docs/tactical/002-macos-tauri-desktop-application.md` owns the active
-implementation boundary. Its later external lane plans a Developer ID-signed
-and notarized macOS arm64 application with a stapled ticket, DMG, signed updater
-metadata, and release finalization. Heavy extractor packs, alternative release
-channels, Windows, and Linux remain outside it.
+pack, unsigned DMG, real mounted-artifact OCR smoke, and fail-closed compliance
+preflight now pass. The preflight still blocks release on the reviewed
+pypdfium2 SPDX conclusion, 32 nested wheel libraries, and 19 Rust crate license
+texts. `docs/tactical/002-macos-tauri-desktop-application.md` is the durable
+execution record for that foundation.
+
+On 2026-08-23 the maintainer selected a paired macOS arm64 and Windows x86_64
+first signed release, with Linux deferred. The documented plan is
+`docs/tactical/003-macos-windows-signed-desktop-release.md`. Its first gates are
+the existing macOS compliance blockers and restoration of the currently
+unresolved private Windows Machine Control target identity. Do not begin its
+implementation or touch signing credentials, repository/release setup,
+notarization, updater setup, tags, or publication without explicit maintainer
+authorization. Heavy extractor packs and alternative release channels remain
+outside it.
+
 The maintainer has also selected bidirectional text/page highlighting and
 bounded regional OCR as an accepted product direction. The researched
 extractor capabilities, coordinate-space contract, proposed UI, job identity,

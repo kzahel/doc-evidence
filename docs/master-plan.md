@@ -1,9 +1,10 @@
 # Master Plan
 
-**Last updated:** 2026-08-01
+**Last updated:** 2026-08-23
 **Status:** Phase 2, read-only application, desktop library foundation, and
 durable extraction jobs implemented; Tactical 001 maintainer acceptance
-pending; Tactical 002 unattended local macOS packaging underway
+pending; Tactical 002 macOS unsigned foundation implemented; paired macOS and
+Windows signed-release Tactical 003 planned
 
 ## Objective
 
@@ -118,17 +119,24 @@ acceptance remains.
 
 The maintainer next selected a bounded Apache-2.0 macOS arm64 desktop
 distribution.
-[Tactical 002](tactical/002-macos-tauri-desktop-application.md) proposes the
+[Tactical 002](tactical/002-macos-tauri-desktop-application.md) implements the
 same React/Python application inside a thin Tauri 2 shell with native folder
 authorization, a standalone Python runtime, and only a Ghostscript-free
-Poppler/Tesseract/OCRmyPDF baseline pack. It reuses sibling conventions for
-nested signing, notarization, a DMG, signed updater metadata, release
-finalization, and checksums. Heavy extractors, downloads/plugins, alternative
-release channels, Windows, and Linux remain later scope.
-The maintainer authorized Tactical 002's unattended local unsigned/ad-hoc
-implementation and validation on 2026-08-01. Signing credentials, GitHub
-release setup, notarization, updater setup, and publication remain outside the
-current lane and require a later explicit action.
+Poppler/Tesseract/OCRmyPDF baseline pack. Its unsigned local lane has landed
+through final-byte app/DMG audits, real packaged OCR, and a fail-closed
+compliance preflight. No signing, notarization, updater, release, or
+publication action has occurred.
+
+The maintainer then selected macOS arm64 and Windows x86_64 together for the
+first signed release, with Linux deferred.
+[Tactical 003](tactical/003-macos-windows-signed-desktop-release.md) owns that
+plan: close the macOS compliance blockers, restore the Windows Machine Control
+testbed gate, make shared desktop contracts platform-aware, add a standalone
+Windows baseline pack and per-user NSIS installer, and validate the exact two-
+platform signed/updater matrix in disposable guests. The plan is recorded;
+implementation, external setup, credentials, tags, and publication still await
+explicit authorization. Heavy extractors and downloads/plugins remain later
+scope.
 
 ### Phase 3 — Candidate understanding
 
@@ -179,9 +187,11 @@ current lane and require a later explicit action.
     durable review pending
 11. Desktop library foundation, durable extraction jobs, and operational UI.
     — implemented; explicit maintainer acceptance pending
-12. Signed/notarized macOS arm64 Tauri distribution. — proposed;
-    implementation not authorized or started
-13. Observation and downstream-promotion workflows.
+12. macOS arm64 unsigned Tauri foundation and baseline pack. — implemented;
+    compliance preflight still blocks release
+13. Paired signed macOS arm64 and Windows x86_64 desktop release. — planned;
+    implementation and external actions await explicit authorization
+14. Observation and downstream-promotion workflows.
 
 ## Open Implementation Decisions
 
@@ -198,9 +208,9 @@ current lane and require a later explicit action.
   batch, or benchmark selection.
 - Add first-class extraction/rendering for standalone image documents rather
   than merely inventorying them.
-- Measure the proposed standalone Python and small baseline extractor bundle
-  through Tactical 002; heavyweight-extractor packaging remains a separate
-  future decision.
+- Close the existing macOS compliance blockers and build the Windows x86_64
+  standalone Python/baseline extractor bundle through Tactical 003;
+  heavyweight-extractor packaging remains a separate future decision.
 - Whether a vector index ever provides enough benefit to maintain.
 - Which advanced extractor becomes the preferred table/layout parser.
 - Which model-assisted observation adapters are worth supporting.

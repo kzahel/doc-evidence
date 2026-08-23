@@ -2,12 +2,15 @@
 
 Topic: application-platform
 
+**Last updated:** 2026-08-23
+
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
 is complete; automated, isolated-browser, and authorized private-library gates
-pass, with explicit maintainer interaction acceptance remaining. Tactical 002
-unattended local unsigned/ad-hoc implementation is underway. Signing,
-notarization, updater credentials, GitHub release setup, and publication have
-not been authorized and their external targets still require confirmation.
+pass, with explicit maintainer interaction acceptance remaining. Tactical 002's
+macOS arm64 unsigned foundation is implemented through the baseline pack,
+final-byte app/DMG audit, and fail-closed compliance preflight. Tactical 003
+plans the first signed release for macOS arm64 and Windows x86_64; implementation
+and external release actions await explicit authorization.
 
 ## Scope
 
@@ -19,7 +22,7 @@ inventory, artifact, extraction, comparison, and review core:
 - React runtime and state ownership;
 - localhost security and lifecycle;
 - durable versus rebuildable SQLite state;
-- future Tauri sidecar composition; and
+- Tauri sidecar composition and platform adaptation; and
 - portability between local web, desktop, and possible hosted adapters.
 
 The durable product principles and complete system direction remain in
@@ -54,7 +57,7 @@ tested through bounded tacticals.
 - The frontend consumes `DocEvidenceRuntime`; product components do not know
   endpoint paths, filesystem paths, or Tauri APIs.
 - The localhost server binds only to loopback and protects its API with an
-  ephemeral per-launch credential. A future Tauri shell launches the same
+  ephemeral per-launch credential. The Tauri shell launches the same
   Python application as an authenticated sidecar rather than embedding
   document logic in Rust.
 - Existing CLI commands and content-addressed artifacts remain first-class
@@ -203,12 +206,14 @@ tactical.
   pack are implemented locally through Tactical 002's unattended lane. A
   copied-out unsigned application passes manifest, architecture, host-path,
   authenticated-sidecar, and real synthetic OCR audits.
-- Developer ID signing, notarization/stapling, DMG/updater artifacts, and
-  release finalization are also Tactical 002 scope, following the pinned
-  sibling conventions. Optional extractor-pack discovery/downloads and
-  Windows/Linux packaging remain later work.
-- The source checkout serves a separately built `web/dist`; self-contained
-  wheel/desktop asset packaging is deferred to Tactical 002.
+- Developer ID signing/notarization, Windows Authenticode/NSIS, updater
+  artifacts, and two-platform release finalization move together under Tactical
+  003. Its entry gates include Tactical 002's three unresolved compliance
+  classes and repair of the currently unresolved private Windows testbed
+  identity. Linux and optional extractor-pack discovery/downloads remain later
+  work.
+- The built React product is embedded in the packaged desktop application;
+  source-checkout serving remains a development composition.
 - A hosted composition is a possible future adapter, not current scope.
 
 ## Implementation Evidence
@@ -343,9 +348,10 @@ record is in
 ## Recommended Next Work
 
 Complete the explicit maintainer interaction acceptance in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md). Continue the
-authorized unattended local unsigned/ad-hoc lane in
-[Tactical 002](../tactical/002-macos-tauri-desktop-application.md), stopping
-before credential provisioning, GitHub release setup, signing, notarization,
-updater setup, or publication. Durable review events remain a separate later
-tactical and are not authorized by the packaging plan.
+[Tactical 001](../tactical/001-durable-extraction-jobs.md). When desktop
+implementation is explicitly authorized, begin
+[Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md) by
+repairing the Windows testbed gate and closing Tactical 002's macOS compliance
+blockers before cross-platform packaging. Stop before credential provisioning,
+remote/release setup, tagging, signing, or publication without separate
+authorization. Durable review events remain a separate later tactical.
