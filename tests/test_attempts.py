@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import sys
@@ -20,6 +21,7 @@ from doc_evidence.attempts import (
 )
 from doc_evidence.errors import RequestError
 from doc_evidence.extractor_registry import ExtractorExecution, ExtractorRegistry
+from doc_evidence.windows_job import process_is_alive as windows_process_is_alive
 from tests.helpers import write_minimal_pdf
 
 FAKE_WORKER = Path(__file__).parent / "fixtures" / "fake_extraction_worker.py"
@@ -68,6 +70,18 @@ def _plan(
     )
 
 
+def _process_alive(process_id: int) -> bool:
+    if os.name == "posix":
+        try:
+            os.kill(process_id, 0)
+        except ProcessLookupError:
+            return False
+        return True
+    if os.name == "nt":
+        return windows_process_is_alive(process_id)
+    raise RuntimeError("process liveness is unsupported")
+
+
 class AttemptSupervisorTest(unittest.TestCase):
     def supervisor(self, **values: object) -> AttemptSupervisor:
         return AttemptSupervisor(
@@ -85,6 +99,7 @@ class AttemptSupervisorTest(unittest.TestCase):
                 settings={"text": "canonical output"},
             )
             first = self.supervisor().execute(first_plan)
+            self.assertEqual(first.outcome, "executed", first.value())
             canonical = (
                 first_plan.blob_dir / "runs" / "fixture-extractor" / "fixture-run-key"
             )
@@ -105,7 +120,6 @@ class AttemptSupervisorTest(unittest.TestCase):
             )
             nondeterministic = self.supervisor().execute(nondeterministic_plan)
 
-            self.assertEqual(first.outcome, "executed")
             self.assertTrue(
                 (
                     first_plan.blob_dir / "attempts" / "first" / "publication.json"
@@ -306,7 +320,6 @@ class AttemptSupervisorTest(unittest.TestCase):
             self.assertFalse((first_plan.blob_dir / "attempts" / "old").exists())
             self.assertTrue((first_plan.blob_dir / "attempts" / "active").is_dir())
 
-    @unittest.skipUnless(os.name == "posix", "process-group liveness test is POSIX")
     def test_cancellation_kills_process_group_and_bounds_logs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
@@ -340,17 +353,23 @@ class AttemptSupervisorTest(unittest.TestCase):
             self.assertLessEqual((attempt / "worker.stderr.log").stat().st_size, 4_096)
             self.assertGreater(result.stdout_truncated_bytes, 0)
             self.assertGreater(result.stderr_truncated_bytes, 0)
+            worker = json.loads((attempt / "worker.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                worker["process_tree"],
+                (
+                    "windows_job_kill_on_close"
+                    if os.name == "nt"
+                    else "posix_process_group"
+                ),
+            )
             deadline = time.monotonic() + 3
             while time.monotonic() < deadline:
-                try:
-                    os.kill(child_pid, 0)
-                except ProcessLookupError:
+                if not _process_alive(child_pid):
                     break
                 time.sleep(0.05)
             else:
                 self.fail("worker descendant remained alive after cancellation")
 
-    @unittest.skipUnless(os.name == "posix", "ignored cancellation test is POSIX")
     def test_ignored_cancellation_escalates_and_kills_descendant(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
@@ -384,9 +403,7 @@ class AttemptSupervisorTest(unittest.TestCase):
             self.assertEqual(result.outcome, "cancelled")
             deadline = time.monotonic() + 3
             while time.monotonic() < deadline:
-                try:
-                    os.kill(child_pid, 0)
-                except ProcessLookupError:
+                if not _process_alive(child_pid):
                     break
                 time.sleep(0.05)
             else:

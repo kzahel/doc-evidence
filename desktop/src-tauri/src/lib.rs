@@ -19,6 +19,11 @@ use std::{
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
+#[cfg(windows)]
+mod windows_process;
+#[cfg(windows)]
+use windows_process::KillOnCloseJob;
+
 const DESKTOP_PROTOCOL: &str = "doc-evidence.desktop.v1";
 const APPLICATION_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_READY_BYTES: usize = 64 * 1024;
@@ -27,6 +32,8 @@ const MAX_BUNDLE_MANIFEST_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_PACK_MANIFEST_BYTES: u64 = 1024 * 1024;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const CONTROL_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(windows)]
+const SIDECAR_LAUNCHER_FLAG: &str = "--doc-evidence-sidecar-launcher";
 
 #[cfg(not(any(
     all(target_os = "macos", target_arch = "aarch64"),
@@ -197,6 +204,8 @@ struct HostControl {
 struct DesktopProcess {
     child: Arc<Mutex<Child>>,
     expected_shutdown: Arc<AtomicBool>,
+    #[cfg(windows)]
+    job: KillOnCloseJob,
 }
 
 struct DesktopState {
@@ -245,6 +254,8 @@ impl DesktopProcess {
             thread::sleep(Duration::from_millis(50));
         }
         if let Ok(mut child) = self.child.lock() {
+            #[cfg(windows)]
+            self.job.terminate();
             let _ = child.kill();
             let _ = child.wait();
         }
@@ -261,6 +272,35 @@ fn token() -> Result<String, String> {
             .map_err(|_| "could not encode desktop credentials".to_string())?;
     }
     Ok(encoded)
+}
+
+#[cfg(windows)]
+pub fn run_sidecar_launcher_if_requested() -> Option<i32> {
+    use std::ffi::OsStr;
+
+    let mut arguments = env::args_os().skip(1);
+    if arguments.next().as_deref() != Some(OsStr::new(SIDECAR_LAUNCHER_FLAG)) {
+        return None;
+    }
+    let Some(python) = arguments.next() else {
+        return Some(125);
+    };
+    let mut gate = [0_u8; 1];
+    if std::io::stdin().read_exact(&mut gate).is_err() || gate != *b"G" {
+        return Some(125);
+    }
+    let status = Command::new(python)
+        .args(arguments)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status();
+    Some(status.ok().and_then(|value| value.code()).unwrap_or(125))
+}
+
+#[cfg(not(windows))]
+pub fn run_sidecar_launcher_if_requested() -> Option<i32> {
+    None
 }
 
 fn resource_dir_for_executable(executable: &Path, target: DesktopTarget) -> Option<PathBuf> {
@@ -600,6 +640,15 @@ fn start_sidecar(
         return Err("desktop credentials are not independent".to_string());
     }
 
+    #[cfg(windows)]
+    let mut command = {
+        let executable = env::current_exe()
+            .map_err(|_| "could not locate the Windows sidecar launcher".to_string())?;
+        let mut command = Command::new(executable);
+        command.arg(SIDECAR_LAUNCHER_FLAG).arg(&python);
+        command
+    };
+    #[cfg(not(windows))]
     let mut command = Command::new(&python);
     command
         .env_clear()
@@ -637,9 +686,26 @@ fn start_sidecar(
             command.env(name, value);
         }
     }
+    #[cfg(windows)]
+    let job = KillOnCloseJob::create()?;
     let mut child = command
         .spawn()
         .map_err(|_| "could not launch packaged Python runtime".to_string())?;
+    #[cfg(windows)]
+    {
+        if let Err(error) = job.assign(&child).and_then(|()| {
+            child
+                .stdin
+                .as_mut()
+                .ok_or_else(|| "Windows sidecar launch gate is unavailable".to_string())?
+                .write_all(b"G")
+                .map_err(|_| "could not open the Windows sidecar launch gate".to_string())
+        }) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(error);
+        }
+    }
     let stdout = child
         .stdout
         .take()
@@ -721,6 +787,8 @@ fn start_sidecar(
         DesktopProcess {
             child,
             expected_shutdown,
+            #[cfg(windows)]
+            job,
         },
         control,
         info,

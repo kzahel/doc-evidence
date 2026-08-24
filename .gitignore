@@ -18,7 +18,6 @@ web/playwright-report/
 web/test-results/
 desktop/node_modules/
 desktop/src-tauri/icons/android/
-desktop/src-tauri/icons/icon.ico
 results/desktop/
 
 # Generated document stores, databases, models, and benchmark runs.

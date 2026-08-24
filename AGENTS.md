@@ -329,11 +329,14 @@ the existing macOS compliance blockers and Windows Machine Control readiness.
 Local implementation and validation were authorized on 2026-08-24. The Windows
 identity and disposable-workspace gate now pass, including semantic action,
 independent effect, target-native capture, bounded artifact retrieval, and
-discard verification. The available guest is Windows ARM64, so native Windows
-x86_64 installed-artifact acceptance remains release-blocking. Do not touch
-signing credentials, repository/release setup, notarization, updater setup,
-tags, or publication without explicit maintainer authorization. Heavy
-extractor packs and alternative release channels remain outside it.
+discard verification. Exact paired desktop contracts and Windows kill-on-close
+Job Object ownership for both the Rust sidecar and Python attempt trees are now
+implemented. The available Windows ARM64 guest passes target-native attempt
+cleanup and x86_64-emulated Rust process-tree tests, but native Windows x86_64
+installed-artifact acceptance remains release-blocking. Do not touch signing
+credentials, repository/release setup, notarization, updater setup, tags, or
+publication without explicit maintainer authorization. Heavy extractor packs
+and alternative release channels remain outside it.
 
 The maintainer has also selected bidirectional text/page highlighting and
 bounded regional OCR as an accepted product direction. The researched

@@ -334,6 +334,15 @@ disagrees with the host declaration fail before the loopback service is
 exposed. Windows-native lifecycle, paths, runtime staging, and installer
 acceptance remain open.
 
+The next Tactical 003 checkpoint adds Windows Job Object ownership without
+changing the shared scheduler or artifact state machine. Both the Rust-owned
+sidecar tree and Python-owned extractor tree use an assign-before-launch gate
+and kill-on-close handle; `taskkill` is not a correctness dependency. The
+available Windows guest passes native attempt cancellation/timeout/descendant
+cleanup and x86_64-emulated Rust Job Object tests. Windows path policy,
+standalone runtime/pack staging, exact installer bytes, and native x86_64
+installed acceptance remain open.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

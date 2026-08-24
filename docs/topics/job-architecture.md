@@ -2,7 +2,7 @@
 
 Topic: job-architecture
 
-**Last updated:** 2026-08-23
+**Last updated:** 2026-08-24
 
 **Status:** Tactical 001 implementation complete. Unified persistence,
 atomic catalog membership generations, extractor registration, supervised
@@ -13,8 +13,10 @@ implemented. Fault/restart, isolated-browser, and authorized
 private-integration gates pass; explicit maintainer interaction acceptance
 remains. Tactical 002 packages the first macOS execution environment and
 baseline extractor pack. Tactical 003 plans Windows-native process-tree
-ownership and cross-platform installed-artifact validation; implementation,
-signing, and publication remain unstarted.
+ownership and cross-platform installed-artifact validation. Kill-on-close
+ownership for both Windows process boundaries is implemented and passes the
+available Windows testbed; installed-artifact validation, signing, and
+publication remain open.
 
 ## Purpose
 
@@ -499,9 +501,12 @@ The core recovery invariant is:
   machine-verifiable implementation gates pass.
 - Resource defaults still need broader measurement on supported local
   environments; CPU count alone does not establish safe model concurrency.
-- Tactical 003 must implement and validate Windows-native kill-on-close process
-  tree ownership for both the Tauri sidecar and each Python attempt. `taskkill`
-  alone is not the correctness contract.
+- Tactical 003 now implements Windows kill-on-close Job Objects for both the
+  Tauri sidecar tree and each Python attempt tree, with gated launch preventing
+  descendants from escaping before assignment. The available Windows ARM64
+  guest passes target-native Python cleanup and x86_64-emulated Rust tests; the
+  exact installed Windows x86_64 candidate and crash/restart matrix remain
+  release-blocking.
 - Tactical 002's Python sidecar shuts down its manager/schedulers on parent
   EOF, and the Tauri shell now closes that parent channel, waits up to the
   existing scheduler cleanup envelope, then applies a bounded kill. The

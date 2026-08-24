@@ -24,11 +24,13 @@ from doc_evidence.util import (
     hash_json,
     isoformat_z,
 )
+from doc_evidence.windows_job import WindowsJob
 
 ATTEMPT_SCHEMA_VERSION = 1
 WORKER_PROTOCOL_VERSION = 2
 DEFAULT_LOG_LIMIT_BYTES = 1_000_000
 DEFAULT_MINIMUM_FREE_BYTES = 64 * 1024 * 1024
+WINDOWS_WORKER_LAUNCH_FAILED_EXIT = 125
 
 AttemptOutcome = Literal[
     "executed",
@@ -39,6 +41,10 @@ AttemptOutcome = Literal[
     "cancelled",
     "timeout",
 ]
+
+
+class _HandledWorkerFailureError(Exception):
+    pass
 
 
 @dataclass(frozen=True)
@@ -260,7 +266,7 @@ def _fsync_tree(root: Path) -> None:
     directories = [root]
     for path in sorted(root.rglob("*")):
         if path.is_file():
-            with path.open("rb") as source:
+            with path.open("rb+") as source:
                 os.fsync(source.fileno())
         elif path.is_dir():
             directories.append(path)
@@ -273,7 +279,12 @@ def _fsync_tree(root: Path) -> None:
                 os.close(descriptor)
 
 
-def _signal_tree(process: subprocess.Popen[bytes], *, force: bool) -> None:
+def _signal_tree(
+    process: subprocess.Popen[bytes],
+    *,
+    force: bool,
+    windows_job: WindowsJob | None = None,
+) -> None:
     if process.poll() is not None:
         return
     if os.name == "posix":
@@ -281,12 +292,10 @@ def _signal_tree(process: subprocess.Popen[bytes], *, force: bool) -> None:
             os.killpg(process.pid, signal.SIGKILL if force else signal.SIGTERM)
         except ProcessLookupError:
             return
+    elif windows_job is not None:
+        windows_job.terminate(exit_code=1 if force else 2)
     elif force:
-        subprocess.run(
-            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-            capture_output=True,
-            check=False,
-        )
+        process.kill()
     else:
         process.terminate()
 
@@ -298,6 +307,14 @@ def _cleanup_lingering_process_group(process_group_id: int | None) -> None:
         os.killpg(process_group_id, signal.SIGTERM)
     except ProcessLookupError:
         return
+
+
+def _read_worker_pid(path: Path) -> int | None:
+    try:
+        value = int(path.read_text(encoding="ascii"))
+    except (OSError, UnicodeError, ValueError):
+        return None
+    return value if value > 0 else None
 
 
 class AttemptSupervisor:
@@ -361,33 +378,76 @@ class AttemptSupervisor:
             },
         )
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+        worker_command = [
+            *self.worker_command,
+            str(request_path),
+            str(response_path),
+        ]
+        windows_job: WindowsJob | None = None
+        gate_path = attempt_dir / "worker-launch.gate"
+        worker_pid_path = attempt_dir / "worker.pid"
         process: subprocess.Popen[bytes] | None = None
+        windows_job_assigned = False
         try:
+            if os.name == "nt":
+                windows_job = WindowsJob.create()
+                worker_command = [
+                    sys.executable,
+                    "-I",
+                    "-B",
+                    "-m",
+                    "doc_evidence.windows_job_launcher",
+                    str(gate_path.resolve()),
+                    str(worker_pid_path.resolve()),
+                    *worker_command,
+                ]
             process = subprocess.Popen(
-                [*self.worker_command, str(request_path), str(response_path)],
+                worker_command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 start_new_session=os.name == "posix",
                 creationflags=flags,
             )
+            if windows_job is not None:
+                windows_job.assign(process.pid)
+                windows_job_assigned = True
+                atomic_write_json(
+                    gate_path,
+                    {
+                        "schema_version": 1,
+                        "attempt_id": plan.attempt_id,
+                    },
+                )
             atomic_write_json(
                 attempt_dir / "worker.json",
                 {
                     "schema_version": 1,
                     "attempt_id": plan.attempt_id,
-                    "worker_pid": process.pid,
+                    "worker_pid": process.pid if os.name == "posix" else None,
+                    "launcher_pid": process.pid if os.name == "nt" else None,
                     "process_group_id": process.pid if os.name == "posix" else None,
+                    "process_tree": (
+                        "windows_job_kill_on_close"
+                        if windows_job is not None
+                        else "posix_process_group"
+                    ),
                     "started_at": started_at,
                 },
             )
         except OSError as error:
             if process is not None:
-                _signal_tree(process, force=True)
+                _signal_tree(
+                    process,
+                    force=True,
+                    windows_job=windows_job if windows_job_assigned else None,
+                )
                 process.wait(timeout=10)
                 if process.stdout is not None:
                     process.stdout.close()
                 if process.stderr is not None:
                     process.stderr.close()
+            if windows_job is not None:
+                windows_job.close()
             completed_at = isoformat_z()
             result = AttemptResult(
                 attempt_id=plan.attempt_id,
@@ -397,7 +457,11 @@ class AttemptSupervisor:
                 run_key=None,
                 canonical_artifact_path=None,
                 attempt_path=attempt_dir.relative_to(plan.store_root).as_posix(),
-                worker_pid=process.pid if process is not None else None,
+                worker_pid=(
+                    process.pid
+                    if process is not None and os.name == "posix"
+                    else _read_worker_pid(worker_pid_path)
+                ),
                 process_group_id=(
                     process.pid if process is not None and os.name == "posix" else None
                 ),
@@ -450,6 +514,9 @@ class AttemptSupervisor:
         stdout_thread.start()
         stderr_thread.start()
         process_group_id = process.pid if os.name == "posix" else None
+        worker_pid = (
+            process.pid if os.name == "posix" else _read_worker_pid(worker_pid_path)
+        )
         outcome: AttemptOutcome = "failed"
         failure_class: str | None = None
         message: str | None = None
@@ -460,15 +527,17 @@ class AttemptSupervisor:
         last_heartbeat = 0.0
         if on_update is not None:
             on_update(
-                AttemptUpdate(plan.attempt_id, "running", process.pid, isoformat_z())
+                AttemptUpdate(plan.attempt_id, "running", worker_pid, isoformat_z())
             )
         while process.poll() is None:
             now = time.monotonic()
+            if worker_pid is None and os.name == "nt":
+                worker_pid = _read_worker_pid(worker_pid_path)
             if cancel is not None and cancel.is_set():
                 outcome = "cancelled"
                 failure_class = "cancelled"
                 message = "attempt cancellation was requested"
-                _signal_tree(process, force=False)
+                _signal_tree(process, force=False, windows_job=windows_job)
                 break
             if now - started >= plan.execution.timeout_seconds:
                 outcome = "timeout"
@@ -476,14 +545,14 @@ class AttemptSupervisor:
                 message = (
                     f"attempt exceeded {plan.execution.timeout_seconds} second deadline"
                 )
-                _signal_tree(process, force=False)
+                _signal_tree(process, force=False, windows_job=windows_job)
                 break
             if on_update is not None and now - last_heartbeat >= self.heartbeat_seconds:
                 on_update(
                     AttemptUpdate(
                         plan.attempt_id,
                         "running",
-                        process.pid,
+                        worker_pid,
                         isoformat_z(),
                     )
                 )
@@ -493,16 +562,28 @@ class AttemptSupervisor:
             try:
                 process.wait(timeout=self.cancellation_grace_seconds)
             except subprocess.TimeoutExpired:
-                _signal_tree(process, force=True)
+                _signal_tree(process, force=True, windows_job=windows_job)
                 process.wait(timeout=10)
         exit_code = process.returncode
+        if worker_pid is None and os.name == "nt":
+            worker_pid = _read_worker_pid(worker_pid_path)
         _cleanup_lingering_process_group(process_group_id)
+        if windows_job is not None:
+            windows_job.close()
         stdout_thread.join(timeout=10)
         stderr_thread.join(timeout=10)
         process.stdout.close()
         process.stderr.close()
         if outcome not in {"cancelled", "timeout"}:
             try:
+                if (
+                    os.name == "nt"
+                    and exit_code == WINDOWS_WORKER_LAUNCH_FAILED_EXIT
+                    and not response_path.exists()
+                ):
+                    failure_class = "worker_launch_failed"
+                    message = "Windows worker launcher could not start the worker"
+                    raise _HandledWorkerFailureError
                 response = _read_json(response_path)
                 if (
                     exit_code != 0
@@ -593,6 +674,8 @@ class AttemptSupervisor:
                                     os.close(descriptor)
                             outcome = "executed"
                     canonical_path = canonical.relative_to(plan.store_root).as_posix()
+            except _HandledWorkerFailureError:
+                pass
             except (
                 OSError,
                 UnicodeError,
@@ -633,7 +716,7 @@ class AttemptSupervisor:
             run_key=run_key,
             canonical_artifact_path=canonical_path,
             attempt_path=attempt_dir.relative_to(plan.store_root).as_posix(),
-            worker_pid=process.pid,
+            worker_pid=worker_pid,
             process_group_id=process_group_id,
             exit_code=exit_code,
             started_at=started_at,
@@ -651,7 +734,7 @@ class AttemptSupervisor:
                 AttemptUpdate(
                     plan.attempt_id,
                     outcome,
-                    process.pid,
+                    worker_pid,
                     completed_at,
                 )
             )

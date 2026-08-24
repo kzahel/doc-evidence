@@ -559,6 +559,42 @@ remaining Windows path, process-tree, runtime-pack, and installer work stay in
 later checkpoints; this host-side result is not presented as Windows release
 acceptance.
 
+The third checkpoint implements Windows kill-on-close process ownership at
+both native boundaries. The Rust shell creates an unnamed Job Object for the
+sidecar tree, sets `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, assigns a tiny copy of
+its own executable before sending a one-byte launch gate, and only then lets
+that launcher start the packaged Python sidecar. Graceful close still uses
+parent stdin and the existing scheduler-cleanup envelope; forced close
+terminates the Job Object and closing its final handle is the fail-safe.
+
+Python applies the same ordering to every extractor attempt. A private gated
+launcher cannot start the worker until the supervisor has assigned it to a
+fresh kill-on-close Job Object. The launcher records the actual worker PID,
+all descendants inherit the job, and cancellation, timeout, supervisor crash,
+or final handle close removes the complete tree without `taskkill`. Windows
+process-liveness diagnostics now use `OpenProcess` plus a zero-time wait rather
+than POSIX `kill(pid, 0)` semantics. Target testing also found that Windows
+rejects `fsync` on the read-only handles previously used for staged artifacts;
+app-owned staged files are now opened read/write for the same flush-before-
+publication invariant.
+
+The isolated Windows ARM64 guest ran the exact source and an x86_64 Rust build
+under Windows emulation. Five focused Python scenarios passed: normal atomic
+publication, launch failure, timeout/crash handling, cancellation with a noisy
+descendant, and ignored cancellation with forced descendant cleanup. The
+x86_64 Rust target passed `cargo check`, Clippy with warnings denied, seven
+tests including an independently counted two-process Job Object tree, and a
+built launcher smoke. The guest encountered intermittent, bounded
+administration-route rediscovery failures during repeated builds and cleanup;
+each recovered through the common readiness surface, and the final common
+doctor fully passes. Guest staging was removed before release. The first
+receipt-bound release again failed closed at its clean-shutdown bound; one
+explicit shutdown retry allowed the overlay to be discarded, left no temporary
+workspace or claim, and restored the persistent target to its initial running,
+ready state. This is target-native Windows lifecycle evidence and
+x86_64-emulation build evidence, not the still-required native Windows x86_64
+installed-artifact acceptance.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

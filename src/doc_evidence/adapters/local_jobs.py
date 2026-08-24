@@ -46,6 +46,7 @@ from doc_evidence.extractor_registry import (
 from doc_evidence.persistence import LibraryDatabase
 from doc_evidence.persistence.jobs import JobRepository
 from doc_evidence.util import hash_file, hash_json
+from doc_evidence.windows_job import process_is_alive as windows_process_is_alive
 
 
 @dataclass(frozen=True)
@@ -387,14 +388,17 @@ class LocalExtractionJobs:
             process_alive: bool | None = None
             if record.worker_pid is not None:
                 if record.state in {"starting", "running", "cancelling"}:
-                    try:
-                        os.kill(record.worker_pid, 0)
-                    except ProcessLookupError:
-                        process_alive = False
-                    except PermissionError:
-                        process_alive = True
+                    if os.name == "nt":
+                        process_alive = windows_process_is_alive(record.worker_pid)
                     else:
-                        process_alive = True
+                        try:
+                            os.kill(record.worker_pid, 0)
+                        except ProcessLookupError:
+                            process_alive = False
+                        except PermissionError:
+                            process_alive = True
+                        else:
+                            process_alive = True
                 else:
                     process_alive = False
             heartbeat_age: float | None = None

@@ -138,7 +138,9 @@ validation were authorized on 2026-08-24; external setup, credentials, signing,
 tags, and publication still await explicit authorization. The first Windows
 Machine Control disposable-workspace gate passes. Its available guest is
 Windows ARM64, so native Windows x86_64 acceptance remains a release gate even
-while that guest supports target-native Windows and x86_64-emulation work.
+while that guest supports target-native Windows and x86_64-emulation work. The
+shared exact-target contracts and Windows kill-on-close ownership for both
+desktop process boundaries are implemented and pass that available testbed.
 Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding
