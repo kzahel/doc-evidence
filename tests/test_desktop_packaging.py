@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -16,6 +17,7 @@ from doc_evidence.desktop_packaging import (
     _load_inputs,
     _python_license_conclusion,
     _python_native_inventory,
+    _recover_rust_license_files,
     _requires_corresponding_source,
     _rust_license_expression,
     _spdx_license,
@@ -228,6 +230,82 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertTrue(_requires_corresponding_source("LGPL-2.1-or-later"))
         self.assertTrue(_requires_corresponding_source("MPL-2.0"))
         self.assertFalse(_requires_corresponding_source("Apache-2.0 OR MIT"))
+
+    def test_rust_license_recovery_binds_package_vcs_and_document_hash(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            packaging = root / "desktop" / "packaging"
+            packaging.mkdir(parents=True)
+            package_root = root / "cargo" / "example-1.0.0"
+            package_root.mkdir(parents=True)
+            (package_root / ".cargo_vcs_info.json").write_text(
+                json.dumps(
+                    {
+                        "git": {"sha1": "a" * 40},
+                        "path_in_vcs": "crates/example",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            content = b"Exact license text\n"
+            digest = hashlib.sha256(content).hexdigest()
+            (packaging / "macos-rust-license-sources.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": (
+                            "doc-evidence.macos-rust-license-sources.v1"
+                        ),
+                        "documents": {
+                            "example-license": {
+                                "url": "https://example.invalid/LICENSE",
+                                "sha256": digest,
+                                "filename": "LICENSE",
+                            }
+                        },
+                        "packages": {
+                            "example@1.0.0": {
+                                "vcs_revision": "a" * 40,
+                                "path_in_vcs": "crates/example",
+                                "license_declared": "MIT",
+                                "documents": ["example-license"],
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            cached = (
+                root
+                / "results"
+                / "desktop"
+                / "cache"
+                / "compliance-licenses"
+                / "example-license-LICENSE"
+            )
+            cached.parent.mkdir(parents=True)
+            cached.write_bytes(content)
+            output = root / "compliance"
+
+            paths, provenance = _recover_rust_license_files(
+                package_root=package_root,
+                name="example",
+                version="1.0.0",
+                license_expression="MIT",
+                repository=root,
+                output=output,
+            )
+
+            self.assertEqual([path.read_bytes() for path in paths], [content])
+            self.assertEqual(provenance[0]["vcs_revision"], "a" * 40)
+            with self.assertRaisesRegex(RuntimeError, "expression drifted"):
+                _recover_rust_license_files(
+                    package_root=package_root,
+                    name="example",
+                    version="1.0.0",
+                    license_expression="Apache-2.0",
+                    repository=root,
+                    output=output,
+                )
         self.assertEqual(
             _python_license_conclusion(
                 {"name": "pi_heif", "version": "1.4.0"},

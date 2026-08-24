@@ -698,6 +698,23 @@ installer, after re-running the staged runtime smoke. The merged Tauri config
 passes the pinned CLI schema locally. No target build, install, or uninstall
 claim is made yet.
 
+The first macOS compliance closure removes the 19-crate missing-license-text
+blocker without treating a package's declared SPDX expression as the license
+text itself. A tracked inventory binds each exact crate name/version to the
+Git revision and repository path preserved in Cargo's packaged
+`.cargo_vcs_info.json`, then to hash-pinned license documents from that exact
+upstream revision. Where an upstream workspace notice links to standard texts
+instead of carrying them, the inventory additionally pins SPDX License List
+3.27.0 texts; the `selectors` crate's absent repository-level MPL copy uses the
+same canonical source. A bounded cache permits later compliance runs without
+network access while hash and VCS drift still fail closed.
+
+All 253 target-resolved Rust dependencies were re-inventoried locally. The 19
+previously missing packages recovered exact license material and the missing
+set is now empty. Twelve focused macOS packaging tests and Ruff pass. This
+checkpoint does not close the remaining pypdfium2 or 32 nested-wheel-native
+component blockers, and it does not claim a rebuilt application or DMG yet.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

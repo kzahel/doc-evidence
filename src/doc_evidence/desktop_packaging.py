@@ -41,6 +41,7 @@ from doc_evidence.desktop_pack import BASELINE_PACK_ENV, load_baseline_pack
 BUNDLE_MANIFEST_SCHEMA = "doc-evidence.desktop-bundle-manifest.v1"
 RUNTIME_MANIFEST_SCHEMA = "doc-evidence.desktop-runtime-manifest.v1"
 BUILD_INPUTS_SCHEMA = "doc-evidence.desktop-build-inputs.v1"
+RUST_LICENSE_SOURCES_SCHEMA = "doc-evidence.macos-rust-license-sources.v1"
 PRODUCT_NAME = "Doc Evidence"
 PRODUCT_IDENTIFIER = "io.github.kzahel.doc-evidence"
 SYSTEM_LOAD_PREFIXES = ("/System/Library/", "/usr/lib/")
@@ -63,6 +64,11 @@ def repository_root() -> Path:
 def build_inputs_path(root: Path | None = None) -> Path:
     base = root or repository_root()
     return base / "desktop" / "packaging" / "macos-arm64.json"
+
+
+def rust_license_sources_path(root: Path | None = None) -> Path:
+    base = root or repository_root()
+    return base / "desktop" / "packaging" / "macos-rust-license-sources.json"
 
 
 def stage_root(root: Path | None = None) -> Path:
@@ -2383,6 +2389,116 @@ def _rust_license_expression(value: str) -> str:
     }.get(value, value)
 
 
+def _load_rust_license_sources(repository: Path) -> dict[str, Any]:
+    path = rust_license_sources_path(repository)
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("schema_version") != (
+        RUST_LICENSE_SOURCES_SCHEMA
+    ):
+        raise RuntimeError("macOS Rust license-source inventory is incompatible")
+    documents = value.get("documents")
+    packages = value.get("packages")
+    if not isinstance(documents, dict) or not isinstance(packages, dict):
+        raise TypeError("macOS Rust license-source inventory is invalid")
+    return value
+
+
+def _acquire_compliance_document(
+    document_id: str,
+    record: Mapping[str, Any],
+    *,
+    cache: Path,
+) -> Path:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", document_id):
+        raise RuntimeError(f"compliance document identifier is invalid: {document_id}")
+    filename = record.get("filename")
+    url = record.get("url")
+    expected_sha256 = record.get("sha256")
+    if (
+        not isinstance(filename, str)
+        or Path(filename).name != filename
+        or not isinstance(url, str)
+        or not url.startswith("https://")
+        or not isinstance(expected_sha256, str)
+        or not _is_lower_hex(expected_sha256, 64)
+    ):
+        raise RuntimeError(f"compliance document is invalid: {document_id}")
+    cached = cache / f"{document_id}-{filename}"
+    if cached.is_file() and sha256_file(cached) == expected_sha256:
+        return cached
+    content = _download_bounded(url)
+    if hashlib.sha256(content).hexdigest() != expected_sha256:
+        raise RuntimeError(f"compliance document hash mismatched: {document_id}")
+    cache.mkdir(parents=True, exist_ok=True)
+    temporary = cached.with_name(f".{cached.name}.{secrets.token_hex(6)}.partial")
+    try:
+        temporary.write_bytes(content)
+        os.replace(temporary, cached)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return cached
+
+
+def _recover_rust_license_files(
+    *,
+    package_root: Path,
+    name: str,
+    version: str,
+    license_expression: str,
+    repository: Path,
+    output: Path,
+) -> tuple[list[Path], list[dict[str, str]]]:
+    inventory = _load_rust_license_sources(repository)
+    packages = inventory["packages"]
+    documents = inventory["documents"]
+    package_key = f"{name}@{version}"
+    record = packages.get(package_key)
+    if not isinstance(record, Mapping):
+        return [], []
+    if record.get("license_declared") != license_expression:
+        raise RuntimeError(f"Rust license-source expression drifted: {package_key}")
+    vcs_path = package_root / ".cargo_vcs_info.json"
+    if not vcs_path.is_file():
+        raise RuntimeError(f"Rust package lacks VCS identity: {package_key}")
+    vcs = json.loads(vcs_path.read_text(encoding="utf-8"))
+    git = vcs.get("git")
+    revision = git.get("sha1") if isinstance(git, Mapping) else None
+    if revision != record.get("vcs_revision") or vcs.get("path_in_vcs") != record.get(
+        "path_in_vcs"
+    ):
+        raise RuntimeError(f"Rust license-source revision drifted: {package_key}")
+    document_ids = record.get("documents")
+    if not isinstance(document_ids, list) or not document_ids:
+        raise RuntimeError(f"Rust license-source documents are empty: {package_key}")
+    destination = output / "dependency-licenses" / "rust" / f"{name}-{version}"
+    license_paths = []
+    provenance = []
+    for document_id_value in document_ids:
+        document_id = str(document_id_value)
+        document = documents.get(document_id)
+        if not isinstance(document, Mapping):
+            raise TypeError(
+                f"Rust license-source document is missing: {package_key} {document_id}"
+            )
+        source = _acquire_compliance_document(
+            document_id,
+            document,
+            cache=cache_root(repository) / "compliance-licenses",
+        )
+        copied = destination / str(document["filename"])
+        _copy_compliance_file(source, copied)
+        license_paths.append(copied)
+        provenance.append(
+            {
+                "document_id": document_id,
+                "url": str(document["url"]),
+                "sha256": str(document["sha256"]),
+                "vcs_revision": str(record["vcs_revision"]),
+            }
+        )
+    return license_paths, provenance
+
+
 def _cargo_dependency_inventory(
     repository: Path,
     output: Path,
@@ -2465,6 +2581,22 @@ def _cargo_dependency_inventory(
             copied = package_destination / source_path.name
             _copy_compliance_file(source_path, copied)
             license_paths.append(copied.relative_to(output).as_posix())
+        license_provenance: list[dict[str, str]] = []
+        if not license_paths:
+            try:
+                recovered, license_provenance = _recover_rust_license_files(
+                    package_root=package_root,
+                    name=name,
+                    version=version,
+                    license_expression=_rust_license_expression(license_value),
+                    repository=repository,
+                    output=output,
+                )
+            except (OSError, RuntimeError, urllib.error.URLError):
+                recovered = []
+            license_paths.extend(
+                path.relative_to(output).as_posix() for path in recovered
+            )
         if not license_paths:
             missing_license_texts.append(f"{name} {version}")
         license_expression = _rust_license_expression(license_value)
@@ -2478,6 +2610,7 @@ def _cargo_dependency_inventory(
             "source_url": source_url,
             "source_sha256": checksum,
             "license_files": license_paths,
+            "license_provenance": license_provenance,
         }
         records.append(record)
         spdx_packages.append(

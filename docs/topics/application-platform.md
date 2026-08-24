@@ -307,13 +307,14 @@ all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
 SBOMs. Formula selection is bound to the installed package version, source
 hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
 recipes are reusable from an ignored cache. The preflight remains fail-closed
-for publication: pypdfium2 needs a reviewed composite SPDX conclusion; 32
+for publication: pypdfium2 needs a reviewed composite SPDX conclusion and 32
 third-party libraries nested in Python wheels need flattened component/source
 reconciliation (the other 45 Python native objects now have exact top-level
-ownership);
-19 Rust crates need repository-level license texts that their published crate
-archives omit. Required top-level copyleft/MPL source archives are now
-hash-verified and embedded. The
+ownership). The former 19-crate Rust license-text blocker is closed by a
+tracked exact-version inventory that binds each package's Cargo VCS revision
+and repository path to hash-pinned upstream or SPDX 3.27.0 license texts.
+Required top-level copyleft/MPL source archives are now hash-verified and
+embedded. The
 aggregate SPDX already includes all 253 target-resolved Rust dependencies and
 11 conservative production Node dependencies, with 426 available license
 files and exact registry source checksums.
