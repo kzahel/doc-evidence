@@ -33,6 +33,7 @@ from doc_evidence.contracts.desktop import (
     WINDOWS_DESKTOP_ORIGIN,
 )
 from doc_evidence.desktop_pack import load_baseline_pack
+from doc_evidence.platform_paths import long_path_temporary_directory
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, inspect_pe
 
 BUILD_INPUTS_SCHEMA = "doc-evidence.desktop-build-inputs.v1"
@@ -1762,8 +1763,9 @@ def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
 
 
 def smoke_long_path_io(runtime_root: Path) -> dict[str, Any]:
-    with tempfile.TemporaryDirectory(prefix="doc-evidence-windows-long-path-") as raw:
-        working = Path(raw)
+    with long_path_temporary_directory(
+        prefix="doc-evidence-windows-long-path-"
+    ) as working:
         environment = baseline_environment(runtime_root, working)
         script = r"""
 import json

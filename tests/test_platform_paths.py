@@ -16,6 +16,7 @@ from doc_evidence.platform_paths import (
     WINDOWS_DRIVE_FIXED,
     WINDOWS_FILE_ATTRIBUTE_OFFLINE,
     _extended_windows_path,
+    long_path_temporary_directory,
     path_contains,
     paths_overlap,
     resolve_collection_root,
@@ -24,6 +25,14 @@ from doc_evidence.platform_paths import (
 
 
 class PlatformPathIdentityTest(unittest.TestCase):
+    def test_long_path_temporary_directory_removes_its_tree(self) -> None:
+        with long_path_temporary_directory(prefix="doc-evidence-path-test-") as root:
+            retained = root
+            (root / "nested" / "evidence.txt").parent.mkdir()
+            (root / "nested" / "evidence.txt").write_text("evidence")
+
+        self.assertFalse(retained.exists())
+
     def test_windows_extended_paths_do_not_depend_on_machine_policy(self) -> None:
         self.assertEqual(
             _extended_windows_path(r"C:\Evidence\Résumé"),

@@ -16,7 +16,6 @@ import queue
 import secrets
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 import urllib.error
@@ -27,7 +26,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from doc_evidence.platform_paths import extended_length_path
+from doc_evidence.platform_paths import (
+    extended_length_path,
+    long_path_temporary_directory,
+)
 
 DESKTOP_PROTOCOL = "doc-evidence.desktop.v1"
 Platform = Literal["macos", "windows"]
@@ -460,8 +462,7 @@ def run_acceptance(
     if not executable.is_relative_to(runtime_root):
         raise RuntimeError("acceptance must run with the packaged Python interpreter")
 
-    with tempfile.TemporaryDirectory(prefix="doc-evidence-acceptance-") as raw:
-        working = Path(raw)
+    with long_path_temporary_directory(prefix="doc-evidence-acceptance-") as working:
         collection_one = working / "Synthetic ünicode collection"
         image_pdf = _long_fixture_path(
             collection_one,

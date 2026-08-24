@@ -6,6 +6,10 @@ import ctypes
 import ntpath
 import os
 import posixpath
+import shutil
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from ctypes import wintypes
 from pathlib import Path, PureWindowsPath
 from typing import Any, Literal, cast
@@ -44,6 +48,17 @@ def extended_length_path(path: str | os.PathLike[str]) -> Path:
     if os.name != "nt":
         return Path(raw)
     return Path(_extended_windows_path(raw))
+
+
+@contextmanager
+def long_path_temporary_directory(*, prefix: str) -> Iterator[Path]:
+    """Create a temporary tree whose cleanup also works beyond MAX_PATH."""
+
+    root = Path(tempfile.mkdtemp(prefix=prefix))
+    try:
+        yield root
+    finally:
+        shutil.rmtree(extended_length_path(root))
 
 
 def _path_kind(kind: PlatformPathKind | None = None) -> PlatformPathKind:
