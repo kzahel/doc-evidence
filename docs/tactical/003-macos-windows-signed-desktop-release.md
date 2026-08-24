@@ -796,6 +796,17 @@ and is bound to application tree
 and bundle manifest
 `b815834985bbe3b8fab7b6ffed17955431484ccd0d5ee276e60cddb49ae9e647`.
 
+The unsigned DMG was then rebuilt from that exact application and independently
+mounted read-only for final review. The 72,305,879-byte image has SHA-256
+`d8b924230f9b3e9c05430a5852d3fa3b5e5fd8e9241e79c4fc2e654a28156488`.
+Its 3,823-file application, 41-package embedded runtime, authenticated sidecar
+handshake, and parent-EOF shutdown all pass. The mounted application tree and
+runtime tree remain exactly
+`42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
+and `23adac429b1b7a5ae1dc943b8c8c53c3b5ad7f36001e2be8e8a55a50b59531b4`.
+Strict signature verification exits nonzero with the expected
+unsigned-local-proof classification; no signing credential was accessed.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer
