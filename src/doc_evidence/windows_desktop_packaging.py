@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import tarfile
 import tempfile
 import urllib.parse
 import urllib.request
@@ -15,6 +16,8 @@ import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import Any
+
+import jsonschema
 
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, inspect_pe
 
@@ -483,6 +486,298 @@ def extract_tesseract_component(
             shutil.copy2(source, target)
             support.append(target)
     return binaries, support
+
+
+def extract_language_data(
+    archive: Path,
+    language: Mapping[str, Any],
+    pack: Path,
+) -> list[dict[str, str]]:
+    """Extract only the three declared Tesseract language files."""
+
+    archive_record = language["archive"]
+    if sha256_file(archive) != archive_record["sha256"]:
+        raise RuntimeError("Tesseract language archive identity changed")
+    destination = pack / "tessdata"
+    destination.mkdir(parents=True, exist_ok=True)
+    records: list[dict[str, str]] = []
+    with tarfile.open(archive, "r:gz") as source:
+        members = {member.name: member for member in source.getmembers()}
+        for raw_path, expected in sorted(language["files"].items()):
+            relative = _safe_archive_relative(raw_path, "Tesseract language")
+            member = members.get(relative.as_posix())
+            if (
+                member is None
+                or not member.isfile()
+                or member.issym()
+                or member.islnk()
+            ):
+                raise RuntimeError(
+                    f"Tesseract language archive member is invalid: {raw_path}"
+                )
+            stream = source.extractfile(member)
+            if stream is None:
+                raise RuntimeError(
+                    f"Tesseract language archive member is unreadable: {raw_path}"
+                )
+            target = destination / relative.name
+            with stream, target.open("xb") as output:
+                shutil.copyfileobj(stream, output)
+            actual = sha256_file(target)
+            if actual != expected:
+                raise RuntimeError(
+                    f"Tesseract language identity changed: {raw_path}: "
+                    f"expected {expected}, got {actual}"
+                )
+            records.append(
+                {
+                    "language": target.stem,
+                    "path": target.relative_to(pack).as_posix(),
+                    "sha256": actual,
+                    "license_concluded": "Apache-2.0",
+                }
+            )
+    return records
+
+
+def compile_ocrmypdf_launcher(repository: Path, destination: Path) -> Path:
+    """Compile the tracked relocatable launcher with the target-native Rust toolchain."""
+
+    source = repository / "desktop" / "packaging" / "windows-ocrmypdf-launcher.rs"
+    if not source.is_file():
+        raise RuntimeError("Windows OCRmyPDF launcher source is missing")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    _run(
+        [
+            "rustc",
+            "--edition",
+            "2021",
+            "--target",
+            "x86_64-pc-windows-msvc",
+            "-C",
+            "opt-level=z",
+            "-C",
+            "strip=symbols",
+            source,
+            "-o",
+            destination,
+        ],
+        cwd=repository,
+        capture_output=True,
+        timeout_seconds=180,
+    )
+    pe = inspect_pe(destination)
+    if pe.machine != PE_X86_64_MACHINE or pe.format != "PE32+":
+        raise RuntimeError("Windows OCRmyPDF launcher is not x86_64 PE32+")
+    return destination
+
+
+def _component_source_url(component: Mapping[str, Any]) -> str:
+    source_url = component.get("source_url")
+    if isinstance(source_url, str):
+        return source_url
+    sources = component.get("source_archives")
+    if isinstance(sources, list) and sources and isinstance(sources[0], Mapping):
+        value = sources[0].get("url")
+        if isinstance(value, str):
+            return value
+    raise RuntimeError("Windows native component source URL is missing")
+
+
+def _write_json(path: Path, value: Any) -> None:
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
+def stage_baseline_pack(
+    repository: Path,
+    runtime_root: Path,
+    inputs: Mapping[str, Any],
+    python_components: list[str],
+    *,
+    cache: Path,
+    seven_zip: str | Path | None = None,
+) -> dict[str, Any]:
+    """Assemble the exact Windows baseline pack and validate its PE closure."""
+
+    baseline = inputs["baseline_pack"]
+    pack = runtime_root / "baseline-pack"
+    if pack.exists():
+        raise RuntimeError(f"Windows baseline-pack destination exists: {pack}")
+    pack.mkdir(parents=True)
+    components = baseline["native_components"]
+    copied_by_component: dict[str, list[Path]] = {}
+
+    poppler = components["poppler"]
+    poppler_archive = acquire_archive(poppler["archive"], cache)
+    poppler_files, poppler_data = extract_poppler_component(
+        poppler_archive, poppler, pack
+    )
+    copied_by_component["poppler"] = [*poppler_files, *poppler_data]
+
+    tesseract = components["tesseract"]
+    tesseract_archive = acquire_archive(tesseract["archive"], cache)
+    tesseract_files, tesseract_support = extract_tesseract_component(
+        tesseract_archive,
+        tesseract,
+        pack,
+        seven_zip=seven_zip,
+    )
+    copied_by_component["tesseract"] = [
+        *tesseract_files,
+        *tesseract_support,
+    ]
+
+    msvc = components["msvc-runtime"]
+    msvc_archive = acquire_archive(msvc["archive"], cache)
+    copied_by_component["msvc-runtime"] = extract_flat_zip_component(
+        msvc_archive, msvc, pack / "bin"
+    )
+
+    language = baseline["language_data"]
+    language_archive = acquire_archive(language["archive"], cache)
+    language_data = extract_language_data(language_archive, language, pack)
+
+    launcher = compile_ocrmypdf_launcher(repository, pack / "bin" / "ocrmypdf.exe")
+    closure = audit_flat_pe_closure(
+        pack / "bin", system_dlls=list(baseline["system_dlls"])
+    )
+    closure_by_path = {record["path"].casefold(): record for record in closure}
+
+    tools = []
+    for tool_id, reference in sorted(baseline["tools"].items()):
+        component_id, name = reference.split(":", 1)
+        path = pack / "bin" / name
+        tools.append(
+            {
+                "tool_id": tool_id,
+                "version": str(components[component_id]["version"]),
+                "executable": path.relative_to(pack).as_posix(),
+                "sha256": sha256_file(path),
+                "license_concluded": components[component_id]["license_concluded"],
+                "component_id": component_id,
+            }
+        )
+    tools.append(
+        {
+            "tool_id": "ocrmypdf",
+            "version": str(baseline["python_components"]["ocrmypdf"]),
+            "executable": launcher.relative_to(pack).as_posix(),
+            "sha256": sha256_file(launcher),
+            "license_concluded": "MPL-2.0",
+            "component_id": "python-ocrmypdf",
+        }
+    )
+
+    owner_by_name = {
+        name.casefold(): component_id
+        for component_id, component in components.items()
+        for name in component["payload_sha256"]
+    }
+    native_libraries = []
+    for record in closure:
+        path = pack / "bin" / record["path"]
+        if path.suffix.casefold() != ".dll":
+            continue
+        native_libraries.append(
+            {
+                "path": path.relative_to(pack).as_posix(),
+                "sha256": record["sha256"],
+                "component_id": owner_by_name[path.name.casefold()],
+                "architectures": ["x86_64"],
+            }
+        )
+    support_files = [
+        {
+            "path": path.relative_to(pack).as_posix(),
+            "sha256": sha256_file(path),
+            "component_id": "tesseract",
+        }
+        for path in sorted(tesseract_support)
+    ]
+    pack_manifest = {
+        "schema_version": "doc-evidence.extractor-pack-manifest.v1",
+        "pack_id": baseline["pack_id"],
+        "version": baseline["version"],
+        "platform": WINDOWS_PLATFORM,
+        "architecture": WINDOWS_ARCHITECTURE,
+        "tools": sorted(tools, key=lambda item: item["tool_id"]),
+        "language_data": language_data,
+        "support_files": support_files,
+        "python_components": python_components,
+        "native_libraries": native_libraries,
+    }
+    schema = json.loads(
+        (
+            repository
+            / "src"
+            / "doc_evidence"
+            / "schema_files"
+            / "extractor-pack-manifest.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    jsonschema.Draft202012Validator(schema).validate(pack_manifest)
+    manifest_path = pack / "pack-manifest.json"
+    _write_json(manifest_path, pack_manifest)
+
+    file_owners: dict[str, str] = {}
+    for component_id, paths in copied_by_component.items():
+        for path in paths:
+            file_owners[path.relative_to(runtime_root).as_posix()] = component_id
+    for item in language_data:
+        file_owners[f"baseline-pack/{item['path']}"] = "tesseract-language-data"
+    file_owners[launcher.relative_to(runtime_root).as_posix()] = "python-ocrmypdf"
+    file_owners[manifest_path.relative_to(runtime_root).as_posix()] = (
+        "baseline-pack-metadata"
+    )
+    component_records = [
+        {
+            "component_id": component_id,
+            "name": component_id,
+            "version": str(component["version"]),
+            "license_concluded": component["license_concluded"],
+            "source_url": _component_source_url(component),
+            "bundled_paths": sorted(
+                path.relative_to(runtime_root).as_posix()
+                for path in copied_by_component[component_id]
+            ),
+        }
+        for component_id, component in sorted(components.items())
+    ]
+    component_records.extend(
+        [
+            {
+                "component_id": "tesseract-language-data",
+                "name": "Tesseract language data",
+                "version": str(language["archive"]["version"]),
+                "license_concluded": "Apache-2.0",
+                "source_url": language["archive"]["url"],
+                "source_sha256": language["archive"]["sha256"],
+                "bundled_paths": sorted(
+                    f"baseline-pack/{item['path']}" for item in language_data
+                ),
+            },
+            {
+                "component_id": "baseline-pack-metadata",
+                "name": "Doc Evidence baseline extractor pack metadata",
+                "version": str(baseline["version"]),
+                "license_concluded": "Apache-2.0",
+                "source_url": "https://github.com/kzahel/doc-evidence",
+                "bundled_paths": [manifest_path.relative_to(runtime_root).as_posix()],
+            },
+        ]
+    )
+    return {
+        "identity": {
+            "pack_id": baseline["pack_id"],
+            "version": baseline["version"],
+            "manifest_sha256": sha256_file(manifest_path),
+        },
+        "components": component_records,
+        "file_owners": file_owners,
+        "native_closure": closure_by_path,
+    }
 
 
 def _is_windows_api_set(name: str) -> bool:

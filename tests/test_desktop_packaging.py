@@ -52,7 +52,7 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertEqual(baseline["version"], "2026.08.1")
         self.assertEqual(
             baseline["requirements_sha256"],
-            "f5fefe5c38b22be54318b12ccd742d75b4e4192f4530457f8dee0873d59db5e8",
+            "8aae7fe4803b8023ccbfffd35bc4be092e5dc38ad13f1c4fe7cd14637a44baff",
         )
         self.assertEqual(
             baseline["python_components"],

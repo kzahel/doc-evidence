@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import tarfile
 import tempfile
 import unittest
 import zipfile
@@ -15,6 +16,7 @@ from doc_evidence.windows_desktop_packaging import (
     audit_flat_pe_closure,
     build_inputs_path,
     extract_flat_zip_component,
+    extract_language_data,
     extract_poppler_component,
     extract_tesseract_component,
     repository_root,
@@ -42,6 +44,10 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
         )
         baseline = inputs["baseline_pack"]
         self.assertEqual(baseline["pack_id"], "baseline-windows-x86_64")
+        self.assertEqual(
+            baseline["requirements_sha256"],
+            sha256_file(self.root / "desktop/packaging/baseline-requirements.txt"),
+        )
         self.assertEqual(
             set(baseline["tools"]), {"pdfinfo", "pdftoppm", "pdftotext", "tesseract"}
         )
@@ -231,3 +237,46 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
             self.assertEqual(arguments[:3], [root / "7z.exe", "x", "-y"])
             self.assertEqual([path.name for path in binaries], ["tesseract.exe"])
             self.assertEqual([path.name for path in support], ["txt"])
+
+    def test_language_extraction_selects_only_declared_regular_files(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            archive = root / "tessdata.tar.gz"
+            language_bytes = b"trained"
+            with tempfile.TemporaryDirectory() as source_raw:
+                source = Path(source_raw) / "tessdata-1"
+                source.mkdir()
+                (source / "eng.traineddata").write_bytes(language_bytes)
+                (source / "unused.traineddata").write_bytes(b"unused")
+                with tarfile.open(archive, "w:gz") as output:
+                    output.add(source, arcname="tessdata-1")
+            language = {
+                "archive": {"sha256": sha256_file(archive)},
+                "files": {
+                    "tessdata-1/eng.traineddata": hashlib.sha256(
+                        language_bytes
+                    ).hexdigest()
+                },
+            }
+
+            records = extract_language_data(archive, language, root / "pack")
+
+            self.assertEqual([item["language"] for item in records], ["eng"])
+            self.assertEqual(
+                (root / "pack" / "tessdata" / "eng.traineddata").read_bytes(),
+                language_bytes,
+            )
+            self.assertFalse(
+                (root / "pack" / "tessdata" / "unused.traineddata").exists()
+            )
+
+    def test_windows_ocrmypdf_launcher_is_relocatable_and_argument_safe(self) -> None:
+        source = (
+            self.root / "desktop" / "packaging" / "windows-ocrmypdf-launcher.rs"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('join("python").join("python.exe")', source)
+        self.assertIn('.arg("-m")', source)
+        self.assertIn('.arg("ocrmypdf")', source)
+        self.assertIn(".args(env::args_os().skip(1))", source)
+        self.assertNotIn("cmd.exe", source.casefold())

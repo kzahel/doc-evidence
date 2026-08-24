@@ -368,6 +368,20 @@ complete flat PE dependency closure; Microsoft redistribution terms remain a
 named compliance blocker. Target-native staging, Python-wheel PE closure,
 copied-out OCR, and long-path I/O are the immediate remaining gates.
 
+The safe pack assembler now selects only the declared files from those inputs,
+validates the complete flat PE closure, compiles a tracked relocatable and
+argument-safe OCRmyPDF launcher, and emits the platform-bound pack manifest.
+The first real-archive structural run caught and corrected a provenance error:
+the Windows language entries had used hashes from the macOS Homebrew payload
+instead of the files in the pinned Tesseract 4.1.0 archive. All three declared
+file hashes now match that archive. A local structural exercise produces the
+expected five tools, three languages, two support files, 51 DLL records, and
+56 x86_64 PE records, using an existing x86_64 executable only in the launcher
+slot because the MSVC launcher build is target-native. Locked dry runs also
+resolve 20 production and 27 baseline Python distributions for CPython 3.12 on
+Windows x86_64. Neither exercise is presented as target-native runtime or OCR
+acceptance.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

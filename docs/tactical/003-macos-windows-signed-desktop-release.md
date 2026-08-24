@@ -644,8 +644,9 @@ A dependency-free PE parser reads architecture, PE32/PE32+ identity, ordinary
 imports, and delay imports without requiring Visual Studio or LLVM during the
 audit. The flat-directory audit rejects non-x86_64 native bytes and any import
 that is neither a bundled file, an API-set contract, nor an explicitly
-allowlisted Windows system DLL. Six focused manifest/parser/closure tests pass,
-and the parser also reads the actual pinned Poppler binaries locally.
+allowlisted Windows system DLL. Eleven focused manifest, extraction, launcher-
+source, parser, and closure tests pass, and the parser also reads the actual
+pinned Poppler binaries locally.
 
 This is an input and audit checkpoint, not a staged runtime pass. The two
 upstream Windows distributions bundle many third-party DLLs, so each remains
@@ -656,9 +657,23 @@ Microsoft Visual Studio 17.14/CRT 14.44 VSIX; the latter two exactly match the
 pinned CPython archive. Selecting all 55 declared files from the three real
 archives produces a complete flat PE dependency closure. Microsoft app-local
 redistribution terms remain an explicit compliance blocker rather than an
-assumed license conclusion. Target-native dependency installation,
-Python-wheel PE closure, copied-out sidecar/OCR smoke, actual greater-than-260-
-character I/O, and final Windows x86_64 installed acceptance remain open.
+assumed license conclusion.
+
+The safe pack assembler now selects only the declared native, Poppler-data,
+Tesseract-support, and language files; compiles a tracked relocatable Rust
+OCRmyPDF launcher without a command shell; validates the entire flat PE
+closure; and writes the platform-bound pack manifest. Its first real-archive
+structural run caught that the three Windows language hashes had incorrectly
+described the macOS Homebrew payload rather than the pinned 4.1.0 archive. The
+corrected hashes all reconcile to that archive. With an existing x86_64 PE
+substituted only for the not-yet-target-compiled launcher, the structural run
+produces five tools, three language records, two support records, 51 DLL
+records, and 56 total PE records. Windows x86_64 dry runs of the frozen locks
+also resolve 20 production and 27 baseline Python distributions. This is not a
+target-native runtime or OCR pass. Target-native launcher/dependency
+installation, Python-wheel PE closure, copied-out sidecar/OCR smoke, actual
+greater-than-260-character I/O, and final Windows x86_64 installed acceptance
+remain open.
 
 ## Falsifiable Stopping Condition
 

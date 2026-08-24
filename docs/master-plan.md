@@ -147,8 +147,11 @@ runtime and installed-app acceptance.
 The exact Windows input manifest now pins the runtime, native distributions,
 language data, sources, the Microsoft app-local CRT, and 55 selected native
 payload hashes. The PE import/delay-import audit closes over those exact
-extracted files. Target-native assembly, dependency compliance, copied-out
-OCR, and installed x86_64 acceptance remain release gates.
+extracted files. Safe pack assembly, exact language-data selection, a
+schema-checked Windows pack manifest, and relocatable OCRmyPDF launcher source
+have landed; both Python locks resolve for the Windows x86_64 target. Target-
+native launcher compilation/runtime assembly, dependency compliance, copied-
+out OCR, and installed x86_64 acceptance remain release gates.
 Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding

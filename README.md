@@ -162,9 +162,13 @@ alias path policy are implemented and pass on that testbed. Actual greater-
 than-260-character I/O remains a standalone-runtime and installed-app gate.
 The Windows input manifest now pins CPython, Poppler, Tesseract, language data,
 sources, and all 55 selected native payload hashes; a local PE import-table
-audit closes across their exact extracted bytes. The pack is not yet staged:
-third-party license/source and Microsoft redistribution review, target-native
-runtime assembly, and copied-out OCR remain gates.
+audit closes across their exact extracted bytes. The pack assembler now safely
+selects those bytes, the Poppler data tree, support files, and the exact three
+language files, writes a schema-checked Windows pack manifest, and includes a
+tracked relocatable OCRmyPDF launcher source. The production and baseline
+Python locks resolve for CPython 3.12 on Windows x86_64. Target-native launcher
+compilation/runtime assembly, third-party license/source and Microsoft
+redistribution review, and copied-out OCR remain gates.
 Local implementation is authorized; credentials, signing, remotes, tags, and
 publication remain separately unauthorized.
 

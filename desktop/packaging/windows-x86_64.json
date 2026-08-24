@@ -15,7 +15,7 @@
   "baseline_pack": {
     "pack_id": "baseline-windows-x86_64",
     "version": "2026.08.1",
-    "requirements_sha256": "f5fefe5c38b22be54318b12ccd742d75b4e4192f4530457f8dee0873d59db5e8",
+    "requirements_sha256": "8aae7fe4803b8023ccbfffd35bc4be092e5dc38ad13f1c4fe7cd14637a44baff",
     "python_components": {
       "ocrmypdf": "17.8.1",
       "pypdfium2": "5.5.0"
@@ -176,9 +176,9 @@
         "sha256": "990fffb9b7a9b52dc9a2d053a9ef6852ca2b72bd8dfb22988b0b990a700fd3c7"
       },
       "files": {
-        "tessdata-4.1.0/eng.traineddata": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
-        "tessdata-4.1.0/deu.traineddata": "19d219bbb6672c869d20a9636c6816a81eb9a71796cb93ebe0cb1530e2cdb22d",
-        "tessdata-4.1.0/osd.traineddata": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff"
+        "tessdata-4.1.0/eng.traineddata": "daa0c97d651c19fba3b25e81317cd697e9908c8208090c94c3905381c23fc047",
+        "tessdata-4.1.0/deu.traineddata": "896b3b4956503ab9daa10285db330881b2d74b70d889b79262cc534b9ec699a4",
+        "tessdata-4.1.0/osd.traineddata": "e19f2ae860792fdf372cf48d8ce70ae5da3c4052962fe22e9de1f680c374bb0e"
       }
     },
     "source_archives": [
