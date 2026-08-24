@@ -86,10 +86,14 @@ class PageRenderer:
                 pass
 
         page_dir.mkdir(parents=True, exist_ok=True)
-        stem = output.with_suffix("")
         before = source.stat()
-        with tempfile.TemporaryDirectory(prefix="render-source-", dir=page_dir) as raw:
+        width = 0
+        height = 0
+        error: str | None = None
+        with tempfile.TemporaryDirectory(prefix="doc-evidence-render-") as raw:
             render_source = Path(raw) / "source.pdf"
+            temporary_output = Path(raw) / "page.png"
+            temporary_stem = temporary_output.with_suffix("")
             with (
                 source.open("rb") as source_stream,
                 render_source.open("xb") as target_stream,
@@ -109,38 +113,37 @@ class PageRenderer:
                     str(PAGE_RENDER_DPI),
                     "-png",
                     str(render_source),
-                    str(stem),
+                    str(temporary_stem),
                 ],
                 timeout_seconds=self.timeout_seconds,
             )
-        after = source.stat()
-        error: str | None = None
-        width = 0
-        height = 0
-        if (before.st_size, before.st_mtime_ns) != (
-            after.st_size,
-            after.st_mtime_ns,
-        ):
-            error = "source metadata changed while rendering"
-        elif result.returncode != 0 or not output.is_file():
-            error = result.stderr.strip() or (
-                f"pdftoppm exited with status {result.returncode}"
-            )
-        else:
-            try:
-                width, height = _png_dimensions(output)
-            except (OSError, DocEvidenceError) as exception:
-                error = str(exception)
-            if width > MAX_RENDER_DIMENSION or height > MAX_RENDER_DIMENSION:
-                error = (
-                    f"render dimensions {width}x{height} exceed "
-                    f"{MAX_RENDER_DIMENSION}px"
+            after = source.stat()
+            if (before.st_size, before.st_mtime_ns) != (
+                after.st_size,
+                after.st_mtime_ns,
+            ):
+                error = "source metadata changed while rendering"
+            elif result.returncode != 0 or not temporary_output.is_file():
+                error = result.stderr.strip() or (
+                    f"pdftoppm exited with status {result.returncode}"
                 )
-            elif width * height > MAX_RENDER_PIXELS:
-                error = (
-                    f"render dimensions {width}x{height} exceed "
-                    f"{MAX_RENDER_PIXELS:,} pixels"
-                )
+            else:
+                try:
+                    width, height = _png_dimensions(temporary_output)
+                except (OSError, DocEvidenceError) as exception:
+                    error = str(exception)
+                if width > MAX_RENDER_DIMENSION or height > MAX_RENDER_DIMENSION:
+                    error = (
+                        f"render dimensions {width}x{height} exceed "
+                        f"{MAX_RENDER_DIMENSION}px"
+                    )
+                elif width * height > MAX_RENDER_PIXELS:
+                    error = (
+                        f"render dimensions {width}x{height} exceed "
+                        f"{MAX_RENDER_PIXELS:,} pixels"
+                    )
+                if error is None:
+                    shutil.copyfile(temporary_output, output)
         record = {
             "schema_version": PAGE_RENDER_SCHEMA_VERSION,
             "source_sha256": source_sha256,

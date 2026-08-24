@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from doc_evidence.util import (
     atomic_write_json,
     atomic_write_text,
     compact_timestamp,
+    hash_file,
     hash_json,
     isoformat_z,
     non_whitespace_character_count,
@@ -241,17 +243,26 @@ class PopplerExtractor:
             expected_modified_ns,
         ):
             raise OSError(f"source changed after hashing: {source_path}")
-        info_result = self._run([self.pdfinfo, str(source_path)])
-        text_result = self._run(
-            [
-                self.pdftotext,
-                "-layout",
-                "-enc",
-                "UTF-8",
-                str(source_path),
-                "-",
-            ]
-        )
+        with tempfile.TemporaryDirectory(prefix="doc-evidence-poppler-") as raw:
+            staged_source = Path(raw) / "source.pdf"
+            with (
+                source_path.open("rb") as source_stream,
+                staged_source.open("xb") as target_stream,
+            ):
+                shutil.copyfileobj(source_stream, target_stream)
+            if hash_file(staged_source).content_sha256 != content_sha256:
+                raise OSError("source bytes changed while staging Poppler extraction")
+            info_result = self._run([self.pdfinfo, str(staged_source)])
+            text_result = self._run(
+                [
+                    self.pdftotext,
+                    "-layout",
+                    "-enc",
+                    "UTF-8",
+                    str(staged_source),
+                    "-",
+                ]
+            )
         try:
             after = source_path.stat()
         except OSError:
