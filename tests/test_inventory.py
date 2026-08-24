@@ -12,8 +12,19 @@ from jsonschema import Draft202012Validator
 
 from doc_evidence.catalog import list_duplicate_groups, search_catalog
 from doc_evidence.config import load_config
+from doc_evidence.errors import CatalogError
 from doc_evidence.inventory import run_inventory
+from doc_evidence.persistence.library_database import _sqlite_i64
 from tests.helpers import write_minimal_pdf
+
+
+class FilesystemIdentityTest(unittest.TestCase):
+    def test_unsigned_windows_identity_maps_to_sqlite_i64(self) -> None:
+        self.assertEqual(_sqlite_i64((1 << 63) - 1, "inode"), (1 << 63) - 1)
+        self.assertEqual(_sqlite_i64(1 << 63, "inode"), -(1 << 63))
+        self.assertEqual(_sqlite_i64((1 << 64) - 1, "inode"), -1)
+        with self.assertRaisesRegex(CatalogError, "outside the 64-bit"):
+            _sqlite_i64(1 << 64, "inode")
 
 
 @unittest.skipUnless(

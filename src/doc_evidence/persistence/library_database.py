@@ -21,6 +21,19 @@ if TYPE_CHECKING:
 
 DATABASE_SCHEMA_VERSION = 4
 BUSY_TIMEOUT_MS = 5_000
+_SQLITE_I64_MIN = -(1 << 63)
+_SQLITE_I64_MAX = (1 << 63) - 1
+_UNSIGNED_I64_MAX = (1 << 64) - 1
+
+
+def _sqlite_i64(value: int, label: str) -> int:
+    """Represent an unsigned Windows filesystem identity in SQLite INTEGER."""
+
+    if _SQLITE_I64_MIN <= value <= _SQLITE_I64_MAX:
+        return value
+    if 0 <= value <= _UNSIGNED_I64_MAX:
+        return value - (1 << 64)
+    raise CatalogError(f"{label} is outside the 64-bit filesystem identity range")
 
 
 @dataclass(frozen=True)
@@ -993,8 +1006,8 @@ class LibraryDatabase:
                     collection_id,
                     relative_path,
                     str(resolved_path),
-                    device,
-                    inode,
+                    _sqlite_i64(device, "filesystem device"),
+                    _sqlite_i64(inode, "filesystem inode"),
                     size_bytes,
                     modified_ns,
                     changed_ns,
@@ -1110,8 +1123,8 @@ class LibraryDatabase:
                         fingerprint.collection_id,
                         fingerprint.relative_path,
                         fingerprint.resolved_path,
-                        fingerprint.device,
-                        fingerprint.inode,
+                        _sqlite_i64(fingerprint.device, "filesystem device"),
+                        _sqlite_i64(fingerprint.inode, "filesystem inode"),
                         fingerprint.size_bytes,
                         fingerprint.modified_ns,
                         fingerprint.changed_ns,
