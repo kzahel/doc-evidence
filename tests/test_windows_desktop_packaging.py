@@ -41,6 +41,18 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = repository_root()
 
+    def test_tree_hash_uses_platform_independent_path_order(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            (root / "Z.txt").write_bytes(b"upper")
+            (root / "a.txt").write_bytes(b"lower")
+            expected = hashlib.sha256()
+            for relative, content in (("Z.txt", b"upper"), ("a.txt", b"lower")):
+                expected.update(b"F\0" + relative.encode() + b"\0")
+                expected.update(hashlib.sha256(content).digest())
+
+            self.assertEqual(sha256_tree(root), expected.hexdigest())
+
     def test_inputs_pin_exact_runtime_tools_payloads_and_sources(self) -> None:
         inputs = _load_inputs(self.root)
 

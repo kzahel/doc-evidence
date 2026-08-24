@@ -144,7 +144,8 @@ def sha256_file(path: Path) -> str:
 
 def sha256_tree(root: Path) -> str:
     digest = hashlib.sha256()
-    for path in sorted(root.rglob("*")):
+    paths = sorted(root.rglob("*"), key=lambda path: path.relative_to(root).as_posix())
+    for path in paths:
         relative = path.relative_to(root).as_posix().encode()
         if path.is_symlink():
             digest.update(
