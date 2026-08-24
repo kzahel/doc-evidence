@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from doc_evidence.desktop_acceptance import (
     _collection_hashes,
@@ -62,6 +63,21 @@ class DesktopAcceptanceFixtureTest(unittest.TestCase):
         self.assertEqual(environment["PYTHONNOUSERSITE"], "1")
         self.assertIn(str(runtime_root / "baseline-pack" / "bin"), environment["PATH"])
         self.assertNotIn("PYTHONPATH", environment)
+
+    def test_windows_runtime_environment_supplies_isolated_home(self) -> None:
+        runtime_root = self.root / "runtime"
+        writable_root = self.root / "writable"
+        with patch.dict("os.environ", {"SystemRoot": r"C:\Windows"}, clear=True):
+            environment = _runtime_environment(
+                runtime_root,
+                writable_root,
+                platform_name="windows",
+                runtime_token="runtime-secret",
+                control_token="control-secret",
+            )
+
+        self.assertEqual(environment["USERPROFILE"], str(writable_root / "user-home"))
+        self.assertTrue((writable_root / "user-home").is_dir())
 
     def test_acceptance_rejects_an_unpacked_interpreter(self) -> None:
         runtime_root = self.root / "runtime"

@@ -652,6 +652,11 @@ fn start_sidecar(
     let writable_cache = app_home.join("cache");
     fs::create_dir_all(&writable_cache)
         .map_err(|_| "could not create the desktop cache directory".to_string())?;
+    let writable_user_home = app_home.join("user-home");
+    if target == WINDOWS_TARGET {
+        fs::create_dir_all(&writable_user_home)
+            .map_err(|_| "could not create the desktop user-home directory".to_string())?;
+    }
     let runtime_token = token()?;
     let control_token = token()?;
     if runtime_token == control_token {
@@ -696,6 +701,9 @@ fn start_sidecar(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    if target == WINDOWS_TARGET {
+        command.env("USERPROFILE", writable_user_home);
+    }
     if let Some(value) = env::var_os("DOC_EVIDENCE_HOME") {
         command.env("DOC_EVIDENCE_HOME", value);
     }

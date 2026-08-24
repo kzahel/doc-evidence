@@ -1454,8 +1454,10 @@ def _audit_no_symlinks(root: Path) -> list[str]:
 def baseline_environment(runtime_root: Path, writable_root: Path) -> dict[str, str]:
     pack = runtime_root / "baseline-pack"
     cache = writable_root / "cache"
+    user_home = writable_root / "user-home"
     temporary = writable_root / "tmp"
     cache.mkdir(parents=True, exist_ok=True)
+    user_home.mkdir(parents=True, exist_ok=True)
     temporary.mkdir(parents=True, exist_ok=True)
     system_root = os.environ.get("SystemRoot") or os.environ.get("WINDIR")
     if not system_root:
@@ -1474,6 +1476,7 @@ def baseline_environment(runtime_root: Path, writable_root: Path) -> dict[str, s
         "XDG_CACHE_HOME": str(cache),
         "TEMP": str(temporary),
         "TMP": str(temporary),
+        "USERPROFILE": str(user_home),
         "SystemRoot": system_root,
         "WINDIR": system_root,
         "PYTHONDONTWRITEBYTECODE": "1",

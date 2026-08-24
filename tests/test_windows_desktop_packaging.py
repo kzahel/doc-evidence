@@ -21,6 +21,7 @@ from doc_evidence.windows_desktop_packaging import (
     application_executable_path,
     audit_flat_pe_closure,
     audit_runtime_pe_closure,
+    baseline_environment,
     build_inputs_path,
     extract_flat_zip_component,
     extract_language_data,
@@ -52,6 +53,17 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
                 expected.update(hashlib.sha256(content).digest())
 
             self.assertEqual(sha256_tree(root), expected.hexdigest())
+
+    def test_baseline_environment_supplies_isolated_windows_home(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            with patch.dict("os.environ", {"SystemRoot": r"C:\Windows"}, clear=True):
+                environment = baseline_environment(root / "runtime", root / "writable")
+
+            self.assertEqual(
+                environment["USERPROFILE"], str(root / "writable" / "user-home")
+            )
+            self.assertTrue((root / "writable" / "user-home").is_dir())
 
     def test_inputs_pin_exact_runtime_tools_payloads_and_sources(self) -> None:
         inputs = _load_inputs(self.root)

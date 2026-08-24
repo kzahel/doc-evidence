@@ -161,6 +161,8 @@ def _runtime_environment(
         system_root = os.environ.get("SystemRoot") or os.environ.get("WINDIR")
         if not system_root:
             raise RuntimeError("Windows system root is unavailable")
+        user_home = writable_root / "user-home"
+        user_home.mkdir(parents=True, exist_ok=True)
         path = os.pathsep.join(
             [
                 str(pack / "bin"),
@@ -174,6 +176,7 @@ def _runtime_environment(
             "WINDIR": system_root,
             "TEMP": str(temporary),
             "TMP": str(temporary),
+            "USERPROFILE": str(user_home),
         }
         architecture = "x86_64"
     environment = {
