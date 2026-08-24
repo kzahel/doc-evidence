@@ -41,6 +41,14 @@ def _extended_windows_path(raw: str) -> str:
     return "\\\\?\\" + absolute
 
 
+def _ordinary_windows_path(raw: str) -> str:
+    if raw.startswith("\\\\?\\UNC\\"):
+        return "\\\\" + raw[8:]
+    if raw.startswith("\\\\?\\"):
+        return raw[4:]
+    return raw
+
+
 def extended_length_path(path: str | os.PathLike[str]) -> Path:
     """Use extended-length syntax for absolute Windows filesystem access."""
 
@@ -48,6 +56,15 @@ def extended_length_path(path: str | os.PathLike[str]) -> Path:
     if os.name != "nt":
         return Path(raw)
     return Path(_extended_windows_path(raw))
+
+
+def ordinary_windows_path(path: str | os.PathLike[str]) -> Path:
+    """Remove an extended-length prefix for APIs such as SQLite URI parsing."""
+
+    raw = os.fspath(path)
+    if os.name != "nt":
+        return Path(raw)
+    return Path(_ordinary_windows_path(raw))
 
 
 @contextmanager

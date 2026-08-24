@@ -14,6 +14,7 @@ from doc_evidence.app_home import legacy_library_id
 from doc_evidence.config import AppConfig
 from doc_evidence.errors import CatalogError
 from doc_evidence.extraction import NORMALIZED_EXTRACTION_SCHEMA_VERSION
+from doc_evidence.platform_paths import ordinary_windows_path
 from doc_evidence.util import hash_json, isoformat_z
 
 if TYPE_CHECKING:
@@ -60,14 +61,15 @@ class InventoryGenerationRecord:
 
 
 def _connect(path: Path, *, readonly: bool = False) -> sqlite3.Connection:
+    sqlite_path = ordinary_windows_path(path)
     try:
         if readonly:
             connection = sqlite3.connect(
-                f"file:{path.resolve().as_posix()}?mode=ro", uri=True
+                f"file:{sqlite_path.resolve().as_posix()}?mode=ro", uri=True
             )
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
-            connection = sqlite3.connect(path)
+            connection = sqlite3.connect(sqlite_path)
     except sqlite3.Error as error:
         raise CatalogError(f"cannot open library database {path}: {error}") from error
     connection.row_factory = sqlite3.Row

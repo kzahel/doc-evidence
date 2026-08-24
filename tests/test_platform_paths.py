@@ -16,6 +16,7 @@ from doc_evidence.platform_paths import (
     WINDOWS_DRIVE_FIXED,
     WINDOWS_FILE_ATTRIBUTE_OFFLINE,
     _extended_windows_path,
+    _ordinary_windows_path,
     long_path_temporary_directory,
     path_contains,
     paths_overlap,
@@ -48,6 +49,14 @@ class PlatformPathIdentityTest(unittest.TestCase):
         )
         self.assertEqual(
             _extended_windows_path(r"relative\Evidence"), r"relative\Evidence"
+        )
+        self.assertEqual(
+            _ordinary_windows_path(r"\\?\C:\Evidence\Résumé"),
+            r"C:\Evidence\Résumé",
+        )
+        self.assertEqual(
+            _ordinary_windows_path(r"\\?\UNC\server\share\Evidence"),
+            r"\\server\share\Evidence",
         )
 
     def test_windows_identity_normalizes_case_and_separators(self) -> None:

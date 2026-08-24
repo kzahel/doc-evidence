@@ -31,7 +31,7 @@ from doc_evidence.contracts.api import (
 )
 from doc_evidence.errors import CatalogError, NotFoundError, RequestError
 from doc_evidence.persistence import ensure_library_database
-from doc_evidence.platform_paths import extended_length_path
+from doc_evidence.platform_paths import extended_length_path, ordinary_windows_path
 from doc_evidence.rendering import PageRenderer
 from doc_evidence.util import hash_file, hash_json
 
@@ -61,9 +61,10 @@ class LocalWorkspace:
         self._renderer: PageRenderer | None = None
 
     def _connect(self) -> sqlite3.Connection:
+        sqlite_path = ordinary_windows_path(self.catalog_path)
         try:
             connection = sqlite3.connect(
-                f"file:{self.catalog_path.as_posix()}?mode=ro", uri=True
+                f"file:{sqlite_path.as_posix()}?mode=ro", uri=True
             )
         except sqlite3.Error as error:
             raise CatalogError(f"cannot open catalog: {error}") from error

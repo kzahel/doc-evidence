@@ -23,6 +23,7 @@ from doc_evidence.contracts.api import (
 )
 from doc_evidence.errors import ApplicationStateError, DocEvidenceError, NotFoundError
 from doc_evidence.persistence import ensure_library_database
+from doc_evidence.platform_paths import ordinary_windows_path
 from doc_evidence.scheduler import LibraryScheduler
 
 PREFLIGHT_KINDS = [
@@ -112,8 +113,9 @@ class LocalLibraryManager(LibraryManager):
                 return "ready", "legacy catalog will be adopted on first open"
             return "unavailable", "inventory is required before this library can open"
         try:
+            sqlite_path = ordinary_windows_path(database)
             connection = sqlite3.connect(
-                f"file:{database.resolve().as_posix()}?mode=ro", uri=True
+                f"file:{sqlite_path.resolve().as_posix()}?mode=ro", uri=True
             )
             try:
                 row = connection.execute(
