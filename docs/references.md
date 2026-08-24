@@ -90,6 +90,18 @@ second Rust/Python-only credential for native folder authorization, packages a
 small document-tool pack instead of ML transcription models, and defers all
 heavy extractor packs.
 
+For Tactical 003's Windows packaging boundary, current sibling revision
+`79a0a1edd8d81f225b9cbb11c1f30d744f456163` was inspected at
+`docs/tactical/053-windows-desktop-release-lane.md`,
+`src/atpiano/windows_desktop_packaging.py`,
+`src/atpiano/windows_desktop_media.py`, and
+`src/atpiano/windows_score_support.py`. Adopted lessons are a separate
+target-native packaging module, strict archive/payload contracts,
+transactional staging, copied-out runtime smoke, and a final PE inventory.
+Doc Evidence intentionally adds dependency-table parsing and closure checks,
+uses its already frozen CPython 3.12.12 and document-extractor pack, and does
+not adopt atpiano's score-model support layer or product-specific media.
+
 ## Yep Anywhere: Signed macOS Release Reference
 
 Repository: [kzahel/yepanywhere](https://github.com/kzahel/yepanywhere)

@@ -144,6 +144,11 @@ desktop process boundaries, and the local fixed-drive/reparse/case-alias path
 policy are implemented and pass target-native tests on that available testbed.
 Greater-than-260-character I/O remains bound to the forthcoming standalone
 runtime and installed-app acceptance.
+The exact Windows input manifest now pins the runtime, native distributions,
+language data, sources, and 52 selected native payload hashes, and a PE import/
+delay-import closure audit is implemented. Target-native assembly, app-local
+MSVC provenance, dependency compliance, copied-out OCR, and installed x86_64
+acceptance remain release gates.
 Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding

@@ -1,0 +1,198 @@
+{
+  "schema_version": "doc-evidence.desktop-build-inputs.v1",
+  "platform": "windows",
+  "architecture": "x86_64",
+  "python": {
+    "implementation": "cpython",
+    "version": "3.12.12",
+    "build": "20260114",
+    "distribution": "python-build-standalone install_only_stripped",
+    "cache_name": "cpython-3.12.12+20260114-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260114/cpython-3.12.12%2B20260114-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+    "sha256": "65544affdc45a3755db3a08fd0b36c5b590bb49337b99a19b8840c33189fe75e",
+    "license_concluded": "PSF-2.0"
+  },
+  "baseline_pack": {
+    "pack_id": "baseline-windows-x86_64",
+    "version": "2026.08.1",
+    "requirements_sha256": "f5fefe5c38b22be54318b12ccd742d75b4e4192f4530457f8dee0873d59db5e8",
+    "python_components": {
+      "ocrmypdf": "17.8.1",
+      "pypdfium2": "5.5.0"
+    },
+    "python_license_conclusions": {
+      "pi-heif": {
+        "version": "1.4.0",
+        "license_concluded": "BSD-3-Clause AND LGPL-3.0-only"
+      }
+    },
+    "tools": {
+      "pdfinfo": "poppler:pdfinfo.exe",
+      "pdftoppm": "poppler:pdftoppm.exe",
+      "pdftotext": "poppler:pdftotext.exe",
+      "tesseract": "tesseract:tesseract.exe"
+    },
+    "native_components": {
+      "poppler": {
+        "version": "26.02.0",
+        "distribution_revision": "a6703d8fdf1b1f66b6103fdeae3df903367b8df6",
+        "archive": {
+          "cache_name": "Release-26.02.0-0.zip",
+          "url": "https://github.com/oschwartz10612/poppler-windows/releases/download/v26.02.0-0/Release-26.02.0-0.zip",
+          "sha256": "993e4a94376ed712fafc7058d724ea0b943d118bbd2305cd9ed55174eb85cda5",
+          "format": "zip",
+          "payload_root": "poppler-26.02.0/Library/bin"
+        },
+        "license_concluded": "NOASSERTION",
+        "compliance_blocker": "The Windows distribution's transitive conda-forge DLL licenses and sources require file-level review before publication.",
+        "payload_sha256": {
+          "Lerc.dll": "7844ff388c1fe684c95f176a9f256a55af4511c136e3b3340fd8050741ef5d3f",
+          "deflate.dll": "0c8d7e40b4512d86969e2003a7d8bede601cfb9bc0a2d2472056a08a769769d5",
+          "freetype.dll": "94c2a7fbceb4e28d7c6d7364939569669d2e592236c0f758f726b44e41426c6c",
+          "jpeg8.dll": "77bef8b5257987800e01806f64a189e312ba057e138356e69dc4367555bd0d93",
+          "lcms2.dll": "13ca89317d709ec3b3c8aaa8a02629b96e25aeb1bda2fc0a003dc5394bb5a48a",
+          "libcrypto-3-x64.dll": "23263b220487605daaa64aba45253603f837e5f90a31dde2409d0bb8f22e8582",
+          "libcurl.dll": "966f1d3f78a29f7fcc2db28785dbfcb5fc46a64bbbb04463ed803d12c468657f",
+          "liblzma.dll": "64eb6567bead1a5b7386bd7acd1cdd9db8f9a03133eef7ae8208ae555738d680",
+          "libpng16.dll": "c3fc74e2bfa2d944cbea22e1db31f06247a54634f8f489f04b5ceec921118f3f",
+          "libssh2.dll": "1563642bed85fcb68fdcf3c8d2c23c742e95aa5dbb11234b2ba5d7a634775327",
+          "openjp2.dll": "274e6a200cd564b014389546f6472d387717dece95b7d03db5f99195bd1d6e03",
+          "pdfinfo.exe": "34040ff62bef73d6847a7b443457ac7fe216eb331bfbeadec62ae555618b2aae",
+          "pdftoppm.exe": "575a2f66073b256f69084c4f12f34427e6076b7854b2505cb09ecbdc9957fd7f",
+          "pdftotext.exe": "c7392e92727abbb54c07662268eef7348e4edd1cd741c264e20f76e757c0b467",
+          "poppler.dll": "43248bf36db31c416f420ce5e5a0168eccd2235e42c04906a3e7c2678bfc63be",
+          "tiff.dll": "57ad7d27c81d140cfe9b16a6b1e75ce7fa360d613add138dcdc8a61ba0872459",
+          "zlib.dll": "85c711c83f96bed93184bede15be6b5a3e5444df09dfffef00564107189dc722",
+          "zstd.dll": "ca228f0f33b8296d6650b4694bb38ba9ea8796c523b6b5e0682fcc05a5edab0a"
+        },
+        "data_tree": {
+          "archive_root": "poppler-26.02.0/share/poppler",
+          "sha256": "f0b757073bd1be6de74983809879771a1702f88335a39ba6de81f9b65563a34a",
+          "file_count": 271
+        },
+        "source_archives": [
+          {
+            "component_id": "poppler",
+            "version": "26.02.0",
+            "cache_name": "poppler-26.02.0.tar.xz",
+            "url": "https://poppler.freedesktop.org/poppler-26.02.0.tar.xz",
+            "sha256": "dded8621f7b2f695c91063aab1558691c8418374cd583501e89ed39487e7ab77"
+          },
+          {
+            "component_id": "poppler-data",
+            "version": "0.4.12",
+            "cache_name": "poppler-data-0.4.12.tar.gz",
+            "url": "https://poppler.freedesktop.org/poppler-data-0.4.12.tar.gz",
+            "sha256": "c835b640a40ce357e1b83666aabd95edffa24ddddd49b8daff63adb851cdab74"
+          }
+        ]
+      },
+      "tesseract": {
+        "version": "5.5.3",
+        "source_revision": "db0ec62f81b0737fbbe184d8fea40af5738f8eef",
+        "archive": {
+          "cache_name": "tesseract-ocr-w64-setup-5.5.3.20260724.exe",
+          "url": "https://github.com/tesseract-ocr/tesseract/releases/download/5.5.3/tesseract-ocr-w64-setup-5.5.3.20260724.exe",
+          "sha256": "bee9e3434bd94fd65387d9be28cd467a41f61b1275383b55b0f59a1331270ae4",
+          "format": "nsis"
+        },
+        "license_concluded": "NOASSERTION",
+        "compliance_blocker": "The official Windows installer includes MinGW dependency DLLs whose file-level licenses and corresponding sources require review before publication.",
+        "payload_sha256": {
+          "libLerc.dll": "6887fb5aeabf382a835a4cb693025e8d48d9c90e82ca4eae5d2d8ffb70c6ca9a",
+          "libarchive-13.dll": "ddabddfdc98e1e1342ce4a7069fb4004de6c870d7bc9f4e95ef243dd18468e97",
+          "libb2-1.dll": "77bab532b5421d6cdddb96c3ae9a4bde144eb481ccaf243336c9f8c690a50987",
+          "libbrotlicommon.dll": "ca7bc06ead80259971badf2cd0bfc688db9154dad65f139f49a38b4be9976f97",
+          "libbrotlidec.dll": "a142dc6cfa77cb907028aa9426f486f3d8de37855e8db2ae2894147908121881",
+          "libbz2-1.dll": "b79cd3a7102e359ef6324e98966a67939e58ec2b651ae2847cae84a4dfa453f7",
+          "libcurl-4.dll": "3d302f9690e810fdfd950254e2f0663d0ff768737f350c602a4ed3a06e9b6b2b",
+          "libdeflate.dll": "3f3fc3a73bc3623dc93b37bb321c484d3731d93006fd01c0495d15711826eb44",
+          "libexpat-1.dll": "92ae866c6c58dd2d8366aa0e6230ba8d434d5306e8d8c3a08b7e61750fc16153",
+          "libgcc_s_seh-1.dll": "172cfdc9d83703ec0a0ca2cee08f6cf2a166b801717ee51a56b3a63b36bc2f83",
+          "libgif-7.dll": "5b3d837ccaab84683dd93fbaddf2d98e1a9f90e0ddb8ea73dc70157adb4d26f1",
+          "libiconv-2.dll": "7a282a854e01be726c6cccfe46f548c716aa45b3014818468253aaa4efbcd067",
+          "libidn2-0.dll": "9880b52651a0247640a2531d777380f7c35fac7efa7e3979b265ddcb78db8642",
+          "libintl-8.dll": "0537c3dd2378218508ebe3cc416d72a99ee2d24ae1c5525e23458f32544ef861",
+          "libjbig-0.dll": "275a827ba6839d47cfdbe059db1b1b403a92ff26e2b76a29362915487868bef2",
+          "libjpeg-8.dll": "b564d34adaca83e73af0e2231719dd0198ea6cd074c64b2ba85bfd7182f27db7",
+          "libleptonica-6.dll": "1869b44e3d46fd830620b042477e5d60a950779582f38f60291547efb27792f1",
+          "liblz4.dll": "35f917274bca8f19677ba66f1b3cc3c83568c3249fc43215fc16e76439c8e856",
+          "liblzma-5.dll": "dc9edb9bd83b0371fe68d96cb3e70cd17b7a5aba958326a18f8210cb812432e9",
+          "libopenjp2-7.dll": "123587086cb1a25d2a338fb9b7c1d6bda10bf9062625b4f08c6a92b3d9cafe47",
+          "libpng16-16.dll": "3737838ee8d6b893df7bdabf7439775371a57dce7e17ee6b35586023c64bd9ab",
+          "libpsl-5.dll": "b31fc70eda598a39b65fe2736d815518db0652d641346f75eac40c2a0499b058",
+          "libsharpyuv-0.dll": "ab0c9f61dc69b6bcdff1011e215f8d5fd6e5096aba9be3386ab87f217fbbeffe",
+          "libssh2-1.dll": "ee7fe3e749859334c99e9261689481dd879811122598d22585421f95d29fc7ae",
+          "libstdc++-6.dll": "5fe5d4d8f6636eb6f2dc55be99dc5dc8a6c40db1abdf592e84480d1e6985abd0",
+          "libtesseract-5.dll": "54d54528b453ce3a5ba79487687f8df43e7b194b9ea97beba74200453fe1fb46",
+          "libtiff-6.dll": "47fe69165bf8e211aaa84224f51f145dc894e330fe7ca167f7c99419e0c8c894",
+          "libunistring-5.dll": "b91e2850d3668d4931056a8f4d35783b8ec3eea3735485108a936a072cd16071",
+          "libwebp-7.dll": "c6c21a10f8cfe13270832e64640b82709e1d87b956b5f15af435a6c25acd6bbf",
+          "libwebpmux-3.dll": "2c8a2e9d7901ec65330f31f9989c2a07ef0506e903b485fcd8b241a6bab9b88f",
+          "libwinpthread-1.dll": "6a661d5846d80a91394dbb9b2dab87ba3cc705eac80ad45fe73677bff70cd6d2",
+          "libzstd.dll": "b95c223a9548a9ecf51377c962e0bc8f0c51eb0c6f67a296dbc885996f0dd40d",
+          "tesseract.exe": "c66f0f12ed76f6aa455dac97684bbc86756d6a732380bee09122454cfda3f420",
+          "zlib1.dll": "93e9243a44c29200eeacaf9658efe2558581770e4b11ca4b500e18e424a6e3b5"
+        },
+        "support_data": {
+          "tessdata/configs/hocr": "d6a7ec7c5143317a59fce2393054f6b7a8261824b934e7426fdd24febc929ad6",
+          "tessdata/configs/txt": "9bcbdbe285fd3a024be563cb237751ceb3435d86610e231f08894023321af5d7"
+        },
+        "source_archives": [
+          {
+            "component_id": "tesseract",
+            "version": "5.5.3",
+            "cache_name": "tesseract-5.5.3.tar.gz",
+            "url": "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.5.3.tar.gz",
+            "sha256": "9218e62793116d42a9f6d14cd9348518b27f382096eea3d0f2d1a24616bb5884"
+          }
+        ]
+      }
+    },
+    "language_data": {
+      "archive": {
+        "component_id": "tesseract-language-data",
+        "version": "4.1.0",
+        "cache_name": "tessdata-4.1.0.tar.gz",
+        "url": "https://github.com/tesseract-ocr/tessdata/archive/refs/tags/4.1.0.tar.gz",
+        "sha256": "990fffb9b7a9b52dc9a2d053a9ef6852ca2b72bd8dfb22988b0b990a700fd3c7"
+      },
+      "files": {
+        "tessdata-4.1.0/eng.traineddata": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+        "tessdata-4.1.0/deu.traineddata": "19d219bbb6672c869d20a9636c6816a81eb9a71796cb93ebe0cb1530e2cdb22d",
+        "tessdata-4.1.0/osd.traineddata": "9cf5d576fcc47564f11265841e5ca839001e7e6f38ff7f7aacf46d15a96b00ff"
+      }
+    },
+    "source_archives": [
+      {
+        "component_id": "python-pypdfium2",
+        "version": "5.5.0",
+        "cache_name": "pypdfium2-5.5.0.tar.gz",
+        "url": "https://github.com/pypdfium2-team/pypdfium2/archive/refs/tags/5.5.0.tar.gz",
+        "sha256": "5a2fd4bbc94e4c9ffc6df41f6c122db7818b89136cc94033ef92f897db06f528"
+      }
+    ],
+    "system_dlls": [
+      "ADVAPI32.dll",
+      "bcrypt.dll",
+      "CRYPT32.dll",
+      "GDI32.dll",
+      "IPHLPAPI.DLL",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "Secur32.dll",
+      "SHELL32.dll",
+      "USER32.dll",
+      "WLDAP32.dll",
+      "WS2_32.dll"
+    ]
+  },
+  "forbidden_python_distributions": [
+    "hypothesis",
+    "mypy",
+    "playwright",
+    "pytest",
+    "pyright",
+    "ruff"
+  ]
+}

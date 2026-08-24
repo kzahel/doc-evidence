@@ -352,6 +352,20 @@ guest development interpreter failed that fixture. Standalone runtime/pack
 staging, exact installer bytes, and native x86_64 installed acceptance remain
 open.
 
+The Windows runtime/pack checkpoint now has its first reproducible input
+boundary. A strict `windows-x86_64` manifest pins the CPython 3.12.12 archive,
+Poppler distribution and source/data archives, the official Tesseract
+installer and source, the shared language-data archive, all 52 selected native
+payload hashes, and the locked Python requirements. A dependency-free PE
+reader validates PE32/PE32+ structure, x86_64 machine identity, ordinary and
+delay-import tables, and flat bundle closure against an explicit Windows
+system-DLL allowlist. Both Windows distribution archives deliberately remain
+`NOASSERTION` with named compliance blockers until every conveyed dependency
+license/source is reconciled; this input checkpoint does not claim a staged or
+release-ready pack. App-local MSVC runtime provenance, target-native staging,
+Python-wheel PE closure, copied-out OCR, and long-path I/O are the immediate
+remaining gates.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

@@ -631,6 +631,31 @@ inventory showed no temporary workspace or live claim. Disposable exact-
 artifact acceptance remains release-blocking despite the target-native path
 evidence.
 
+The fifth checkpoint begins the Windows runtime and extractor-pack boundary
+with exact, reviewable inputs rather than a target-local package-manager
+installation. The Windows x86_64 build manifest pins CPython 3.12.12 build
+20260114, the locked production requirements, a Poppler 26.02.0 distribution,
+an official Tesseract 5.5.3 installer, the selected English/German/orientation
+data, their source archives, and every one of the 52 selected native payload
+hashes. Poppler's 271-file data tree also has a deterministic tree identity.
+
+A dependency-free PE parser reads architecture, PE32/PE32+ identity, ordinary
+imports, and delay imports without requiring Visual Studio or LLVM during the
+audit. The flat-directory audit rejects non-x86_64 native bytes and any import
+that is neither a bundled file, an API-set contract, nor an explicitly
+allowlisted Windows system DLL. Six focused manifest/parser/closure tests pass,
+and the parser also reads the actual pinned Poppler binaries locally.
+
+This is an input and audit checkpoint, not a staged runtime pass. The two
+upstream Windows distributions bundle many third-party DLLs, so each remains
+`NOASSERTION` with an explicit file-level license/source blocker instead of
+inheriting the Poppler or Tesseract top-level license. Poppler additionally
+imports the app-local MSVC C++ runtime; its exact licensed input and payload
+hashes must be recorded before closure can pass. Target-native dependency
+installation, Python-wheel PE closure, copied-out sidecar/OCR smoke, actual
+greater-than-260-character I/O, and final Windows x86_64 installed acceptance
+remain open.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

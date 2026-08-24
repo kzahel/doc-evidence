@@ -160,6 +160,11 @@ release gate. Exact paired launch contracts, Windows kill-on-close ownership
 for both desktop process boundaries, and the local fixed-drive/reparse/case-
 alias path policy are implemented and pass on that testbed. Actual greater-
 than-260-character I/O remains a standalone-runtime and installed-app gate.
+The Windows input manifest now pins CPython, Poppler, Tesseract, language data,
+sources, and all 52 selected native payload hashes; a local PE import-table
+audit is implemented. The pack is not yet staged: app-local MSVC provenance,
+third-party license/source reconciliation, target-native runtime assembly,
+and copied-out OCR remain gates.
 Local implementation is authorized; credentials, signing, remotes, tags, and
 publication remain separately unauthorized.
 
