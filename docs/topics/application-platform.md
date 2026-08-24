@@ -2,15 +2,16 @@
 
 Topic: application-platform
 
-**Last updated:** 2026-08-23
+**Last updated:** 2026-08-24
 
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
 is complete; automated, isolated-browser, and authorized private-library gates
 pass, with explicit maintainer interaction acceptance remaining. Tactical 002's
 macOS arm64 unsigned foundation is implemented through the baseline pack,
 final-byte app/DMG audit, and fail-closed compliance preflight. Tactical 003
-plans the first signed release for macOS arm64 and Windows x86_64; implementation
-and external release actions await explicit authorization.
+implements the first signed release for macOS arm64 and Windows x86_64. Local
+implementation and validation are authorized; external release actions remain
+separately unauthorized.
 
 ## Scope
 
@@ -209,9 +210,11 @@ tactical.
 - Developer ID signing/notarization, Windows Authenticode/NSIS, updater
   artifacts, and two-platform release finalization move together under Tactical
   003. Its entry gates include Tactical 002's three unresolved compliance
-  classes and repair of the currently unresolved private Windows testbed
-  identity. Linux and optional extractor-pack discovery/downloads remain later
-  work.
+  classes and Windows testbed readiness. That Windows gate now passes through
+  disposable-workspace discard,
+  but the available guest is Windows ARM64; native Windows x86_64 acceptance
+  remains release-blocking. Linux and optional extractor-pack discovery/
+  downloads remain later work.
 - The built React product is embedded in the packaged desktop application;
   source-checkout serving remains a development composition.
 - A hosted composition is a possible future adapter, not current scope.
@@ -348,10 +351,9 @@ record is in
 ## Recommended Next Work
 
 Complete the explicit maintainer interaction acceptance in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md). When desktop
-implementation is explicitly authorized, begin
-[Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md) by
-repairing the Windows testbed gate and closing Tactical 002's macOS compliance
-blockers before cross-platform packaging. Stop before credential provisioning,
-remote/release setup, tagging, signing, or publication without separate
-authorization. Durable review events remain a separate later tactical.
+[Tactical 001](../tactical/001-durable-extraction-jobs.md). Continue the locally
+authorized [Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md)
+with platform-aware desktop contracts and the existing macOS compliance
+blockers, using the restored Windows testbed throughout. Stop before credential
+provisioning, remote/release setup, tagging, signing, or publication without
+separate authorization. Durable review events remain a separate later tactical.

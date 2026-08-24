@@ -1,10 +1,10 @@
 # Master Plan
 
-**Last updated:** 2026-08-23
+**Last updated:** 2026-08-24
 **Status:** Phase 2, read-only application, desktop library foundation, and
 durable extraction jobs implemented; Tactical 001 maintainer acceptance
 pending; Tactical 002 macOS unsigned foundation implemented; paired macOS and
-Windows signed-release Tactical 003 planned
+Windows signed-release Tactical 003 implementation active
 
 ## Objective
 
@@ -133,10 +133,13 @@ first signed release, with Linux deferred.
 plan: close the macOS compliance blockers, restore the Windows Machine Control
 testbed gate, make shared desktop contracts platform-aware, add a standalone
 Windows baseline pack and per-user NSIS installer, and validate the exact two-
-platform signed/updater matrix in disposable guests. The plan is recorded;
-implementation, external setup, credentials, tags, and publication still await
-explicit authorization. Heavy extractors and downloads/plugins remain later
-scope.
+platform signed/updater matrix in disposable guests. Local implementation and
+validation were authorized on 2026-08-24; external setup, credentials, signing,
+tags, and publication still await explicit authorization. The first Windows
+Machine Control disposable-workspace gate passes. Its available guest is
+Windows ARM64, so native Windows x86_64 acceptance remains a release gate even
+while that guest supports target-native Windows and x86_64-emulation work.
+Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding
 
@@ -190,7 +193,7 @@ scope.
 12. macOS arm64 unsigned Tauri foundation and baseline pack. — implemented;
     compliance preflight still blocks release
 13. Paired signed macOS arm64 and Windows x86_64 desktop release. — planned;
-    implementation and external actions await explicit authorization
+    local implementation active; external actions separately unauthorized
 14. Observation and downstream-promotion workflows.
 
 ## Open Implementation Decisions

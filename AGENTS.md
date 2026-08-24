@@ -54,8 +54,9 @@ implementation decisions:
   and Windows x86_64 first signed release, with Linux deferred. It owns the
   Windows platform adaptation, process-tree and path semantics, runtime/pack,
   per-user NSIS installer, two-platform updater/release finalization, and exact
-  installed-artifact acceptance through Machine Control. Implementation and
-  external release actions still require explicit maintainer authorization.
+  installed-artifact acceptance through Machine Control. Local implementation
+  and validation were authorized on 2026-08-24; external release actions still
+  require explicit maintainer authorization.
 - Optional heavyweight-extractor packs, download/plugin management,
   alternative release channels, and Linux distribution require later approved
   tacticals.
@@ -94,9 +95,9 @@ Before substantive work:
    `docs/tactical/002-macos-tauri-desktop-application.md` is the implemented
    macOS unsigned-foundation execution record.
    `docs/tactical/003-macos-windows-signed-desktop-release.md` is the documented
-   paired-platform plan; do not implement it, perform its external release
-   actions, or implement the durable-review successor without explicit
-   maintainer authorization.
+   paired-platform plan and active local implementation boundary. Do not
+   perform its external release actions or implement the durable-review
+   successor without explicit maintainer authorization.
 5. Read `docs/master-plan.md`, `docs/architecture.md`, and
    `docs/data-contracts.md` for the affected core boundary.
 6. Read `docs/benchmarking.md` for extractor/evaluation work and
@@ -324,12 +325,15 @@ execution record for that foundation.
 On 2026-08-23 the maintainer selected a paired macOS arm64 and Windows x86_64
 first signed release, with Linux deferred. The documented plan is
 `docs/tactical/003-macos-windows-signed-desktop-release.md`. Its first gates are
-the existing macOS compliance blockers and restoration of the currently
-unresolved private Windows Machine Control target identity. Do not begin its
-implementation or touch signing credentials, repository/release setup,
-notarization, updater setup, tags, or publication without explicit maintainer
-authorization. Heavy extractor packs and alternative release channels remain
-outside it.
+the existing macOS compliance blockers and Windows Machine Control readiness.
+Local implementation and validation were authorized on 2026-08-24. The Windows
+identity and disposable-workspace gate now pass, including semantic action,
+independent effect, target-native capture, bounded artifact retrieval, and
+discard verification. The available guest is Windows ARM64, so native Windows
+x86_64 installed-artifact acceptance remains release-blocking. Do not touch
+signing credentials, repository/release setup, notarization, updater setup,
+tags, or publication without explicit maintainer authorization. Heavy
+extractor packs and alternative release channels remain outside it.
 
 The maintainer has also selected bidirectional text/page highlighting and
 bounded regional OCR as an accepted product direction. The researched

@@ -63,7 +63,7 @@ The delivery sequence is deliberate:
    sidecar, small Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack,
    strict final-byte audits, an unsigned DMG, and fail-closed compliance
    preflight.
-4. **Planned; not started:** one synchronized first signed release for macOS
+4. **Implementation active:** one synchronized first signed release for macOS
    arm64 and Windows x86_64. The plan closes compliance, adds the Windows
    runtime/pack/NSIS path, uses disposable Machine Control guests for exact
    installed-artifact acceptance, and finalizes a two-platform updater feed.
@@ -152,10 +152,12 @@ The maintainer selected macOS arm64 and Windows x86_64 together for the first
 signed release, with Linux deferred. Tactical 003 freezes the two-platform
 matrix, Windows filesystem and process-tree contracts, standalone Windows
 runtime/baseline pack, per-user NSIS channel, two-target updater metadata, and
-exact-artifact acceptance in disposable Machine Control guests. Its first
-testbed gate is to repair the currently unresolved private Windows target
-identity. The plan is documented; implementation and all external release
-actions await explicit authorization.
+exact-artifact acceptance in disposable Machine Control guests. The Windows
+identity and disposable-workspace gate now pass. The available guest is
+Windows ARM64, so it supports target-native Windows implementation and
+x86_64-emulation testing while native Windows x86_64 acceptance remains a
+release gate. Local implementation is authorized; credentials, signing,
+remotes, tags, and publication remain separately unauthorized.
 
 The external acceptance harness used an explicitly authorized registered
 library in the platform-default application home. It exercised a missing OCR

@@ -6,11 +6,9 @@ Topic: library-management
 
 Topic: job-architecture
 
-**Status:** Product direction selected and implementation plan drafted on
-2026-08-23. This documentation change does not authorize implementation,
-credential provisioning, repository creation, release publication, or other
-external mutation. Begin implementation only after an explicit maintainer
-request.
+**Status:** Local implementation and validation authorized on 2026-08-24.
+Credential provisioning, repository creation, signing, tagging, release
+publication, and other external mutations remain separately unauthorized.
 
 ## Motivation and User-Visible Outcome
 
@@ -83,21 +81,39 @@ Read the owning living topics before implementation:
 
 ## Current Testbed Readiness
 
-The common Machine Control client was inspected read-only on 2026-08-23.
+The first Machine Control gate passed on 2026-08-24 without committing private
+inventory or using outer UI:
 
-- The accepted macOS platform exposes persistent, candidate, and isolated
-  workspaces. Its current target is stopped but available.
-- The configured Windows target cannot currently resolve its exact private
-  target identity. Readiness therefore reports unknown/unavailable and a
-  disposable or candidate workspace is not yet safely acquirable.
-- No VM was started or mutated while planning this tactical.
+- Windows exact private identity, PowerShell administration, interactive
+  desktop, resident control, semantic UI, capture, and input all pass the
+  common doctor.
+- An isolated Windows workspace was acquired through a provider disposable
+  overlay, reached full common readiness, executed a synthetic guest marker,
+  launched the deterministic native fixture, produced a semantic snapshot,
+  pressed its named control, confirmed the independent counter effect, captured
+  the target-native window, and returned a hash-checked PNG through bounded
+  artifact retrieval.
+- The first workspace release failed closed when its clean shutdown envelope
+  expired. Machine Control retained the receipt and running overlay rather than
+  forcing or discarding it. One explicit clean-shutdown retry succeeded; the
+  subsequent release discarded the overlay, left no temporary workspace or
+  claim, and the restored persistent guest did not contain the marker.
+- The persistent Windows target was returned to its initial running state and
+  again passes every common doctor check. Its post-start development audit also
+  reports the guest agent, OpenSSH, resident, interactive probe, Python, .NET,
+  firewall, and reboot state healthy.
+- The macOS target is suspended and exact persistent/candidate/isolated
+  workspace capabilities remain available. It was not started or mutated for
+  this gate.
 
-The first infrastructure gate is to repair or re-pin the private Windows
-inventory, run the common target doctor, and prove one disposable/candidate
-workspace acquire/release cycle. Concrete private target names, addresses,
-paths, and credentials remain outside this public repository. Failure of that
-gate blocks Windows acceptance work; it does not silently reduce the release
-matrix to macOS.
+The available Windows guest reports Windows ARM64. It is a valid target-native
+Windows implementation and x86_64-emulation testbed, but it cannot alone prove
+native Windows x86_64 performance or compatibility. Tactical 003 therefore
+uses it immediately for Windows contracts, lifecycle, installer, and x86_64
+emulation validation while retaining one native Windows x86_64 installed-
+artifact run as a release-blocking acceptance gate. Concrete target names,
+addresses, paths, handles, claims, and credentials remain outside this public
+repository.
 
 ## Frozen Product and Distribution Decisions
 
@@ -511,6 +527,14 @@ Before publication, the maintainer reviews both exact signed candidates for:
 - A bad updater release is withdrawn from the feed without deleting user data.
   Rollback/downgrade database compatibility must be decided explicitly before
   advertising downgrade support.
+
+## Execution Record
+
+Implementation was explicitly authorized on 2026-08-24 with a request to
+commit coherent checkpoints as work proceeds. The first checkpoint restores
+and proves the Machine Control gate described in
+[Current Testbed Readiness](#current-testbed-readiness). It makes no application
+code, credential, signing, remote, tag, or publication change.
 
 ## Falsifiable Stopping Condition
 

@@ -58,9 +58,11 @@ action, new external service, or significant expansion beyond the tactical.
   and fail-closed compliance preflight. Its planned macOS-only signed lane is
   superseded by Tactical 003.
 - [003 — macOS and Windows signed desktop release](003-macos-windows-signed-desktop-release.md)
-  — first-release direction selected and implementation plan drafted;
-  implementation and external actions await explicit authorization. It closes
+  — local implementation and validation authorized on 2026-08-24; external
+  credentials, signing, tags, remotes, and publication remain unauthorized.
+  The first Windows Machine Control disposable-workspace gate passes, with an
+  ARM64 guest available for target-native Windows and x86_64-emulation work;
+  final native-x86_64 acceptance remains required. The tactical closes
   compliance, makes the desktop boundary platform-aware, adds the Windows
-  x86_64 runtime/pack/NSIS path, uses Machine Control for exact installed
-  macOS/Windows acceptance, and defines a two-target signed updater/release
+  x86_64 runtime/pack/NSIS path, and defines a two-target signed updater/release
   gate. Linux and heavyweight extractor packs remain later tacticals.
