@@ -1,0 +1,452 @@
+{
+  "schema_version": "doc-evidence.macos-wheel-native-components.v1",
+  "remote_evidence": [
+    {
+      "evidence_id": "pillow-build-versions-12.3.0",
+      "cache_name": "pillow-build-versions-12.3.0.json",
+      "url": "https://raw.githubusercontent.com/python-pillow/Pillow/12.3.0/.github/dependencies.json",
+      "sha256": "8366ffa27ce82527124bd471c0181c2670595d37e3a80ddccaf2868c4fdb01a6"
+    },
+    {
+      "evidence_id": "pillow-wheel-build-12.3.0",
+      "cache_name": "pillow-wheel-build-12.3.0.sh",
+      "url": "https://raw.githubusercontent.com/python-pillow/Pillow/12.3.0/.github/workflows/wheels-dependencies.sh",
+      "sha256": "62c923ff840790cb4f6e27c96437a7541124a5aee3445f29136358bffd988f8a"
+    }
+  ],
+  "wheels": [
+    {
+      "component_id": "python-pillow",
+      "name": "pillow",
+      "version": "12.3.0",
+      "cache_name": "pillow-12.3.0-cp312-cp312-macosx_11_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/d8/66/9a386a92561f402389a4fc70c18838bf6d35eb5eb5c6850b4b2dc64f5048/pillow-12.3.0-cp312-cp312-macosx_11_0_arm64.whl",
+      "sha256": "ffd0c5368496f41b0944be820fcb7a838aa6e623d250b01acf2643939c3f99d7",
+      "installed_evidence": [
+        {
+          "member": "pillow-12.3.0.dist-info/sboms/pillow-12.3.0.cdx.json",
+          "runtime_path": "python/lib/python3.12/site-packages/pillow-12.3.0.dist-info/sboms/pillow-12.3.0.cdx.json",
+          "sha256": "40fa909b0f23405a7b97a6d91671a639a40acea7671b04387da22ba3e9fca50a"
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "python-pillow-native-libxau",
+      "parent_component_id": "python-pillow",
+      "name": "libXau",
+      "version": "1.0.12",
+      "license_concluded": "X11",
+      "source": {
+        "cache_name": "libxau-libXau-1.0.12.tar.gz",
+        "url": "https://gitlab.freedesktop.org/xorg/lib/libxau/-/archive/libXau-1.0.12/libxau-libXau-1.0.12.tar.gz",
+        "sha256": "af261cc1b3b349cfe7a7899a48b4e4aa257b4d11bf2ea084fb3191df7d15fbe9"
+      },
+      "evidence": [
+        {
+          "kind": "build-script-contains",
+          "evidence_id": "pillow-wheel-build-12.3.0",
+          "text": "build_simple libXau 1.0.12"
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libXau.6.dylib",
+          "sha256": "002a604dc76919d6606c610be703a6547d78dd0f401639c9e95e5a79227190bf"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-libavif",
+      "parent_component_id": "python-pillow",
+      "name": "libavif",
+      "version": "1.4.2",
+      "license_concluded": "BSD-2-Clause",
+      "source": {
+        "cache_name": "libavif-1.4.2.tar.gz",
+        "url": "https://github.com/AOMediaCodec/libavif/archive/refs/tags/v1.4.2.tar.gz",
+        "sha256": "2b645287340ba5a631d268b551dc2d72bd73ac33335962dd36dcdb6d8366921d"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "libavif"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "libavif",
+          "license_ids": ["BSD-2-Clause"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libavif.16.4.2.dylib",
+          "sha256": "ee0124cb07fb6419ed743cf9658b25211f7cc87d9081ad3e9416100db02c3c09"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-brotli",
+      "parent_component_id": "python-pillow",
+      "name": "Brotli",
+      "version": "1.2.0",
+      "license_concluded": "MIT",
+      "source": {
+        "cache_name": "brotli-1.2.0.tar.gz",
+        "url": "https://github.com/google/brotli/archive/refs/tags/v1.2.0.tar.gz",
+        "sha256": "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "brotli"
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libbrotlicommon.1.2.0.dylib",
+          "sha256": "3f4843c17f3cccc986279a4c9ac8a11dc3077c412fd856d1bad8231bf027a25f"
+        },
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libbrotlidec.1.2.0.dylib",
+          "sha256": "351fa4a2f4faed4147dfead81a8b0f5500ada31db64f74c8368bc1ab894f0dd1"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-freetype",
+      "parent_component_id": "python-pillow",
+      "name": "FreeType",
+      "version": "2.14.3",
+      "license_concluded": "FTL",
+      "source": {
+        "cache_name": "freetype-2.14.3.tar.xz",
+        "url": "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
+        "sha256": "36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "freetype"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "FreeType",
+          "license_ids": ["FTL"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libfreetype.6.dylib",
+          "sha256": "996f9be86f5cee9a44924dba75e3db7ad8a1e83ec1695505c60d314f269b6109"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-harfbuzz",
+      "parent_component_id": "python-pillow",
+      "name": "HarfBuzz",
+      "version": "14.2.1",
+      "license_concluded": "MIT",
+      "source": {
+        "cache_name": "harfbuzz-14.2.1.tar.xz",
+        "url": "https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz",
+        "sha256": "a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "harfbuzz"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "HarfBuzz",
+          "license_ids": ["MIT"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libharfbuzz.0.dylib",
+          "sha256": "7e6800c210dcc2b6faa1e05ef42d1d4fdd0bb0dc88cd4640c7cd86ac715c51fd"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-libjpeg-turbo",
+      "parent_component_id": "python-pillow",
+      "name": "libjpeg-turbo",
+      "version": "3.1.4.1",
+      "license_concluded": "IJG AND BSD-3-Clause",
+      "source": {
+        "cache_name": "libjpeg-turbo-3.1.4.1.tar.gz",
+        "url": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.4.1/libjpeg-turbo-3.1.4.1.tar.gz",
+        "sha256": "ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "jpegturbo"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "libjpeg / libjpeg-turbo",
+          "license_ids": ["BSD-3-Clause", "IJG"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libjpeg.62.4.0.dylib",
+          "sha256": "cf7c4e5c2d2c007fc51afcb95b649415cfe0bc4d7137ace897a6eff6550fa967"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-little-cms",
+      "parent_component_id": "python-pillow",
+      "name": "Little CMS 2",
+      "version": "2.19.1",
+      "license_concluded": "MIT",
+      "source": {
+        "cache_name": "little-cms-2.19.1.tar.gz",
+        "url": "https://github.com/mm2/Little-CMS/archive/refs/tags/lcms2.19.1.tar.gz",
+        "sha256": "267705e278e2f7c2fb886c259dadcbaeb2be52748bcbc71c79f08aacacb7a709"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "lcms2"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "Little CMS 2",
+          "license_ids": ["MIT"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/liblcms2.2.dylib",
+          "sha256": "6c472f0956c937e85747a4f7c5987dec7c54a6c807006f50fe2e1df1e82ec5e5"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-xz",
+      "parent_component_id": "python-pillow",
+      "name": "XZ Utils",
+      "version": "5.8.3",
+      "license_concluded": "0BSD AND GPL-2.0-or-later",
+      "source": {
+        "cache_name": "xz-5.8.3.tar.xz",
+        "url": "https://github.com/tukaani-project/xz/releases/download/v5.8.3/xz-5.8.3.tar.xz",
+        "sha256": "fff1ffcf2b0da84d308a14de513a1aa23d4e9aa3464d17e64b9714bfdd0bbfb6"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "xz"
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/liblzma.5.dylib",
+          "sha256": "a978dfb290d948f53867b6e3915fff71800062c770f176419391ccc95defd53b"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-openjpeg",
+      "parent_component_id": "python-pillow",
+      "name": "OpenJPEG",
+      "version": "2.5.4",
+      "license_concluded": "BSD-2-Clause",
+      "source": {
+        "cache_name": "openjpeg-2.5.4.tar.gz",
+        "url": "https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.4.tar.gz",
+        "sha256": "a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "openjpeg"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "OpenJPEG",
+          "license_ids": ["BSD-2-Clause"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libopenjp2.2.5.4.dylib",
+          "sha256": "ad0cb293fe3da9efcd8e3c5128c37e012d5abc88289f43c2721020e9cf408bdd"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-libpng",
+      "parent_component_id": "python-pillow",
+      "name": "libpng",
+      "version": "1.6.58",
+      "license_concluded": "libpng-2.0",
+      "source": {
+        "cache_name": "libpng-1.6.58.tar.gz",
+        "url": "https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.58.tar.gz",
+        "sha256": "a9d4df463d36a6e5f9c29bd6f4967312d17e996c1854f3511f833924eb1993cf"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "libpng"
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libpng16.16.dylib",
+          "sha256": "92d120e199c0981bc26d71af66450cb1fc4f0764ce3ceb18369881e6e1c5861c"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-libtiff",
+      "parent_component_id": "python-pillow",
+      "name": "libtiff",
+      "version": "4.7.1",
+      "license_concluded": "libtiff",
+      "source": {
+        "cache_name": "libtiff-4.7.1.tar.xz",
+        "url": "https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz",
+        "sha256": "b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "tiff"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "libtiff",
+          "license_ids": ["libtiff"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libtiff.6.dylib",
+          "sha256": "e8988717b7470394a47d5ccd343130796b24ee70b6d885d3818e0e0b53238be1"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-libwebp",
+      "parent_component_id": "python-pillow",
+      "name": "libwebp",
+      "version": "1.6.0",
+      "license_concluded": "BSD-3-Clause",
+      "source": {
+        "cache_name": "libwebp-1.6.0.tar.gz",
+        "url": "https://github.com/webmproject/libwebp/archive/refs/tags/v1.6.0.tar.gz",
+        "sha256": "93a852c2b3efafee3723efd4636de855b46f9fe1efddd607e1f42f60fc8f2136"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "libwebp"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "libwebp",
+          "license_ids": ["BSD-3-Clause"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libsharpyuv.0.dylib",
+          "sha256": "6b2d464413fc35783c79936f1e6be631585448a37765cf79c238be2ea5e5505b"
+        },
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libwebp.7.dylib",
+          "sha256": "0a2ba0179e6bcc1bccc1a88c38b7d8efd0302d45a1bfc1eb4cf1f1f03ede73f0"
+        },
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libwebpdemux.2.dylib",
+          "sha256": "f5ec6b6750ee91ff032ba62b18afc5f37c7bc842bfc9b2d325df41bc656ea066"
+        },
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libwebpmux.3.dylib",
+          "sha256": "f9c291035190c3af29494ce9fb62987c25ee78c4365c92c323ccc5ec8740143d"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-libxcb",
+      "parent_component_id": "python-pillow",
+      "name": "libxcb",
+      "version": "1.17.0",
+      "license_concluded": "X11",
+      "source": {
+        "cache_name": "libxcb-libxcb-1.17.0.tar.gz",
+        "url": "https://gitlab.freedesktop.org/xorg/lib/libxcb/-/archive/libxcb-1.17.0/libxcb-libxcb-1.17.0.tar.gz",
+        "sha256": "113a6f8f614e037ff03cad218cdcbfe307dfc9d909a842b17276a694476ed639"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "libxcb"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "libxcb",
+          "license_ids": ["X11"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libxcb.1.1.0.dylib",
+          "sha256": "d7929b6650537224be0161cee998a0bf44f6d05b547ca86cbfbf6e93368726fd"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pillow-native-zlib-ng",
+      "parent_component_id": "python-pillow",
+      "name": "zlib-ng",
+      "version": "2.3.3",
+      "license_concluded": "Zlib",
+      "source": {
+        "cache_name": "zlib-ng-2.3.3.tar.gz",
+        "url": "https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+        "sha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1"
+      },
+      "evidence": [
+        {
+          "kind": "build-version",
+          "evidence_id": "pillow-build-versions-12.3.0",
+          "key": "zlib-ng"
+        },
+        {
+          "kind": "cyclonedx-component",
+          "name": "zlib",
+          "license_ids": ["Zlib"]
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libz.1.3.1.zlib-ng.dylib",
+          "sha256": "39ffbe6a87460a579cf414c3ee668e449b32c2cdc2cc0b64921d53fd59cb56ed"
+        }
+      ]
+    }
+  ]
+}

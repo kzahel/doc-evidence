@@ -307,9 +307,9 @@ all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
 SBOMs. Formula selection is bound to the installed package version, source
 hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
 recipes are reusable from an ignored cache. The preflight remains fail-closed
-for publication on the 29 unreconciled third-party libraries nested in the
-Pillow and pikepdf wheels; the separately reconciled PDFium dylib is not
-counted as unresolved. The former 19-crate Rust license-
+for publication on the 11 unreconciled third-party libraries nested in the
+pikepdf wheel; the separately reconciled PDFium dylib and 18 Pillow dylibs are
+not counted as unresolved. The former 19-crate Rust license-
 text blocker is closed by a tracked exact-version inventory that binds each
 package's Cargo VCS revision and repository path to hash-pinned upstream or
 SPDX 3.27.0 license texts. Required top-level copyleft/MPL source archives are
@@ -338,6 +338,19 @@ The resulting unsigned application contains 3,823 files at tree
 `42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
 and passes final application, embedded runtime, sidecar, OCR, and expected-
 unsigned checks.
+
+Pillow's 18 nested dylibs are flattened into 14 source components. The record
+binds the exact 12.3.0 macOS arm64 wheel and every conveyed dylib hash to the
+tagged Pillow build-version input, tagged wheel-build script, embedded
+CycloneDX SBOM where that SBOM names the component, reviewed SPDX conclusion,
+and a hash-pinned upstream source archive. The preflight compares the wheel,
+installed SBOM, build evidence, manifest owner, and installed bytes before
+adding each nested SPDX package. The current preflight accounts for 74 Python
+Mach-O objects, 30 nested libraries, 19 reconciled nested libraries (Pillow's
+18 plus PDFium), and 11 still-unreconciled pikepdf libraries. The exact-source
+pass embeds 33 archives totaling 213,737,447 bytes after historical Homebrew
+formula resolution; the 212,583,988-byte preflight archive is blocked only on
+those 11 pikepdf libraries.
 
 The pypdfium2/PDFium aggregate now uses a version- and target-specific SPDX
 `LicenseRef` rather than an invalid comma-separated pseudo-expression. Its

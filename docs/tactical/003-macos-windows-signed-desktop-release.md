@@ -763,6 +763,27 @@ tree `42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
 passed its final application audit, including the embedded runtime smokes and
 the expected unsigned-signature check.
 
+The Pillow sub-boundary flattens all 18 of that wheel's nested dylibs into 14
+components. Each record binds the exact Pillow 12.3.0 macOS arm64 wheel,
+installed dylib hashes, tagged build-version JSON, tagged wheel-build script,
+embedded CycloneDX component where present, reviewed SPDX conclusion, and a
+hash-pinned upstream source archive. The verifier compares the wheel members
+byte-for-byte with the final application runtime and fails on missing,
+repeated, unowned, or drifted paths or evidence. The aggregate SPDX represents
+the nested packages as children of Pillow rather than attributing them to the
+wrapper's MIT-CMU license.
+
+The current preflight contains 69 top-level components, 14 flattened Pillow
+components, 74 Python Mach-O objects, and 253 Rust plus 11 Node dependencies.
+It reconciles 19 of 30 nested libraries: Pillow's 18 and the separately
+reviewed PDFium dylib. Its remaining component blocker is exactly the 11
+pikepdf nested libraries. Historical Homebrew recipe resolution passes, and
+the source pass embeds 33 exact top-level and nested archives totaling
+213,737,447 bytes. The blocked preflight archive is 212,583,988 bytes with
+SHA-256
+`8384f744109c2b010e35c3e2d5f9125af36258a504817a32beec0f8daad0b4c0`;
+its only blocker is the 11-library pikepdf component/source reconciliation.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from doc_evidence.desktop_packaging import (
     BUILD_INPUTS_SCHEMA,
+    WHEEL_NATIVE_COMPONENTS_SCHEMA,
     _archive_path,
     _audit_symlinks,
     _dependency_license_files,
@@ -32,6 +33,7 @@ from doc_evidence.desktop_packaging import (
     sha256_tree,
     stage_runtime,
     unsigned_dmg_path,
+    wheel_native_components_path,
 )
 
 
@@ -74,6 +76,32 @@ class DesktopPackagingTest(unittest.TestCase):
         )
         self.assertEqual(set(baseline["language_data"]), {"eng", "deu", "osd"})
         self.assertEqual(set(baseline["support_data"]), {"configs/hocr", "configs/txt"})
+
+    def test_pillow_native_inventory_is_exact_and_source_bound(self) -> None:
+        document = json.loads(
+            wheel_native_components_path(self.root).read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(document["schema_version"], WHEEL_NATIVE_COMPONENTS_SCHEMA)
+        self.assertEqual(
+            [(item["component_id"], item["version"]) for item in document["wheels"]],
+            [("python-pillow", "12.3.0")],
+        )
+        components = document["components"]
+        self.assertEqual(len(components), 14)
+        self.assertEqual(sum(len(item["paths"]) for item in components), 18)
+        self.assertEqual(
+            {item["parent_component_id"] for item in components},
+            {"python-pillow"},
+        )
+        self.assertTrue(
+            all(
+                len(item["source"]["sha256"]) == 64
+                and item["source"]["url"].startswith("https://")
+                and item["evidence"]
+                for item in components
+            )
+        )
 
     def test_tree_identity_includes_paths_bytes_and_symlink_targets(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

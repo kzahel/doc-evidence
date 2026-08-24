@@ -43,6 +43,7 @@ BUNDLE_MANIFEST_SCHEMA = "doc-evidence.desktop-bundle-manifest.v1"
 RUNTIME_MANIFEST_SCHEMA = "doc-evidence.desktop-runtime-manifest.v1"
 BUILD_INPUTS_SCHEMA = "doc-evidence.desktop-build-inputs.v1"
 RUST_LICENSE_SOURCES_SCHEMA = "doc-evidence.macos-rust-license-sources.v1"
+WHEEL_NATIVE_COMPONENTS_SCHEMA = "doc-evidence.macos-wheel-native-components.v1"
 PRODUCT_NAME = "Doc Evidence"
 PRODUCT_IDENTIFIER = "io.github.kzahel.doc-evidence"
 SYSTEM_LOAD_PREFIXES = ("/System/Library/", "/usr/lib/")
@@ -70,6 +71,11 @@ def build_inputs_path(root: Path | None = None) -> Path:
 def rust_license_sources_path(root: Path | None = None) -> Path:
     base = root or repository_root()
     return base / "desktop" / "packaging" / "macos-rust-license-sources.json"
+
+
+def wheel_native_components_path(root: Path | None = None) -> Path:
+    base = root or repository_root()
+    return base / "desktop" / "packaging" / "macos-wheel-native-components.json"
 
 
 def stage_root(root: Path | None = None) -> Path:
@@ -2870,6 +2876,7 @@ def _source_archive_records(
     components: Sequence[Mapping[str, Any]],
     homebrew: Sequence[Mapping[str, Any]],
     rust: Sequence[Mapping[str, Any]],
+    wheel_native: Sequence[Mapping[str, Any]],
     inputs: Mapping[str, Any],
     metadata_destination: Path,
 ) -> list[dict[str, Any]]:
@@ -2907,6 +2914,18 @@ def _source_archive_records(
             "url": str(item["source_url"]),
             "sha256": str(item["source_sha256"]),
             "cache_name": f"rust-{name}-{version}.crate",
+        }
+    for item in wheel_native:
+        source = item["source"]
+        component_id = str(item["component_id"])
+        records[component_id] = {
+            "component_id": component_id,
+            "name": str(item["name"]),
+            "version": str(item["version"]),
+            "license_concluded": str(item["license_concluded"]),
+            "url": str(source["url"]),
+            "sha256": str(source["sha256"]),
+            "cache_name": str(source["cache_name"]),
         }
     for component in components:
         component_id = str(component["component_id"])
@@ -3037,6 +3056,217 @@ def _unreconciled_nested_native(
         for record in python_native
         if record["nested_dependency"] and str(record["path"]) not in reconciled
     ]
+
+
+def _component_license_ids(component: Mapping[str, Any]) -> list[str]:
+    values = component.get("licenses")
+    if not isinstance(values, list):
+        return []
+    identifiers = []
+    for value in values:
+        license_value = value.get("license") if isinstance(value, Mapping) else None
+        identifier = (
+            license_value.get("id") if isinstance(license_value, Mapping) else None
+        )
+        if isinstance(identifier, str) and identifier:
+            identifiers.append(identifier)
+    return sorted(identifiers)
+
+
+def _wheel_native_component_inventory(
+    *,
+    repository: Path,
+    runtime: Path,
+    cache: Path,
+    python_native: Sequence[Mapping[str, Any]],
+    binary_compliance_records: Sequence[Mapping[str, Any]],
+    runtime_components: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], list[Mapping[str, Any]]]:
+    document = json.loads(
+        wheel_native_components_path(repository).read_text(encoding="utf-8")
+    )
+    if document.get("schema_version") != WHEEL_NATIVE_COMPONENTS_SCHEMA:
+        raise RuntimeError("macOS wheel-native component inventory is incompatible")
+    wheels = document.get("wheels")
+    declared_components = document.get("components")
+    remote_evidence = document.get("remote_evidence")
+    if not isinstance(wheels, list) or not isinstance(declared_components, list):
+        raise TypeError("macOS wheel-native component inventory is invalid")
+    if not isinstance(remote_evidence, list):
+        raise TypeError("macOS wheel-native evidence inventory is invalid")
+
+    evidence_values: dict[str, bytes] = {}
+    for item in remote_evidence:
+        if not isinstance(item, Mapping):
+            raise TypeError("macOS wheel-native evidence record is invalid")
+        evidence_id = item.get("evidence_id")
+        if not isinstance(evidence_id, str) or evidence_id in evidence_values:
+            raise RuntimeError("macOS wheel-native evidence identifier is invalid")
+        evidence_values[evidence_id] = acquire_declared_archive(
+            item, cache
+        ).read_bytes()
+
+    native_by_path = {
+        str(item["path"]): item
+        for item in _unreconciled_nested_native(
+            python_native,
+            binary_compliance_records,
+        )
+    }
+    runtime_by_id = {str(item["component_id"]): item for item in runtime_components}
+    wheel_archives: dict[str, tuple[Mapping[str, Any], Path]] = {}
+    wheel_ids: set[str] = set()
+    for wheel in wheels:
+        if not isinstance(wheel, Mapping):
+            raise TypeError("macOS wheel-native wheel record is invalid")
+        component_id = wheel.get("component_id")
+        version = wheel.get("version")
+        if not isinstance(component_id, str) or component_id in wheel_ids:
+            raise RuntimeError("macOS wheel-native parent identifier is invalid")
+        runtime_component = runtime_by_id.get(component_id)
+        if runtime_component is None or runtime_component.get("version") != version:
+            raise RuntimeError(f"macOS wheel-native parent drifted: {component_id}")
+        wheel_ids.add(component_id)
+        archive = acquire_declared_archive(wheel, cache)
+        wheel_archives[component_id] = (wheel, archive)
+        installed_evidence = wheel.get("installed_evidence")
+        if not isinstance(installed_evidence, list) or not installed_evidence:
+            raise RuntimeError(f"macOS wheel evidence is empty: {component_id}")
+        with zipfile.ZipFile(archive) as source:
+            for evidence in installed_evidence:
+                if not isinstance(evidence, Mapping):
+                    raise TypeError("macOS installed wheel evidence is invalid")
+                member = str(evidence.get("member", ""))
+                runtime_path = str(evidence.get("runtime_path", ""))
+                expected = str(evidence.get("sha256", ""))
+                installed = runtime / runtime_path
+                if (
+                    not _is_lower_hex(expected, 64)
+                    or not installed.is_file()
+                    or sha256_file(installed) != expected
+                    or hashlib.sha256(source.read(member)).hexdigest() != expected
+                ):
+                    raise RuntimeError(
+                        f"macOS installed wheel evidence drifted: {component_id}"
+                    )
+
+    records = []
+    flattened_paths: set[str] = set()
+    site_prefix = "python/lib/python3.12/site-packages/"
+    for raw in declared_components:
+        if not isinstance(raw, Mapping):
+            raise TypeError("macOS wheel-native component record is invalid")
+        record = dict(raw)
+        component_id = record.get("component_id")
+        parent_id = record.get("parent_component_id")
+        version = record.get("version")
+        license_value = record.get("license_concluded")
+        source = record.get("source")
+        paths = record.get("paths")
+        evidence = record.get("evidence")
+        if (
+            not isinstance(component_id, str)
+            or any(item["component_id"] == component_id for item in records)
+            or parent_id not in wheel_archives
+            or not isinstance(version, str)
+            or not version
+            or not isinstance(license_value, str)
+            or _spdx_license(license_value)[1]
+            or not isinstance(source, Mapping)
+            or not isinstance(paths, list)
+            or not paths
+            or not isinstance(evidence, list)
+            or not evidence
+        ):
+            raise RuntimeError("macOS wheel-native component record is incomplete")
+        if (
+            not isinstance(source.get("url"), str)
+            or not isinstance(source.get("cache_name"), str)
+            or not _is_lower_hex(str(source.get("sha256", "")), 64)
+        ):
+            raise RuntimeError(f"macOS wheel-native source is invalid: {component_id}")
+
+        wheel, wheel_path = wheel_archives[str(parent_id)]
+        with zipfile.ZipFile(wheel_path) as archive:
+            normalized_paths = []
+            for path_record in paths:
+                if not isinstance(path_record, Mapping):
+                    raise TypeError("macOS wheel-native path record is invalid")
+                path = str(path_record.get("path", ""))
+                expected = str(path_record.get("sha256", ""))
+                native = native_by_path.get(path)
+                if (
+                    not path.startswith(site_prefix)
+                    or path in flattened_paths
+                    or native is None
+                    or native.get("component_id") != parent_id
+                    or native.get("sha256") != expected
+                    or not _is_lower_hex(expected, 64)
+                ):
+                    raise RuntimeError(
+                        f"macOS wheel-native path ownership drifted: {path}"
+                    )
+                member = path.removeprefix(site_prefix)
+                installed = runtime / path
+                if not installed.is_file() or installed.read_bytes() != archive.read(
+                    member
+                ):
+                    raise RuntimeError(f"macOS wheel-native bytes drifted: {path}")
+                flattened_paths.add(path)
+                normalized_paths.append({"path": path, "sha256": expected})
+
+        for evidence_record in evidence:
+            if not isinstance(evidence_record, Mapping):
+                raise TypeError("macOS wheel-native component evidence is invalid")
+            kind = evidence_record.get("kind")
+            if kind == "build-version":
+                value = json.loads(evidence_values[str(evidence_record["evidence_id"])])
+                if value.get(evidence_record.get("key")) != version:
+                    raise RuntimeError(
+                        f"macOS wheel-native build version drifted: {component_id}"
+                    )
+            elif kind == "build-script-contains":
+                text = evidence_values[str(evidence_record["evidence_id"])].decode()
+                if str(evidence_record.get("text", "")) not in text:
+                    raise RuntimeError(
+                        f"macOS wheel-native build recipe drifted: {component_id}"
+                    )
+            elif kind == "cyclonedx-component":
+                installed_evidence = wheel["installed_evidence"]
+                sbom_path = runtime / str(installed_evidence[0]["runtime_path"])
+                sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
+                matches = [
+                    item
+                    for item in sbom.get("components", [])
+                    if isinstance(item, Mapping)
+                    and item.get("name") == evidence_record.get("name")
+                    and item.get("version") == version
+                ]
+                expected_ids = sorted(evidence_record.get("license_ids") or [])
+                if (
+                    len(matches) != 1
+                    or _component_license_ids(matches[0]) != expected_ids
+                ):
+                    raise RuntimeError(
+                        f"macOS wheel-native SBOM evidence drifted: {component_id}"
+                    )
+            else:
+                raise RuntimeError(
+                    f"macOS wheel-native evidence kind is unsupported: {component_id}"
+                )
+        records.append(
+            {
+                **record,
+                "paths": normalized_paths,
+                "wheel_url": str(wheel["url"]),
+                "wheel_sha256": str(wheel["sha256"]),
+            }
+        )
+
+    unresolved = [
+        item for path, item in native_by_path.items() if path not in flattened_paths
+    ]
+    return records, unresolved
 
 
 def _python_binary_compliance_record(
@@ -3311,6 +3541,66 @@ def generate_compliance_preflight(
                 binary_compliance_records,
             )
 
+            python_native = _python_native_inventory(
+                app_audit["runtime"]["native_files"], manifest["files"]
+            )
+            wheel_native_records, unreconciled_nested_native = (
+                _wheel_native_component_inventory(
+                    repository=repo,
+                    runtime=runtime,
+                    cache=repo / "results" / "desktop" / "cache" / "wheels",
+                    python_native=python_native,
+                    binary_compliance_records=binary_compliance_records,
+                    runtime_components=components,
+                )
+            )
+            _write_json(
+                staged / "python-wheel-native-components.json",
+                wheel_native_records,
+            )
+            for record in wheel_native_records:
+                source = record["source"]
+                nested_spdx_id = _spdx_id(f"Package-{record['component_id']}")
+                license_value, unresolved = _spdx_license(
+                    str(record["license_concluded"])
+                )
+                if unresolved:
+                    raise RuntimeError(
+                        "wheel-native license conclusion became unresolved: "
+                        f"{record['component_id']}"
+                    )
+                spdx_packages.append(
+                    {
+                        "SPDXID": nested_spdx_id,
+                        "name": str(record["name"]),
+                        "versionInfo": str(record["version"]),
+                        "downloadLocation": str(source["url"]),
+                        "checksums": [
+                            {
+                                "algorithm": "SHA256",
+                                "checksumValue": str(source["sha256"]),
+                            }
+                        ],
+                        "filesAnalyzed": False,
+                        "licenseConcluded": license_value,
+                        "licenseDeclared": license_value,
+                        "copyrightText": "NOASSERTION",
+                        "comment": (
+                            "Nested native library conveyed by exact wheel SHA-256 "
+                            f"{record['wheel_sha256']}"
+                        ),
+                    }
+                )
+                relationships.append(
+                    {
+                        "spdxElementId": _spdx_id(
+                            f"Package-{record['parent_component_id']}"
+                        ),
+                        "relationshipType": "CONTAINS",
+                        "relatedSpdxElement": nested_spdx_id,
+                    }
+                )
+
             homebrew_records, homebrew_blockers = _homebrew_component_provenance(
                 components,
                 staged / "embedded-sboms" / "homebrew",
@@ -3371,6 +3661,7 @@ def generate_compliance_preflight(
                     components=components,
                     homebrew=homebrew_records,
                     rust=rust_records,
+                    wheel_native=wheel_native_records,
                     inputs=inputs,
                     metadata_destination=staged / "source-metadata" / "pypi",
                 )
@@ -3386,6 +3677,7 @@ def generate_compliance_preflight(
                 "scripts/build-macos-desktop",
                 "desktop/packaging/macos-arm64.json",
                 "desktop/packaging/macos-rust-license-sources.json",
+                "desktop/packaging/macos-wheel-native-components.json",
                 "desktop/packaging/baseline-requirements.in",
                 "desktop/packaging/baseline-requirements.txt",
                 "desktop/src-tauri/Cargo.lock",
@@ -3423,18 +3715,11 @@ def generate_compliance_preflight(
                 spdx["hasExtractedLicensingInfos"] = extracted_licensing_info
             _write_json(staged / "doc-evidence.spdx.json", spdx)
 
-            python_native = _python_native_inventory(
-                app_audit["runtime"]["native_files"], manifest["files"]
-            )
             _write_json(staged / "python-native-objects.json", python_native)
             wheel_native = [item for item in python_native if item["wheel_owned"]]
             nested_native = [
                 item for item in python_native if item["nested_dependency"]
             ]
-            unreconciled_nested_native = _unreconciled_nested_native(
-                python_native,
-                binary_compliance_records,
-            )
             if unreconciled_nested_native:
                 blockers.append(
                     {
@@ -3469,8 +3754,8 @@ def generate_compliance_preflight(
                 )
             report = {
                 "schema_version": "doc-evidence.desktop-compliance-preflight.v1",
-                "status": "blocked",
-                "release_ready": False,
+                "status": "passed" if not blockers else "blocked",
+                "release_ready": not blockers,
                 "application_tree_sha256": app_audit["tree_sha256"],
                 "bundle_manifest_sha256": bundle_manifest_sha,
                 "component_count": len(components),
@@ -3481,6 +3766,7 @@ def generate_compliance_preflight(
                 "python_native_object_count": len(python_native),
                 "python_wheel_native_object_count": len(wheel_native),
                 "python_nested_native_dependency_count": len(nested_native),
+                "python_wheel_native_component_count": len(wheel_native_records),
                 "python_reconciled_nested_native_dependency_count": (
                     len(nested_native) - len(unreconciled_nested_native)
                 ),
