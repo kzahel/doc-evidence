@@ -156,8 +156,10 @@ exact-artifact acceptance in disposable Machine Control guests. The Windows
 identity and disposable-workspace gate now pass. The available guest is
 Windows ARM64, so it supports target-native Windows implementation and
 x86_64-emulation testing while native Windows x86_64 acceptance remains a
-release gate. Exact paired launch contracts and Windows kill-on-close ownership
-for both desktop process boundaries are implemented and pass on that testbed.
+release gate. Exact paired launch contracts, Windows kill-on-close ownership
+for both desktop process boundaries, and the local fixed-drive/reparse/case-
+alias path policy are implemented and pass on that testbed. Actual greater-
+than-260-character I/O remains a standalone-runtime and installed-app gate.
 Local implementation is authorized; credentials, signing, remotes, tags, and
 publication remain separately unauthorized.
 

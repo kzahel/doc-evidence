@@ -16,6 +16,11 @@ import yaml
 
 from doc_evidence.config import AppConfig, load_config
 from doc_evidence.errors import ApplicationStateError
+from doc_evidence.platform_paths import (
+    paths_overlap,
+    resolve_collection_root,
+    same_path,
+)
 from doc_evidence.util import atomic_write_json, atomic_write_text, isoformat_z
 
 APP_STATE_SCHEMA_VERSION = 1
@@ -315,7 +320,7 @@ class LibraryRegistry:
         state = self.load()
         for known in state.libraries:
             descriptor = self.descriptor(known)
-            if descriptor.config_path.resolve() == resolved_config:
+            if same_path(descriptor.config_path.resolve(), resolved_config):
                 if make_default:
                     self.activate(known.library_id, make_default=True)
                 return descriptor
@@ -367,16 +372,10 @@ class LibraryRegistry:
     ) -> LibraryDescriptor:
         """Create app-owned descriptor/config state for one trusted source root."""
 
-        resolved_source = source.expanduser().resolve()
-        if not resolved_source.is_dir():
-            raise ApplicationStateError(
-                "managed library source must be an available directory"
-            )
-        if (
-            resolved_source == self.home.root
-            or resolved_source.is_relative_to(self.home.root)
-            or self.home.root.is_relative_to(resolved_source)
-        ):
+        resolved_source, issue = resolve_collection_root(source)
+        if issue is not None:
+            raise ApplicationStateError(issue)
+        if paths_overlap(resolved_source, self.home.root):
             raise ApplicationStateError(
                 "managed library source may not overlap the application home"
             )
@@ -487,7 +486,7 @@ class LibraryRegistry:
             raise ApplicationStateError(f"unknown library ID: {library_id}")
         descriptor = self.descriptor(known)
         config = load_config(descriptor.config_path)
-        if config.store.resolve() != descriptor.store_path.resolve():
+        if not same_path(config.store.resolve(), descriptor.store_path.resolve()):
             raise ApplicationStateError(
                 "library descriptor and configuration store disagree"
             )

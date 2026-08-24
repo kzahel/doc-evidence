@@ -14,6 +14,12 @@ from doc_evidence.contracts.desktop import (
     DesktopLibraryResult,
     DesktopRegisterLibraryRequest,
 )
+from doc_evidence.platform_paths import (
+    path_contains,
+    paths_overlap,
+    resolve_collection_root,
+    same_path,
+)
 
 CollectionPreflightKind = Literal[
     "add_sibling",
@@ -49,24 +55,20 @@ class DesktopLibraryControl(Protocol):
     ) -> DesktopCollectionResult: ...
 
 
-def _overlap(left: Path, right: Path) -> bool:
-    return left == right or left.is_relative_to(right) or right.is_relative_to(left)
-
-
 def preflight_collection_root(
     config: AppConfig, candidate: Path
 ) -> CollectionPreflight:
     """Classify a trusted native/CLI folder grant without changing scope."""
 
-    resolved = candidate.expanduser().resolve()
-    if not resolved.is_dir():
+    resolved, issue = resolve_collection_root(candidate)
+    if issue is not None:
         return CollectionPreflight(
             kind="unavailable",
             candidate=resolved,
             affected_collection_ids=(),
-            message="candidate collection root is not an available directory",
+            message=issue,
         )
-    if _overlap(resolved, config.store.resolve()):
+    if paths_overlap(resolved, config.store.resolve()):
         return CollectionPreflight(
             kind="store_overlap",
             candidate=resolved,
@@ -76,7 +78,7 @@ def preflight_collection_root(
     same = tuple(
         collection.id
         for collection in config.collections
-        if collection.source == resolved
+        if same_path(collection.source, resolved)
     )
     if same:
         return CollectionPreflight(
@@ -88,7 +90,7 @@ def preflight_collection_root(
     covering = tuple(
         collection.id
         for collection in config.collections
-        if resolved.is_relative_to(collection.source)
+        if path_contains(collection.source, resolved)
     )
     if covering:
         return CollectionPreflight(
@@ -100,7 +102,7 @@ def preflight_collection_root(
     children = tuple(
         collection.id
         for collection in config.collections
-        if collection.source.is_relative_to(resolved)
+        if path_contains(resolved, collection.source)
     )
     if children:
         return CollectionPreflight(

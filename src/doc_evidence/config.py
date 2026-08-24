@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
 from doc_evidence.errors import ConfigError
+from doc_evidence.platform_paths import paths_overlap, resolve_collection_root
 from doc_evidence.util import hash_json
 
 
@@ -118,10 +119,6 @@ def _resolve_path(base: Path, raw_path: str) -> Path:
     return candidate.resolve()
 
 
-def _paths_overlap(left: Path, right: Path) -> bool:
-    return left == right or left.is_relative_to(right) or right.is_relative_to(left)
-
-
 def load_config(path: str | Path) -> AppConfig:
     config_path = Path(path).expanduser().resolve()
     if not config_path.is_file():
@@ -143,11 +140,12 @@ def load_config(path: str | Path) -> AppConfig:
         if identifier in seen_ids:
             raise ConfigError(f"duplicate collection ID: {identifier}")
         seen_ids.add(identifier)
-        source = _resolve_path(base, raw_collection["source"])
-        if not source.is_dir():
-            raise ConfigError(
-                f"collection {identifier!r} source is not a directory: {source}"
-            )
+        raw_source = Path(raw_collection["source"]).expanduser()
+        if not raw_source.is_absolute():
+            raw_source = base / raw_source
+        source, issue = resolve_collection_root(raw_source)
+        if issue is not None:
+            raise ConfigError(f"collection {identifier!r} {issue}: {source}")
         collections.append(
             CollectionConfig(
                 id=identifier,
@@ -159,14 +157,14 @@ def load_config(path: str | Path) -> AppConfig:
 
     store = _resolve_path(base, raw["store"]["path"])
     for collection in collections:
-        if _paths_overlap(store, collection.source):
+        if paths_overlap(store, collection.source):
             raise ConfigError(
                 "derived store and source collection may not overlap: "
                 f"store={store}, collection={collection.id}:{collection.source}"
             )
     for index, left in enumerate(collections):
         for right in collections[index + 1 :]:
-            if _paths_overlap(left.source, right.source):
+            if paths_overlap(left.source, right.source):
                 raise ConfigError(
                     "source collections may not overlap: "
                     f"{left.id}:{left.source}, {right.id}:{right.source}"

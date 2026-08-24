@@ -27,6 +27,7 @@ from doc_evidence.contracts.desktop import (
 )
 from doc_evidence.errors import ApplicationStateError, RequestError
 from doc_evidence.persistence import ensure_library_database
+from doc_evidence.platform_paths import same_path
 from doc_evidence.util import atomic_write_text
 
 
@@ -101,7 +102,11 @@ class LocalDesktopLibraryControl(DesktopLibraryControl):
                 config_path,
                 name=request.name,
             )
-            outcome = "already_registered" if config_path in existing else "registered"
+            outcome = (
+                "already_registered"
+                if any(same_path(config_path, item) for item in existing)
+                else "registered"
+            )
             return _library_result(
                 self.manager.library(descriptor.library_id),
                 outcome=outcome,

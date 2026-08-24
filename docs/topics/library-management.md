@@ -11,9 +11,10 @@ Shared UI selection and explicit library-scoped job identity are implemented;
 explicit maintainer interaction acceptance remains. Tactical 002's trusted
 Python host-control operations, Tauri dialogs, packaged startup, and macOS
 application-data injection are implemented. Tactical 003 now selects Windows
-per-user local application data in the host and owns the remaining Windows
-path, reparse-point, local-drive, and installed-app acceptance boundary. Store
-relocation remains later scope.
+per-user local application data in the host and implements case/separator path
+identity, fixed-drive admission, and reparse/offline traversal policy. Actual
+long-path I/O and installed-app acceptance remain open. Store relocation
+remains later scope.
 
 ## Purpose
 
@@ -441,3 +442,14 @@ and fixture runtimes honestly report native authorization unavailable. Native
 folder/config dialogs now live in the Rust shell, including native confirmation
 before replacing covered child roots. Selected paths travel directly from Rust
 to the originless host-control surface and never cross the JavaScript bridge.
+
+Tactical 003 now implements the Python-owned Windows filesystem policy used by
+configuration loading and every trusted collection change. Comparison-only
+identities normalize Windows separators and case without lowercasing stored or
+displayed aliases. Source roots must be available local fixed-drive
+directories; selected reparse/offline roots fail before scope changes, while
+inventory prunes nested reparse points and offline/recall-marked descendants.
+The target-native Windows suite passes Unicode names, spaces, case-alias
+overlap, fixed/non-fixed classification, and junction cases. Long comparison
+aliases pass; actual greater-than-260-character I/O remains a standalone-
+runtime and installed-app acceptance gate.

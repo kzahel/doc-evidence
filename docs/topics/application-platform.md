@@ -339,9 +339,18 @@ changing the shared scheduler or artifact state machine. Both the Rust-owned
 sidecar tree and Python-owned extractor tree use an assign-before-launch gate
 and kill-on-close handle; `taskkill` is not a correctness dependency. The
 available Windows guest passes native attempt cancellation/timeout/descendant
-cleanup and x86_64-emulated Rust Job Object tests. Windows path policy,
-standalone runtime/pack staging, exact installer bytes, and native x86_64
-installed acceptance remain open.
+cleanup and x86_64-emulated Rust Job Object tests.
+
+The following checkpoint implements Windows case/separator path identity,
+case-alias-safe library/configuration checks, local fixed-drive admission, and
+fail-closed reparse/offline traversal policy in Python-owned services. Eight
+focused target-native Windows tests pass, including Unicode, spaces, case
+aliases, fixed-drive classification, and junction rejection/pruning. Long path
+comparison passes, but greater-than-260-character filesystem I/O remains bound
+to the forthcoming pinned standalone runtime and installed-app gate after the
+guest development interpreter failed that fixture. Standalone runtime/pack
+staging, exact installer bytes, and native x86_64 installed acceptance remain
+open.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

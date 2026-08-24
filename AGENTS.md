@@ -332,8 +332,11 @@ independent effect, target-native capture, bounded artifact retrieval, and
 discard verification. Exact paired desktop contracts and Windows kill-on-close
 Job Object ownership for both the Rust sidecar and Python attempt trees are now
 implemented. The available Windows ARM64 guest passes target-native attempt
-cleanup and x86_64-emulated Rust process-tree tests, but native Windows x86_64
-installed-artifact acceptance remains release-blocking. Do not touch signing
+cleanup and x86_64-emulated Rust process-tree tests. Python-owned Windows path
+identity, fixed-drive admission, and reparse/offline traversal policy also pass
+target-native tests; actual greater-than-260-character I/O remains bound to the
+standalone runtime and installed-app gate. Native Windows x86_64 installed-
+artifact acceptance remains release-blocking. Do not touch signing
 credentials, repository/release setup, notarization, updater setup, tags, or
 publication without explicit maintainer authorization. Heavy extractor packs
 and alternative release channels remain outside it.

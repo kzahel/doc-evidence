@@ -595,6 +595,42 @@ ready state. This is target-native Windows lifecycle evidence and
 x86_64-emulation build evidence, not the still-required native Windows x86_64
 installed-artifact acceptance.
 
+The fourth checkpoint makes collection and library path identity platform-
+aware without rewriting user-visible aliases. Windows comparisons normalize
+separators and case by path component; configuration loading, managed-library
+creation, existing-library registration, collection preflight, and descriptor/
+store integrity checks all use that shared identity. Prefix collisions and
+different drive roots remain distinct.
+
+Windows source admission now accepts only available local fixed-drive roots.
+It rejects a selected symlink, junction, mount point, other reparse point,
+offline/recall placeholder, mapped/network drive, removable drive, or unknown
+drive class before changing library scope. Inventory traversal preserves the
+existing symlink warnings, prunes other reparse points, and skips offline or
+recall-marked descendants rather than following or hydrating them. The checks
+remain in Python-owned services, below the path-free React runtime.
+
+Eight focused tests pass on the target-native Windows guest: separator/case
+identity, component-safe prefix and drive behavior, long comparison aliases,
+Unicode names with spaces, case-alias overlap during configuration loading,
+fixed-drive admission, fail-closed non-fixed/offline classification, and both
+selected-root and nested-junction behavior. The first native run usefully
+showed that the guest's development Python cannot create a greater-than-260-
+character fixture. Actual long-path I/O therefore remains an explicit gate for
+the pinned standalone Python runtime and installed application; the comparison
+test alone is not presented as that acceptance.
+
+Two fresh disposable overlay boots reached the Windows desktop but did not
+recover administration within the documented readiness window while UTM
+registration alternated between verified and unavailable. Both were cleanly
+shut down and discarded. The same exact test subset then ran from removable
+temporary staging on the restored persistent appliance, which passed the full
+common doctor before and after the run. Staging was verified absent, the
+persistent target was left in its initial running/ready state, and final
+inventory showed no temporary workspace or live claim. Disposable exact-
+artifact acceptance remains release-blocking despite the target-native path
+evidence.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

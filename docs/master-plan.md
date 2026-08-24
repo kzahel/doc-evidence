@@ -139,8 +139,11 @@ tags, and publication still await explicit authorization. The first Windows
 Machine Control disposable-workspace gate passes. Its available guest is
 Windows ARM64, so native Windows x86_64 acceptance remains a release gate even
 while that guest supports target-native Windows and x86_64-emulation work. The
-shared exact-target contracts and Windows kill-on-close ownership for both
-desktop process boundaries are implemented and pass that available testbed.
+shared exact-target contracts, Windows kill-on-close ownership for both
+desktop process boundaries, and the local fixed-drive/reparse/case-alias path
+policy are implemented and pass target-native tests on that available testbed.
+Greater-than-260-character I/O remains bound to the forthcoming standalone
+runtime and installed-app acceptance.
 Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding

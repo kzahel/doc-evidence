@@ -8,6 +8,10 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 from doc_evidence.config import CollectionConfig
+from doc_evidence.platform_paths import (
+    is_link_or_reparse_point,
+    is_offline_or_recalled,
+)
 
 
 @dataclass(frozen=True)
@@ -51,6 +55,24 @@ def discover_files(
                     }
                 )
                 continue
+            if is_link_or_reparse_point(candidate):
+                warnings.append(
+                    {
+                        "collection_id": collection.id,
+                        "path": relative,
+                        "warning": "reparse-point directory skipped",
+                    }
+                )
+                continue
+            if is_offline_or_recalled(candidate):
+                warnings.append(
+                    {
+                        "collection_id": collection.id,
+                        "path": relative,
+                        "warning": "offline or recalled directory skipped",
+                    }
+                )
+                continue
             if _matches(relative, collection.exclude) or _matches(
                 relative + "/", collection.exclude
             ):
@@ -67,6 +89,24 @@ def discover_files(
                         "collection_id": collection.id,
                         "path": relative,
                         "warning": "symlink file skipped",
+                    }
+                )
+                continue
+            if is_link_or_reparse_point(candidate):
+                warnings.append(
+                    {
+                        "collection_id": collection.id,
+                        "path": relative,
+                        "warning": "reparse-point file skipped",
+                    }
+                )
+                continue
+            if is_offline_or_recalled(candidate):
+                warnings.append(
+                    {
+                        "collection_id": collection.id,
+                        "path": relative,
+                        "warning": "offline or recalled file skipped",
                     }
                 )
                 continue
