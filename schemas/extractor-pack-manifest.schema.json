@@ -21,17 +21,17 @@
       "const": "doc-evidence.extractor-pack-manifest.v1"
     },
     "pack_id": {
-      "const": "baseline-macos-arm64"
+      "enum": ["baseline-macos-arm64", "baseline-windows-x86_64"]
     },
     "version": {
       "type": "string",
       "minLength": 1
     },
     "platform": {
-      "const": "macos"
+      "enum": ["macos", "windows"]
     },
     "architecture": {
-      "const": "arm64"
+      "enum": ["arm64", "x86_64"]
     },
     "tools": {
       "type": "array",
@@ -55,6 +55,40 @@
       "items": { "$ref": "#/$defs/nativeLibrary" }
     }
   },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "pack_id": { "const": "baseline-macos-arm64" },
+            "platform": { "const": "macos" },
+            "architecture": { "const": "arm64" },
+            "native_libraries": {
+              "items": {
+                "properties": {
+                  "architectures": { "contains": { "const": "arm64" } }
+                }
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "pack_id": { "const": "baseline-windows-x86_64" },
+            "platform": { "const": "windows" },
+            "architecture": { "const": "x86_64" },
+            "native_libraries": {
+              "items": {
+                "properties": {
+                  "architectures": { "contains": { "const": "x86_64" } }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
   "$defs": {
     "sha256": {
       "type": "string",
@@ -116,7 +150,6 @@
         "component_id": { "type": "string", "minLength": 1 },
         "architectures": {
           "type": "array",
-          "contains": { "const": "arm64" },
           "items": { "enum": ["arm64", "x86_64"] },
           "uniqueItems": true
         }

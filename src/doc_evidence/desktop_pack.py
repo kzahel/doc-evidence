@@ -9,7 +9,11 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from doc_evidence.contracts.desktop import DesktopPackIdentity
+from doc_evidence.contracts.desktop import (
+    DesktopArchitecture,
+    DesktopPackIdentity,
+    DesktopPlatform,
+)
 from doc_evidence.errors import RequestError
 from doc_evidence.util import sha256_file
 
@@ -34,7 +38,12 @@ def _contained_file(root: Path, relative: str) -> Path:
     return path
 
 
-def load_baseline_pack(root: Path) -> DesktopPackIdentity:
+def load_baseline_pack(
+    root: Path,
+    *,
+    expected_platform: DesktopPlatform | None = None,
+    expected_architecture: DesktopArchitecture | None = None,
+) -> DesktopPackIdentity:
     pack = root.resolve()
     manifest_path = pack / "pack-manifest.json"
     if not manifest_path.is_file():
@@ -51,6 +60,13 @@ def load_baseline_pack(root: Path) -> DesktopPackIdentity:
     )
     if errors:
         raise RequestError(f"baseline pack manifest is invalid: {errors[0].message}")
+    if (expected_platform is None) != (expected_architecture is None):
+        raise RequestError("baseline pack target expectation is incomplete")
+    if expected_platform is not None and (
+        manifest["platform"],
+        manifest["architecture"],
+    ) != (expected_platform, expected_architecture):
+        raise RequestError("baseline pack target is incompatible")
 
     seen: set[str] = set()
     tools = {item["tool_id"]: item for item in manifest["tools"]}

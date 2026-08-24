@@ -9,9 +9,10 @@ is complete; automated, isolated-browser, and authorized private-library gates
 pass, with explicit maintainer interaction acceptance remaining. Tactical 002's
 macOS arm64 unsigned foundation is implemented through the baseline pack,
 final-byte app/DMG audit, and fail-closed compliance preflight. Tactical 003
-implements the first signed release for macOS arm64 and Windows x86_64. Local
-implementation and validation are authorized; external release actions remain
-separately unauthorized.
+implements the first signed release for macOS arm64 and Windows x86_64. Its
+Machine Control entry gate and exact two-target shared desktop contracts are
+implemented. Local implementation and validation are authorized; external
+release actions remain separately unauthorized.
 
 ## Scope
 
@@ -321,6 +322,17 @@ The baseline wheel audit overrides `pi_heif` 1.4.0's wrapper-only BSD package
 metadata with `BSD-3-Clause AND LGPL-3.0-only`, as required by the wheel's own
 bundled notice for libheif/libde265. The exact-version override fails closed on
 dependency drift and keeps both license files in the component manifest.
+
+Tactical 003's first code checkpoint replaces the macOS-only shared launch
+contract with an exact allowlist of `macos/arm64` and `windows/x86_64` across
+Python ready/handshake models, Rust host validation, generated TypeScript, the
+React desktop adapter, and strict bundle/pack schemas. Target-specific Tauri
+origins, resource layouts, bundled interpreter paths, executable environments,
+application-data selection, and pack identity are selected below the shared
+product runtime. Crossed target pairs and a sidecar whose actual runtime target
+disagrees with the host declaration fail before the loopback service is
+exposed. Windows-native lifecycle, paths, runtime staging, and installer
+acceptance remain open.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

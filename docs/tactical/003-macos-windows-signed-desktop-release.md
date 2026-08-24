@@ -424,7 +424,7 @@ uvx ruff check src tests
 uv run python -m unittest discover -v
 uvx pyright
 uv build
-npm --prefix web run check:generated
+npm --prefix web run contracts:check
 npm --prefix web run typecheck
 npm --prefix web test
 npm --prefix web run build
@@ -535,6 +535,29 @@ commit coherent checkpoints as work proceeds. The first checkpoint restores
 and proves the Machine Control gate described in
 [Current Testbed Readiness](#current-testbed-readiness). It makes no application
 code, credential, signing, remote, tag, or publication change.
+
+The second checkpoint removes the macOS-only assumptions from the shared
+desktop launch contract. Python, Rust, generated TypeScript, and React now
+recognize exactly `macos/arm64` and `windows/x86_64`, reject crossed target
+pairs, bind each target to its Tauri custom-protocol origin, and require the
+sidecar's actual runtime target to agree with the host-supplied manifest
+values. Bundle and extractor-pack schemas carry the same exact target pairs;
+the sidecar additionally binds a loaded pack to that target before serving.
+
+The Rust shell now selects target-specific resource layout, bundled Python
+path, executable search path, inherited environment, baseline-pack identity,
+and ready-record validation at compile time. Windows uses per-user local
+application data and the standard Tauri Windows origin; unsupported shell
+targets fail compilation. React still receives only a behavioral runtime and
+no filesystem path or platform API.
+
+This checkpoint passed 19 focused Python desktop/packaging/CLI tests, generated-
+contract drift, TypeScript typechecking, four desktop-runtime tests, JSON
+Schema syntax/copy agreement, Rust formatting, Clippy with warnings denied,
+and all six Rust tests on macOS arm64. Target-native Windows execution and the
+remaining Windows path, process-tree, runtime-pack, and installer work stay in
+later checkpoints; this host-side result is not presented as Windows release
+acceptance.
 
 ## Falsifiable Stopping Condition
 

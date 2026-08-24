@@ -1,4 +1,4 @@
-"""Authenticated loopback sidecar supervised by the macOS Tauri shell."""
+"""Authenticated loopback sidecar supervised by the Tauri shell."""
 
 from __future__ import annotations
 
@@ -20,14 +20,18 @@ from doc_evidence.adapters.local_libraries import LocalLibraryManager
 from doc_evidence.api.app import create_app
 from doc_evidence.app_home import LibraryRegistry, resolve_application_home
 from doc_evidence.contracts.desktop import (
-    DESKTOP_ORIGIN,
+    DESKTOP_ARCHITECTURE_ENV,
+    DESKTOP_PLATFORM_ENV,
     DESKTOP_PROTOCOL_VERSION,
     MAX_DESKTOP_ERROR_BYTES,
     MAX_DESKTOP_READY_BYTES,
+    DesktopArchitecture,
     DesktopControlHandshake,
+    DesktopPlatform,
     create_desktop_handshake,
     create_desktop_ready,
-    require_macos_arm64,
+    desktop_origin_for,
+    require_supported_desktop_target,
 )
 from doc_evidence.desktop_pack import BASELINE_PACK_ENV, load_baseline_pack
 from doc_evidence.errors import DocEvidenceError, RequestError
@@ -70,14 +74,36 @@ def _desktop_home(environ: MutableMapping[str, str]) -> Path:
     return path.resolve()
 
 
-def _baseline_pack(environ: MutableMapping[str, str]):
+def _desktop_target(
+    environ: MutableMapping[str, str],
+) -> tuple[DesktopPlatform, DesktopArchitecture]:
+    expected_platform = environ.pop(DESKTOP_PLATFORM_ENV, "")
+    expected_architecture = environ.pop(DESKTOP_ARCHITECTURE_ENV, "")
+    if not expected_platform or not expected_architecture:
+        raise RequestError("desktop target manifest values are missing")
+    return require_supported_desktop_target(
+        expected_platform=expected_platform,
+        expected_architecture=expected_architecture,
+    )
+
+
+def _baseline_pack(
+    environ: MutableMapping[str, str],
+    *,
+    expected_platform: DesktopPlatform,
+    expected_architecture: DesktopArchitecture,
+):
     raw = environ.pop(BASELINE_PACK_ENV, "")
     if not raw:
         return None
     path = Path(raw)
     if not path.is_absolute():
         raise RequestError("desktop baseline-pack root must be absolute")
-    return load_baseline_pack(path)
+    return load_baseline_pack(
+        path,
+        expected_platform=expected_platform,
+        expected_architecture=expected_architecture,
+    )
 
 
 def _start_parent_watcher(server: uvicorn.Server) -> None:
@@ -97,19 +123,24 @@ def _start_parent_watcher(server: uvicorn.Server) -> None:
 def run(
     *,
     expected_protocol: str = DESKTOP_PROTOCOL_VERSION,
-    desktop_origin: str = DESKTOP_ORIGIN,
+    desktop_origin: str | None = None,
     monitor_parent_stdin: bool = True,
     environ: MutableMapping[str, str] | None = None,
 ) -> int:
     values = environ if environ is not None else os.environ
     credentials = DesktopCredentials.consume(values)
     desktop_home = _desktop_home(values)
-    baseline_pack = _baseline_pack(values)
+    target_platform, target_architecture = _desktop_target(values)
+    baseline_pack = _baseline_pack(
+        values,
+        expected_platform=target_platform,
+        expected_architecture=target_architecture,
+    )
+    expected_origin = desktop_origin_for(target_platform)
     if expected_protocol != DESKTOP_PROTOCOL_VERSION:
         raise RequestError("desktop protocol is incompatible")
-    if desktop_origin != DESKTOP_ORIGIN:
+    if desktop_origin is not None and desktop_origin != expected_origin:
         raise RequestError("desktop origin is incompatible")
-    require_macos_arm64()
 
     home = resolve_application_home(
         desktop_host_root=desktop_home,
@@ -121,6 +152,8 @@ def run(
     selected_id = state.last_library_id or state.default_library_id
     application = manager.application(selected_id) if selected_id is not None else None
     handshake = create_desktop_handshake(
+        platform=target_platform,
+        architecture=target_architecture,
         application_home_source=home.source,
         baseline_pack=baseline_pack,
         native_library_authorization=True,
@@ -146,7 +179,7 @@ def run(
         application,
         library_manager=manager,
         launch_token=credentials.runtime_token,
-        allowed_origins={desktop_origin},
+        allowed_origins={expected_origin},
         desktop_handshake=handshake,
         host_control_token=credentials.host_control_token,
         desktop_control_handshake=control_handshake,
@@ -186,7 +219,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--desktop-origin",
-        default=DESKTOP_ORIGIN,
     )
     parser.add_argument(
         "--no-parent-stdin",

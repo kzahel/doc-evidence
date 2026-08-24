@@ -16,11 +16,16 @@ from pydantic import ValidationError
 
 from doc_evidence.api.app import create_app
 from doc_evidence.contracts.desktop import (
-    DESKTOP_ORIGIN,
+    DESKTOP_ARCHITECTURE_ENV,
+    DESKTOP_PLATFORM_ENV,
     DESKTOP_PROTOCOL_VERSION,
+    MACOS_DESKTOP_ORIGIN,
+    WINDOWS_DESKTOP_ORIGIN,
     DesktopControlHandshake,
     DesktopReady,
     create_desktop_handshake,
+    desktop_origin_for,
+    require_supported_desktop_target,
 )
 from doc_evidence.desktop_sidecar import (
     DESKTOP_HOME_ENV,
@@ -32,6 +37,7 @@ from doc_evidence.errors import RequestError
 
 RUNTIME_TOKEN = "1" * 64
 CONTROL_TOKEN = "2" * 64
+DESKTOP_ORIGIN = MACOS_DESKTOP_ORIGIN
 
 
 class DesktopContractTest(unittest.TestCase):
@@ -55,6 +61,8 @@ class DesktopContractTest(unittest.TestCase):
 
     def test_ready_contract_rejects_extra_fields_and_bad_ports(self) -> None:
         handshake = create_desktop_handshake(
+            platform="macos",
+            architecture="arm64",
             application_home_source="desktop_host",
             baseline_pack=None,
         )
@@ -75,9 +83,15 @@ class DesktopContractTest(unittest.TestCase):
             DesktopReady.model_validate({**value, "token": RUNTIME_TOKEN})
         with self.assertRaises(ValidationError):
             DesktopReady.model_validate({**value, "port": 0})
+        with self.assertRaises(ValidationError):
+            DesktopReady.model_validate(
+                {**value, "platform": "windows", "architecture": "arm64"}
+            )
 
     def test_runtime_and_host_control_credentials_cannot_be_swapped(self) -> None:
         handshake = create_desktop_handshake(
+            platform="macos",
+            architecture="arm64",
             application_home_source="desktop_host",
             baseline_pack=None,
         )
@@ -122,6 +136,42 @@ class DesktopContractTest(unittest.TestCase):
         self.assertNotIn(RUNTIME_TOKEN, evidence)
         self.assertNotIn(CONTROL_TOKEN, evidence)
 
+    def test_supported_targets_and_origins_are_exact_pairs(self) -> None:
+        self.assertEqual(
+            require_supported_desktop_target(
+                expected_platform="macos",
+                expected_architecture="arm64",
+                platform_name="darwin",
+                machine_name="aarch64",
+            ),
+            ("macos", "arm64"),
+        )
+        self.assertEqual(
+            require_supported_desktop_target(
+                expected_platform="windows",
+                expected_architecture="x86_64",
+                platform_name="win32",
+                machine_name="AMD64",
+            ),
+            ("windows", "x86_64"),
+        )
+        self.assertEqual(desktop_origin_for("macos"), MACOS_DESKTOP_ORIGIN)
+        self.assertEqual(desktop_origin_for("windows"), WINDOWS_DESKTOP_ORIGIN)
+        with self.assertRaisesRegex(RequestError, "disagrees"):
+            require_supported_desktop_target(
+                expected_platform="windows",
+                expected_architecture="x86_64",
+                platform_name="darwin",
+                machine_name="arm64",
+            )
+        with self.assertRaisesRegex(RequestError, "manifest is unsupported"):
+            require_supported_desktop_target(
+                expected_platform="windows",
+                expected_architecture="arm64",
+                platform_name="win32",
+                machine_name="ARM64",
+            )
+
 
 class DesktopSidecarProcessTest(unittest.TestCase):
     def test_real_sidecar_handshake_and_parent_eof_shutdown(self) -> None:
@@ -134,10 +184,18 @@ class DesktopSidecarProcessTest(unittest.TestCase):
                     RUNTIME_TOKEN_ENV: RUNTIME_TOKEN,
                     HOST_CONTROL_TOKEN_ENV: CONTROL_TOKEN,
                     DESKTOP_HOME_ENV: str(root / "app-home"),
+                    DESKTOP_PLATFORM_ENV: "macos",
+                    DESKTOP_ARCHITECTURE_ENV: "arm64",
                 }
             )
             process = subprocess.Popen(
-                [sys.executable, "-m", "doc_evidence.desktop_sidecar"],
+                [
+                    sys.executable,
+                    "-m",
+                    "doc_evidence.desktop_sidecar",
+                    "--desktop-origin",
+                    DESKTOP_ORIGIN,
+                ],
                 cwd=root,
                 env=environment,
                 stdin=subprocess.PIPE,

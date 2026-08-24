@@ -336,8 +336,10 @@
             "type": "string"
           },
           "architecture": {
-            "const": "arm64",
-            "default": "arm64",
+            "enum": [
+              "arm64",
+              "x86_64"
+            ],
             "title": "Architecture",
             "type": "string"
           },
@@ -370,8 +372,10 @@
             "type": "boolean"
           },
           "platform": {
-            "const": "macos",
-            "default": "macos",
+            "enum": [
+              "macos",
+              "windows"
+            ],
             "title": "Platform",
             "type": "string"
           },
@@ -389,6 +393,8 @@
           }
         },
         "required": [
+          "platform",
+          "architecture",
           "application_version",
           "application_home_source",
           "baseline_pack",

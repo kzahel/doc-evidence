@@ -30,7 +30,12 @@ from typing import Any
 import jsonschema
 
 from doc_evidence import __version__
-from doc_evidence.contracts.desktop import DESKTOP_ORIGIN, DESKTOP_PROTOCOL_VERSION
+from doc_evidence.contracts.desktop import (
+    DESKTOP_ARCHITECTURE_ENV,
+    DESKTOP_PLATFORM_ENV,
+    DESKTOP_PROTOCOL_VERSION,
+    MACOS_DESKTOP_ORIGIN,
+)
 from doc_evidence.desktop_pack import BASELINE_PACK_ENV, load_baseline_pack
 
 BUNDLE_MANIFEST_SCHEMA = "doc-evidence.desktop-bundle-manifest.v1"
@@ -1577,6 +1582,8 @@ def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
             "DOC_EVIDENCE_DESKTOP_RUNTIME_TOKEN": runtime_token,
             "DOC_EVIDENCE_DESKTOP_HOST_CONTROL_TOKEN": control_token,
             "DOC_EVIDENCE_DESKTOP_APP_HOME": str(working / "app-home"),
+            DESKTOP_PLATFORM_ENV: "macos",
+            DESKTOP_ARCHITECTURE_ENV: "arm64",
         }
         process = subprocess.Popen(
             [
@@ -1588,7 +1595,7 @@ def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
                 "--expected-protocol",
                 DESKTOP_PROTOCOL_VERSION,
                 "--desktop-origin",
-                DESKTOP_ORIGIN,
+                MACOS_DESKTOP_ORIGIN,
             ],
             cwd=working,
             env=environment,
@@ -1620,7 +1627,7 @@ def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
                 raise RuntimeError("staged desktop ready record is incompatible")
             url = f"http://127.0.0.1:{ready['port']}/api/v1/desktop/handshake"
             unauthenticated = urllib.request.Request(
-                url, headers={"Origin": DESKTOP_ORIGIN}
+                url, headers={"Origin": MACOS_DESKTOP_ORIGIN}
             )
             try:
                 urllib.request.urlopen(unauthenticated, timeout=3)
@@ -1635,7 +1642,7 @@ def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
                 url,
                 headers={
                     "Authorization": f"Bearer {runtime_token}",
-                    "Origin": DESKTOP_ORIGIN,
+                    "Origin": MACOS_DESKTOP_ORIGIN,
                 },
             )
             with urllib.request.urlopen(authenticated, timeout=3) as response:

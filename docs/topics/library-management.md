@@ -2,7 +2,7 @@
 
 Topic: library-management
 
-**Last updated:** 2026-08-23
+**Last updated:** 2026-08-24
 
 **Status:** Tactical 001 implementation complete. Application-home,
 known-library registry, adopted descriptors, CLI activation, unified library
@@ -10,7 +10,8 @@ persistence, inventory generations, and collection preflight are implemented.
 Shared UI selection and explicit library-scoped job identity are implemented;
 explicit maintainer interaction acceptance remains. Tactical 002's trusted
 Python host-control operations, Tauri dialogs, packaged startup, and macOS
-application-data injection are implemented. Tactical 003 plans the Windows
+application-data injection are implemented. Tactical 003 now selects Windows
+per-user local application data in the host and owns the remaining Windows
 path, reparse-point, local-drive, and installed-app acceptance boundary. Store
 relocation remains later scope.
 

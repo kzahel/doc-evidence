@@ -122,6 +122,17 @@ class DesktopPackagingContractTest(unittest.TestCase):
         }
         validator = Draft202012Validator(bundle_schema)
         validator.validate(bundle)
+        windows = {
+            **bundle,
+            "platform": "windows",
+            "architecture": "x86_64",
+        }
+        validator.validate(windows)
+        crossed_target = {
+            **windows,
+            "architecture": "arm64",
+        }
+        self.assertTrue(list(validator.iter_errors(crossed_target)))
         bundle["components"][0]["license_concluded"] = ""
         self.assertTrue(list(validator.iter_errors(bundle)))
         bundle["components"][0]["license_concluded"] = "Apache-2.0"

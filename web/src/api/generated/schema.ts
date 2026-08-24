@@ -835,10 +835,9 @@ export interface components {
             application_version: string;
             /**
              * Architecture
-             * @default arm64
-             * @constant
+             * @enum {string}
              */
-            architecture: "arm64";
+            architecture: "arm64" | "x86_64";
             baseline_pack: components["schemas"]["DesktopPackIdentity"] | null;
             /** Capabilities */
             capabilities: ("known_libraries" | "durable_extraction_jobs" | "native_library_authorization")[];
@@ -850,10 +849,9 @@ export interface components {
             compatible: true;
             /**
              * Platform
-             * @default macos
-             * @constant
+             * @enum {string}
              */
-            platform: "macos";
+            platform: "macos" | "windows";
             /**
              * Protocol Version
              * @default doc-evidence.desktop.v1

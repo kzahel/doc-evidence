@@ -89,7 +89,43 @@ describe("desktop runtime bootstrap", () => {
     await expect(
       createDesktopRuntime(bridge({ bearerToken: "too-short" })),
     ).rejects.toThrow("compatibility record is invalid");
+    await expect(
+      createDesktopRuntime(bridge({ platform: "windows", architecture: "arm64" })),
+    ).rejects.toThrow("compatibility record is invalid");
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("accepts the exact Windows x86_64 runtime and handshake pair", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            schema_version: "doc-evidence.desktop-handshake.v1",
+            compatible: true,
+            protocol_version: "doc-evidence.desktop.v1",
+            application_version: "0.4.0",
+            api_version: 1,
+            platform: "windows",
+            architecture: "x86_64",
+            application_home_source: "desktop_host",
+            baseline_pack: null,
+            capabilities: [
+              "known_libraries",
+              "durable_extraction_jobs",
+              "native_library_authorization",
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+
+    const desktop = await createDesktopRuntime(
+      bridge({ platform: "windows", architecture: "x86_64" }),
+    );
+
+    expect(desktop.runtime.hostCapabilities.createManagedLibrary).toBe(true);
   });
 
   it("rejects extra handshake fields before creating the product runtime", async () => {

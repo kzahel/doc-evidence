@@ -33,10 +33,10 @@
       "const": "io.github.kzahel.doc-evidence"
     },
     "platform": {
-      "const": "macos"
+      "enum": ["macos", "windows"]
     },
     "architecture": {
-      "const": "arm64"
+      "enum": ["arm64", "x86_64"]
     },
     "python_version": {
       "type": "string",
@@ -70,6 +70,24 @@
       "items": { "$ref": "#/$defs/file" }
     }
   },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "platform": { "const": "macos" },
+            "architecture": { "const": "arm64" }
+          }
+        },
+        {
+          "properties": {
+            "platform": { "const": "windows" },
+            "architecture": { "const": "x86_64" }
+          }
+        }
+      ]
+    }
+  ],
   "$defs": {
     "sha256": {
       "type": "string",
@@ -126,6 +144,9 @@
           "type": "array",
           "items": { "enum": ["arm64", "x86_64"] },
           "uniqueItems": true
+        },
+        "pe_architecture": {
+          "const": "x86_64"
         }
       }
     }

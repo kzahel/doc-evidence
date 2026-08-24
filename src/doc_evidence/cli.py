@@ -218,7 +218,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     desktop_sidecar.add_argument(
         "--desktop-origin",
-        default="tauri://localhost",
     )
     desktop_sidecar.add_argument("--no-parent-stdin", action="store_true")
     return parser

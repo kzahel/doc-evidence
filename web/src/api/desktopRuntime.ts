@@ -11,6 +11,8 @@ import type {
 
 const desktopProtocol = "doc-evidence.desktop.v1";
 const tokenPattern = /^[0-9a-f]{64}$/;
+type DesktopPlatform = "macos" | "windows";
+type DesktopArchitecture = "arm64" | "x86_64";
 
 interface DesktopRuntimeInfo {
   readonly baseUrl: string;
@@ -18,8 +20,8 @@ interface DesktopRuntimeInfo {
   readonly protocolVersion: string;
   readonly applicationVersion: string;
   readonly apiVersion: 1;
-  readonly platform: "macos";
-  readonly architecture: "arm64";
+  readonly platform: DesktopPlatform;
+  readonly architecture: DesktopArchitecture;
   readonly baselinePack: {
     readonly packId: string;
     readonly version: string;
@@ -34,8 +36,8 @@ interface DesktopHandshake {
   readonly protocol_version: "doc-evidence.desktop.v1";
   readonly application_version: string;
   readonly api_version: 1;
-  readonly platform: "macos";
-  readonly architecture: "arm64";
+  readonly platform: DesktopPlatform;
+  readonly architecture: DesktopArchitecture;
   readonly application_home_source: "environment" | "desktop_host" | "platform_default";
   readonly baseline_pack: {
     readonly pack_id: string;
@@ -76,8 +78,10 @@ function validateRuntimeInfo(value: DesktopRuntimeInfo): DesktopRuntimeInfo {
   if (
     value.protocolVersion !== desktopProtocol ||
     value.apiVersion !== 1 ||
-    value.platform !== "macos" ||
-    value.architecture !== "arm64" ||
+    !(
+      (value.platform === "macos" && value.architecture === "arm64") ||
+      (value.platform === "windows" && value.architecture === "x86_64")
+    ) ||
     !value.applicationVersion ||
     !tokenPattern.test(value.bearerToken) ||
     typeof value.hostCapabilities?.createManagedLibrary !== "boolean" ||

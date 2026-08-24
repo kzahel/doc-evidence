@@ -20,7 +20,6 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 
 const DESKTOP_PROTOCOL: &str = "doc-evidence.desktop.v1";
-const DESKTOP_ORIGIN: &str = "tauri://localhost";
 const APPLICATION_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_READY_BYTES: usize = 64 * 1024;
 const MAX_CONTROL_RESPONSE_BYTES: usize = 1024 * 1024;
@@ -28,6 +27,44 @@ const MAX_BUNDLE_MANIFEST_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_PACK_MANIFEST_BYTES: u64 = 1024 * 1024;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const CONTROL_TIMEOUT: Duration = Duration::from_secs(5);
+
+#[cfg(not(any(
+    all(target_os = "macos", target_arch = "aarch64"),
+    all(target_os = "windows", target_arch = "x86_64")
+)))]
+compile_error!("Doc Evidence desktop supports macOS arm64 and Windows x86_64 only");
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct DesktopTarget {
+    platform: &'static str,
+    architecture: &'static str,
+    origin: &'static str,
+    pack_id: &'static str,
+    python_relative: &'static str,
+}
+
+const MACOS_TARGET: DesktopTarget = DesktopTarget {
+    platform: "macos",
+    architecture: "arm64",
+    origin: "tauri://localhost",
+    pack_id: "baseline-macos-arm64",
+    python_relative: "python/bin/python3",
+};
+
+const WINDOWS_TARGET: DesktopTarget = DesktopTarget {
+    platform: "windows",
+    architecture: "x86_64",
+    origin: "http://tauri.localhost",
+    pack_id: "baseline-windows-x86_64",
+    python_relative: "python/python.exe",
+};
+
+fn build_target() -> DesktopTarget {
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    return MACOS_TARGET;
+    #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+    return WINDOWS_TARGET;
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -226,19 +263,25 @@ fn token() -> Result<String, String> {
     Ok(encoded)
 }
 
-fn resource_dir_for_executable(executable: &Path) -> Option<PathBuf> {
-    let macos = executable.parent()?;
-    if macos.file_name()?.to_string_lossy() != "MacOS" {
-        return None;
+fn resource_dir_for_executable(executable: &Path, target: DesktopTarget) -> Option<PathBuf> {
+    if target == MACOS_TARGET {
+        let macos = executable.parent()?;
+        if macos.file_name()?.to_string_lossy() != "MacOS" {
+            return None;
+        }
+        let contents = macos.parent()?;
+        if contents.file_name()?.to_string_lossy() != "Contents" {
+            return None;
+        }
+        return Some(contents.join("Resources"));
     }
-    let contents = macos.parent()?;
-    if contents.file_name()?.to_string_lossy() != "Contents" {
-        return None;
+    if target == WINDOWS_TARGET {
+        return executable.parent().map(Path::to_path_buf);
     }
-    Some(contents.join("Resources"))
+    None
 }
 
-fn runtime_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+fn runtime_root(app: &tauri::AppHandle, target: DesktopTarget) -> Result<PathBuf, String> {
     #[cfg(debug_assertions)]
     if let Some(override_path) = env::var_os("DOC_EVIDENCE_DESKTOP_RUNTIME_ROOT") {
         return Ok(PathBuf::from(override_path));
@@ -247,7 +290,7 @@ fn runtime_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         Ok(directory) => Ok(directory.join("desktop-runtime")),
         Err(error) => env::current_exe()
             .ok()
-            .and_then(|path| resource_dir_for_executable(&path))
+            .and_then(|path| resource_dir_for_executable(&path, target))
             .map(|path| path.join("desktop-runtime"))
             .ok_or_else(|| format!("could not locate desktop resources: {error}")),
     }
@@ -255,9 +298,40 @@ fn runtime_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 
 fn application_home(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     app.path()
-        .data_dir()
+        .local_data_dir()
         .map(|path| path.join("doc-evidence"))
         .map_err(|error| format!("could not locate application data: {error}"))
+}
+
+fn executable_search_path(
+    runtime_root: &Path,
+    pack: &Path,
+    target: DesktopTarget,
+) -> Result<std::ffi::OsString, String> {
+    let mut directories = vec![pack.join("bin")];
+    if target == MACOS_TARGET {
+        directories.extend([
+            runtime_root.join("python/bin"),
+            PathBuf::from("/usr/bin"),
+            PathBuf::from("/bin"),
+        ]);
+    } else if target == WINDOWS_TARGET {
+        directories.push(runtime_root.join("python"));
+        let system_root = env::var_os("SystemRoot")
+            .ok_or_else(|| "Windows system root is unavailable".to_string())?;
+        directories.push(PathBuf::from(&system_root).join("System32"));
+        directories.push(PathBuf::from(system_root));
+    }
+    env::join_paths(directories)
+        .map_err(|_| "could not construct the desktop executable path".to_string())
+}
+
+fn inherited_environment_names(target: DesktopTarget) -> &'static [&'static str] {
+    if target == MACOS_TARGET {
+        &["LANG", "LC_ALL", "TMPDIR"]
+    } else {
+        &["SystemRoot", "WINDIR", "TEMP", "TMP"]
+    }
 }
 
 fn read_bounded(path: &Path, maximum: u64, label: &str) -> Result<Vec<u8>, String> {
@@ -272,7 +346,10 @@ fn sha256_hex(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
-fn packaged_baseline_identity(runtime_root: &Path) -> Result<DesktopPackIdentity, String> {
+fn packaged_baseline_identity(
+    runtime_root: &Path,
+    target: DesktopTarget,
+) -> Result<DesktopPackIdentity, String> {
     let bundle_bytes = read_bounded(
         &runtime_root.join("bundle-manifest.json"),
         MAX_BUNDLE_MANIFEST_BYTES,
@@ -284,15 +361,15 @@ fn packaged_baseline_identity(runtime_root: &Path) -> Result<DesktopPackIdentity
         || bundle.product != "Doc Evidence"
         || bundle.version != APPLICATION_VERSION
         || bundle.identifier != "io.github.kzahel.doc-evidence"
-        || bundle.platform != "macos"
-        || bundle.architecture != "arm64"
+        || bundle.platform != target.platform
+        || bundle.architecture != target.architecture
         || bundle.python_version != "3.12.12"
         || bundle.extractor_packs.len() != 1
     {
         return Err("desktop bundle manifest is incompatible".to_string());
     }
     let expected = bundle.extractor_packs[0].clone();
-    if expected.pack_id != "baseline-macos-arm64"
+    if expected.pack_id != target.pack_id
         || expected.version.is_empty()
         || !is_lower_hex_64(&expected.manifest_sha256)
     {
@@ -312,8 +389,8 @@ fn packaged_baseline_identity(runtime_root: &Path) -> Result<DesktopPackIdentity
     if pack.schema_version != "doc-evidence.extractor-pack-manifest.v1"
         || pack.pack_id != expected.pack_id
         || pack.version != expected.version
-        || pack.platform != "macos"
-        || pack.architecture != "arm64"
+        || pack.platform != target.platform
+        || pack.architecture != target.architecture
     {
         return Err("baseline extractor-pack manifest is incompatible".to_string());
     }
@@ -332,15 +409,19 @@ fn read_ready(reader: impl Read) -> Result<ReadyRecord, String> {
     serde_json::from_slice(&bytes).map_err(|_| "desktop startup record is invalid".to_string())
 }
 
-fn validate_ready(ready: &ReadyRecord, expected_pack: &DesktopPackIdentity) -> Result<(), String> {
+fn validate_ready(
+    ready: &ReadyRecord,
+    expected_pack: &DesktopPackIdentity,
+    target: DesktopTarget,
+) -> Result<(), String> {
     if ready.schema_version != "doc-evidence.desktop-ready.v1"
         || ready.protocol_version != DESKTOP_PROTOCOL
         || ready.application_version != APPLICATION_VERSION
         || ready.api_version != 1
         || ready.host != "127.0.0.1"
         || ready.port == 0
-        || ready.platform != "macos"
-        || ready.architecture != "arm64"
+        || ready.platform != target.platform
+        || ready.architecture != target.architecture
         || !matches!(
             ready.application_home_source.as_str(),
             "environment" | "desktop_host" | "platform_default"
@@ -500,23 +581,16 @@ fn start_sidecar(
     app: &tauri::AppHandle,
     status: Arc<RwLock<RuntimeStatus>>,
 ) -> Result<(DesktopProcess, HostControl, DesktopRuntimeInfo), String> {
-    let runtime_root = runtime_root(app)?;
-    let expected_pack = packaged_baseline_identity(&runtime_root)?;
-    let python = runtime_root.join("python/bin/python3");
+    let target = build_target();
+    let runtime_root = runtime_root(app, target)?;
+    let expected_pack = packaged_baseline_identity(&runtime_root, target)?;
+    let python = runtime_root.join(target.python_relative);
     if !python.is_file() {
         return Err("packaged Python runtime is missing".to_string());
     }
     let app_home = application_home(app)?;
     let pack = runtime_root.join("baseline-pack");
-    let pack_bin = pack.join("bin");
-    let python_bin = runtime_root.join("python/bin");
-    let executable_path = env::join_paths([
-        pack_bin,
-        python_bin,
-        PathBuf::from("/usr/bin"),
-        PathBuf::from("/bin"),
-    ])
-    .map_err(|_| "could not construct the desktop executable path".to_string())?;
+    let executable_path = executable_search_path(&runtime_root, &pack, target)?;
     let writable_cache = app_home.join("cache");
     fs::create_dir_all(&writable_cache)
         .map_err(|_| "could not create the desktop cache directory".to_string())?;
@@ -537,10 +611,12 @@ fn start_sidecar(
         .arg("--expected-protocol")
         .arg(DESKTOP_PROTOCOL)
         .arg("--desktop-origin")
-        .arg(DESKTOP_ORIGIN)
+        .arg(target.origin)
         .env("DOC_EVIDENCE_DESKTOP_RUNTIME_TOKEN", &runtime_token)
         .env("DOC_EVIDENCE_DESKTOP_HOST_CONTROL_TOKEN", &control_token)
         .env("DOC_EVIDENCE_DESKTOP_APP_HOME", &app_home)
+        .env("DOC_EVIDENCE_DESKTOP_PLATFORM", target.platform)
+        .env("DOC_EVIDENCE_DESKTOP_ARCHITECTURE", target.architecture)
         .env("DOC_EVIDENCE_BASELINE_PACK", &pack)
         .env("PATH", executable_path)
         .env("TESSDATA_PREFIX", pack.join("tessdata"))
@@ -556,7 +632,7 @@ fn start_sidecar(
     if let Some(value) = env::var_os("DOC_EVIDENCE_HOME") {
         command.env("DOC_EVIDENCE_HOME", value);
     }
-    for name in ["LANG", "LC_ALL", "TMPDIR"] {
+    for name in inherited_environment_names(target) {
         if let Some(value) = env::var_os(name) {
             command.env(name, value);
         }
@@ -590,7 +666,7 @@ fn start_sidecar(
             return Err(error);
         }
     };
-    if let Err(error) = validate_ready(&ready, &expected_pack) {
+    if let Err(error) = validate_ready(&ready, &expected_pack, target) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(error);
@@ -613,8 +689,8 @@ fn start_sidecar(
         protocol_version: DESKTOP_PROTOCOL.to_string(),
         application_version: APPLICATION_VERSION.to_string(),
         api_version: 1,
-        platform: "macos".to_string(),
-        architecture: "arm64".to_string(),
+        platform: target.platform.to_string(),
+        architecture: target.architecture.to_string(),
         baseline_pack: ready.baseline_pack,
         host_capabilities: capabilities,
     };
@@ -908,18 +984,19 @@ mod tests {
     use super::*;
     use std::io::Cursor;
 
-    fn pack() -> DesktopPackIdentity {
+    fn pack(target: DesktopTarget) -> DesktopPackIdentity {
         DesktopPackIdentity {
-            pack_id: "baseline-macos-arm64".to_string(),
+            pack_id: target.pack_id.to_string(),
             version: "2026.08.1".to_string(),
             manifest_sha256: "a".repeat(64),
         }
     }
 
-    fn ready() -> String {
-        let pack = serde_json::to_string(&pack()).unwrap();
+    fn ready(target: DesktopTarget) -> String {
+        let pack = serde_json::to_string(&pack(target)).unwrap();
         format!(
-            "{{\"schema_version\":\"doc-evidence.desktop-ready.v1\",\"protocol_version\":\"{DESKTOP_PROTOCOL}\",\"application_version\":\"{APPLICATION_VERSION}\",\"api_version\":1,\"host\":\"127.0.0.1\",\"port\":43111,\"platform\":\"macos\",\"architecture\":\"arm64\",\"application_home_source\":\"desktop_host\",\"baseline_pack\":{pack}}}\n"
+            "{{\"schema_version\":\"doc-evidence.desktop-ready.v1\",\"protocol_version\":\"{DESKTOP_PROTOCOL}\",\"application_version\":\"{APPLICATION_VERSION}\",\"api_version\":1,\"host\":\"127.0.0.1\",\"port\":43111,\"platform\":\"{}\",\"architecture\":\"{}\",\"application_home_source\":\"desktop_host\",\"baseline_pack\":{pack}}}\n",
+            target.platform, target.architecture
         )
     }
 
@@ -934,55 +1011,72 @@ mod tests {
 
     #[test]
     fn ready_record_is_strict_bounded_and_compatible() {
-        let parsed = read_ready(Cursor::new(ready())).unwrap();
-        validate_ready(&parsed, &pack()).unwrap();
+        for target in [MACOS_TARGET, WINDOWS_TARGET] {
+            let parsed = read_ready(Cursor::new(ready(target))).unwrap();
+            validate_ready(&parsed, &pack(target), target).unwrap();
+            let other_target = if target == MACOS_TARGET {
+                WINDOWS_TARGET
+            } else {
+                MACOS_TARGET
+            };
+            assert!(validate_ready(&parsed, &pack(target), other_target).is_err());
+        }
         assert!(read_ready(Cursor::new("x".repeat(MAX_READY_BYTES + 1))).is_err());
-        let extra = ready().replace("}}\n", "},\"token\":\"secret\"}\n");
+        let extra = ready(MACOS_TARGET).replace("}}\n", "},\"token\":\"secret\"}\n");
         assert!(read_ready(Cursor::new(extra)).is_err());
         let other = DesktopPackIdentity {
             version: "other".to_string(),
-            ..pack()
+            ..pack(MACOS_TARGET)
         };
-        assert!(validate_ready(&parsed, &other).is_err());
+        let parsed = read_ready(Cursor::new(ready(MACOS_TARGET))).unwrap();
+        assert!(validate_ready(&parsed, &other, MACOS_TARGET).is_err());
     }
 
     #[test]
     fn packaged_pack_identity_binds_bundle_and_pack_manifests() {
-        let root = env::temp_dir().join(format!("doc-evidence-rust-pack-{}", token().unwrap()));
-        fs::create_dir_all(root.join("baseline-pack")).unwrap();
-        let pack_manifest = json!({
-            "schema_version": "doc-evidence.extractor-pack-manifest.v1",
-            "pack_id": "baseline-macos-arm64",
-            "version": "2026.08.1",
-            "platform": "macos",
-            "architecture": "arm64"
-        });
-        let pack_bytes = serde_json::to_vec(&pack_manifest).unwrap();
-        fs::write(root.join("baseline-pack/pack-manifest.json"), &pack_bytes).unwrap();
-        let identity = DesktopPackIdentity {
-            manifest_sha256: sha256_hex(&pack_bytes),
-            ..pack()
-        };
-        let bundle_manifest = json!({
-            "schema_version": "doc-evidence.desktop-bundle-manifest.v1",
-            "product": "Doc Evidence",
-            "version": APPLICATION_VERSION,
-            "identifier": "io.github.kzahel.doc-evidence",
-            "platform": "macos",
-            "architecture": "arm64",
-            "python_version": "3.12.12",
-            "extractor_packs": [identity]
-        });
-        fs::write(
-            root.join("bundle-manifest.json"),
-            serde_json::to_vec(&bundle_manifest).unwrap(),
-        )
-        .unwrap();
-        let loaded = packaged_baseline_identity(&root).unwrap();
-        assert_eq!(loaded.pack_id, "baseline-macos-arm64");
-        fs::write(root.join("baseline-pack/pack-manifest.json"), b"{}").unwrap();
-        assert!(packaged_baseline_identity(&root).is_err());
-        fs::remove_dir_all(root).unwrap();
+        for target in [MACOS_TARGET, WINDOWS_TARGET] {
+            let root = env::temp_dir().join(format!("doc-evidence-rust-pack-{}", token().unwrap()));
+            fs::create_dir_all(root.join("baseline-pack")).unwrap();
+            let pack_manifest = json!({
+                "schema_version": "doc-evidence.extractor-pack-manifest.v1",
+                "pack_id": target.pack_id,
+                "version": "2026.08.1",
+                "platform": target.platform,
+                "architecture": target.architecture
+            });
+            let pack_bytes = serde_json::to_vec(&pack_manifest).unwrap();
+            fs::write(root.join("baseline-pack/pack-manifest.json"), &pack_bytes).unwrap();
+            let identity = DesktopPackIdentity {
+                manifest_sha256: sha256_hex(&pack_bytes),
+                ..pack(target)
+            };
+            let bundle_manifest = json!({
+                "schema_version": "doc-evidence.desktop-bundle-manifest.v1",
+                "product": "Doc Evidence",
+                "version": APPLICATION_VERSION,
+                "identifier": "io.github.kzahel.doc-evidence",
+                "platform": target.platform,
+                "architecture": target.architecture,
+                "python_version": "3.12.12",
+                "extractor_packs": [identity]
+            });
+            fs::write(
+                root.join("bundle-manifest.json"),
+                serde_json::to_vec(&bundle_manifest).unwrap(),
+            )
+            .unwrap();
+            let loaded = packaged_baseline_identity(&root, target).unwrap();
+            assert_eq!(loaded.pack_id, target.pack_id);
+            let other_target = if target == MACOS_TARGET {
+                WINDOWS_TARGET
+            } else {
+                MACOS_TARGET
+            };
+            assert!(packaged_baseline_identity(&root, other_target).is_err());
+            fs::write(root.join("baseline-pack/pack-manifest.json"), b"{}").unwrap();
+            assert!(packaged_baseline_identity(&root, target).is_err());
+            fs::remove_dir_all(root).unwrap();
+        }
     }
 
     #[test]
@@ -1019,9 +1113,14 @@ mod tests {
         let executable =
             Path::new("/Applications/Doc Evidence.app/Contents/MacOS/doc-evidence-desktop");
         assert_eq!(
-            resource_dir_for_executable(executable).unwrap(),
+            resource_dir_for_executable(executable, MACOS_TARGET).unwrap(),
             Path::new("/Applications/Doc Evidence.app/Contents/Resources")
         );
-        assert!(resource_dir_for_executable(Path::new("/tmp/tool")).is_none());
+        let windows_executable = Path::new("/Program Files/Doc Evidence/doc-evidence-desktop.exe");
+        assert_eq!(
+            resource_dir_for_executable(windows_executable, WINDOWS_TARGET).unwrap(),
+            Path::new("/Program Files/Doc Evidence")
+        );
+        assert!(resource_dir_for_executable(Path::new("/tmp/tool"), MACOS_TARGET).is_none());
     }
 }

@@ -921,6 +921,8 @@ def create_contract_app() -> FastAPI:
         None,
         launch_token="contract-generation-token",
         desktop_handshake=create_desktop_handshake(
+            platform="macos",
+            architecture="arm64",
             application_home_source="desktop_host",
             baseline_pack=None,
         ),

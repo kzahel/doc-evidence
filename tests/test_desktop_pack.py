@@ -16,7 +16,13 @@ def _sha256(content: bytes) -> str:
 
 
 class DesktopPackTest(unittest.TestCase):
-    def _pack(self, root: Path) -> dict[str, Any]:
+    def _pack(
+        self,
+        root: Path,
+        *,
+        platform: str = "macos",
+        architecture: str = "arm64",
+    ) -> dict[str, Any]:
         tools = []
         for name in ("ocrmypdf", "pdfinfo", "pdftoppm", "pdftotext", "tesseract"):
             content = f"tool:{name}".encode()
@@ -53,10 +59,10 @@ class DesktopPackTest(unittest.TestCase):
         support_path.write_bytes(support_content)
         return {
             "schema_version": "doc-evidence.extractor-pack-manifest.v1",
-            "pack_id": "baseline-macos-arm64",
+            "pack_id": f"baseline-{platform}-{architecture}",
             "version": "2026.08.1",
-            "platform": "macos",
-            "architecture": "arm64",
+            "platform": platform,
+            "architecture": architecture,
             "tools": tools,
             "language_data": languages,
             "support_files": [
@@ -82,6 +88,42 @@ class DesktopPackTest(unittest.TestCase):
             self.assertEqual(identity.pack_id, "baseline-macos-arm64")
             self.assertEqual(identity.version, "2026.08.1")
             self.assertEqual(identity.manifest_sha256, _sha256(encoded))
+
+    def test_windows_pack_is_valid_and_target_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            manifest = self._pack(
+                root,
+                platform="windows",
+                architecture="x86_64",
+            )
+            encoded = json.dumps(manifest).encode()
+            (root / "pack-manifest.json").write_bytes(encoded)
+
+            identity = load_baseline_pack(
+                root,
+                expected_platform="windows",
+                expected_architecture="x86_64",
+            )
+
+            self.assertEqual(identity.pack_id, "baseline-windows-x86_64")
+            with self.assertRaisesRegex(RequestError, "target is incompatible"):
+                load_baseline_pack(
+                    root,
+                    expected_platform="macos",
+                    expected_architecture="arm64",
+                )
+
+    def test_pack_schema_rejects_crossed_target_pairs(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            manifest = self._pack(root, platform="windows", architecture="arm64")
+            (root / "pack-manifest.json").write_text(
+                json.dumps(manifest), encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(RequestError, "manifest is invalid"):
+                load_baseline_pack(root)
 
     def test_pack_rejects_tampered_and_repeated_files(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

@@ -12,7 +12,7 @@ from doc_evidence.adapters.local_libraries import LocalLibraryManager
 from doc_evidence.api.app import create_app
 from doc_evidence.app_home import LibraryRegistry, resolve_application_home
 from doc_evidence.contracts.desktop import (
-    DESKTOP_ORIGIN,
+    MACOS_DESKTOP_ORIGIN,
     DesktopAddCollectionRequest,
     DesktopControlHandshake,
     DesktopCreateLibraryRequest,
@@ -22,6 +22,7 @@ from doc_evidence.errors import ApplicationStateError
 
 RUNTIME_TOKEN = "3" * 64
 CONTROL_TOKEN = "4" * 64
+DESKTOP_ORIGIN = MACOS_DESKTOP_ORIGIN
 
 
 def _write_adopted_config(root: Path) -> Path:
