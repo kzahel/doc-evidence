@@ -488,6 +488,16 @@ accepting the installer. Installed-byte and uninstall preservation remain
 Machine Control gates; an unsigned installer-file audit is not presented as
 either.
 
+Local release-finalization guards now enforce the Doc Evidence subset of the
+pinned `desktop-update-v1` contract. They accept only a synchronized draft
+`desktop-vMAJOR.MINOR.PATCH` release with GitHub digests, the two direct
+installers, the exact-source compliance archive, and updater metadata for
+exactly `darwin-aarch64` and `windows-x86_64`. Each updater URL and detached
+signature must resolve inside the same tagged release, and deterministic
+checksum output omits signature assets. The remote workflow, product updater
+key and route, installed client surface, signing, and publication remain open
+and separately authorized boundaries.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

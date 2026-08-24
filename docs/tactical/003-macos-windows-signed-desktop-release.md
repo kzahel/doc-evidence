@@ -921,6 +921,22 @@ and binds bundle manifest
 to the new application tree. No signing credential, remote, tag,
 notarization service, or publication surface was accessed.
 
+The first local release-finalization checkpoint adopts the pinned
+`desktop-update-v1` validation shape while narrowing it to this product's
+declared matrix. A dependency-free Node validator requires a synchronized
+`desktop-vMAJOR.MINOR.PATCH` draft, GitHub SHA-256 digests for every asset, one
+matching macOS arm64 DMG, one Windows x86_64 NSIS installer, the exact-source
+compliance archive, and signed updater entries for exactly
+`darwin-aarch64` and `windows-x86_64`. Updater URLs must name assets and
+detached signatures in that same tagged release and use the platform's
+replaceable package type. A separate deterministic writer produces sorted
+`SHA256SUMS` content while omitting detached signatures and a prior checksum
+file. Seven Node tests cover the complete draft and fail-closed public,
+coverage, URL, package-type, asset, digest, and checksum cases. This is local
+finalizer logic only: it does not create a remote, choose an updater route or
+key, add credentials, publish a workflow, or claim that updater integration is
+complete.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer
