@@ -9,6 +9,7 @@ from pathlib import Path
 
 from doc_evidence.config import CollectionConfig
 from doc_evidence.platform_paths import (
+    extended_length_path,
     is_link_or_reparse_point,
     is_offline_or_recalled,
 )
@@ -36,8 +37,9 @@ def discover_files(
     warnings: list[dict[str, str]],
 ) -> list[DiscoveredFile]:
     discovered: list[DiscoveredFile] = []
+    filesystem_root = extended_length_path(collection.source)
     for directory, directory_names, file_names in os.walk(
-        collection.source,
+        filesystem_root,
         topdown=True,
         followlinks=False,
     ):
@@ -45,7 +47,7 @@ def discover_files(
         retained_directories: list[str] = []
         for name in sorted(directory_names):
             candidate = directory_path / name
-            relative = candidate.relative_to(collection.source).as_posix()
+            relative = candidate.relative_to(filesystem_root).as_posix()
             if candidate.is_symlink():
                 warnings.append(
                     {
@@ -82,7 +84,7 @@ def discover_files(
 
         for name in sorted(file_names):
             candidate = directory_path / name
-            relative = candidate.relative_to(collection.source).as_posix()
+            relative = candidate.relative_to(filesystem_root).as_posix()
             if candidate.is_symlink():
                 warnings.append(
                     {

@@ -1769,14 +1769,18 @@ def smoke_long_path_io(runtime_root: Path) -> dict[str, Any]:
 import json
 import sys
 from pathlib import Path
-root = Path(sys.argv[1])
-path = root.joinpath(*[("segment-" + str(i).zfill(2) + "-" + "x" * 36) for i in range(7)])
+from doc_evidence.platform_paths import extended_length_path
+display_root = Path(sys.argv[1])
+segments = [("segment-" + str(i).zfill(2) + "-" + "x" * 36) for i in range(7)]
+display_target = display_root.joinpath(*segments) / "evidence.txt"
+root = extended_length_path(display_root)
+path = root.joinpath(*segments)
 target = path / "evidence.txt"
 target.parent.mkdir(parents=True)
 target.write_text("long-path-ok", encoding="utf-8")
 if target.read_text(encoding="utf-8") != "long-path-ok":
     raise RuntimeError("long path round trip changed bytes")
-print(json.dumps({"path_length": len(str(target)), "round_trip": True}))
+print(json.dumps({"path_length": len(str(display_target)), "round_trip": True}))
 """
         result = _run(
             [

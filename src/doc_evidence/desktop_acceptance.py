@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from doc_evidence.platform_paths import extended_length_path
+
 DESKTOP_PROTOCOL = "doc-evidence.desktop.v1"
 Platform = Literal["macos", "windows"]
 TERMINAL_JOB_STATES = frozenset({"succeeded", "failed", "cancelled", "interrupted"})
@@ -42,9 +44,10 @@ def _sha256(path: Path) -> str:
 
 
 def _source_hashes(root: Path) -> dict[str, str]:
+    filesystem_root = extended_length_path(root)
     return {
-        path.relative_to(root).as_posix(): _sha256(path)
-        for path in sorted(root.rglob("*"))
+        path.relative_to(filesystem_root).as_posix(): _sha256(path)
+        for path in sorted(filesystem_root.rglob("*"))
         if path.is_file()
     }
 
@@ -464,7 +467,7 @@ def run_acceptance(
             collection_one,
             enabled=platform_name == "windows",
         )
-        _write_image_pdf(image_pdf)
+        _write_image_pdf(extended_length_path(image_pdf))
         collection_two = working / "Second collection with spaces"
         text_pdf = collection_two / "native evidence.pdf"
         _write_text_pdf(text_pdf, "SECOND COLLECTION ACCEPTANCE 67890")

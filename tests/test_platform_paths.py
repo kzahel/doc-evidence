@@ -15,6 +15,7 @@ from doc_evidence.errors import ConfigError
 from doc_evidence.platform_paths import (
     WINDOWS_DRIVE_FIXED,
     WINDOWS_FILE_ATTRIBUTE_OFFLINE,
+    _extended_windows_path,
     path_contains,
     paths_overlap,
     resolve_collection_root,
@@ -23,6 +24,23 @@ from doc_evidence.platform_paths import (
 
 
 class PlatformPathIdentityTest(unittest.TestCase):
+    def test_windows_extended_paths_do_not_depend_on_machine_policy(self) -> None:
+        self.assertEqual(
+            _extended_windows_path(r"C:\Evidence\Résumé"),
+            r"\\?\C:\Evidence\Résumé",
+        )
+        self.assertEqual(
+            _extended_windows_path(r"\\server\share\Evidence"),
+            r"\\?\UNC\server\share\Evidence",
+        )
+        self.assertEqual(
+            _extended_windows_path(r"\\?\C:\Evidence"),
+            r"\\?\C:\Evidence",
+        )
+        self.assertEqual(
+            _extended_windows_path(r"relative\Evidence"), r"relative\Evidence"
+        )
+
     def test_windows_identity_normalizes_case_and_separators(self) -> None:
         left = r"C:\Evidence\Résumé\2024"
         right = r"c:/evidence/RÉSUMÉ/2024/."

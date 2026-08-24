@@ -52,6 +52,7 @@ from doc_evidence.inventory import (
 )
 from doc_evidence.persistence import LibraryDatabase
 from doc_evidence.persistence.jobs import JobRepository
+from doc_evidence.platform_paths import extended_length_path
 from doc_evidence.util import hash_file, hash_json, isoformat_z
 from doc_evidence.windows_job import process_is_alive as windows_process_is_alive
 
@@ -129,7 +130,7 @@ class LocalExtractionJobs:
             if collection is None:
                 failures.append(f"collection {collection_id} is no longer configured")
                 continue
-            root = collection.source.resolve()
+            root = extended_length_path(collection.source).resolve()
             path = (root / str(occurrence["relative_path"])).resolve()
             if not path.is_relative_to(root):
                 failures.append(f"source occurrence escaped collection {collection_id}")

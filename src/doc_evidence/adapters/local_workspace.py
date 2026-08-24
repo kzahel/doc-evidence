@@ -31,6 +31,7 @@ from doc_evidence.contracts.api import (
 )
 from doc_evidence.errors import CatalogError, NotFoundError, RequestError
 from doc_evidence.persistence import ensure_library_database
+from doc_evidence.platform_paths import extended_length_path
 from doc_evidence.rendering import PageRenderer
 from doc_evidence.util import hash_file, hash_json
 
@@ -635,7 +636,7 @@ class LocalWorkspace:
 
     def _resolve_source(self, document: DocumentDetail) -> Path:
         roots = {
-            collection.id: collection.source.resolve()
+            collection.id: extended_length_path(collection.source).resolve()
             for collection in self.config.collections
         }
         for source in document.sources:

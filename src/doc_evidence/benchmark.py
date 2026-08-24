@@ -32,6 +32,7 @@ from doc_evidence.extraction import (
 )
 from doc_evidence.marker_adapter import MarkerExtractor
 from doc_evidence.ocrmypdf_adapter import OcrMyPdfExtractor
+from doc_evidence.platform_paths import extended_length_path
 from doc_evidence.util import (
     atomic_write_json,
     atomic_write_text,
@@ -112,7 +113,10 @@ def _load_manifest(config: AppConfig) -> dict[str, dict[str, Any]]:
 
 
 def _resolve_source(config: AppConfig, record: dict[str, Any]) -> Path:
-    roots = {collection.id: collection.source for collection in config.collections}
+    roots = {
+        collection.id: extended_length_path(collection.source)
+        for collection in config.collections
+    }
     for source in record.get("sources", []):
         root = roots.get(source.get("collection_id"))
         if root is None:

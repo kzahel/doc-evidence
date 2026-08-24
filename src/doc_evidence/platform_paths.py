@@ -24,6 +24,28 @@ WINDOWS_CLOUD_ATTRIBUTES = (
 )
 
 
+def _extended_windows_path(raw: str) -> str:
+    """Return an absolute Win32 path that does not depend on MAX_PATH policy."""
+
+    if not ntpath.isabs(raw):
+        return raw
+    absolute = ntpath.normpath(raw)
+    if absolute.startswith(("\\\\?\\", "\\\\.\\")):
+        return absolute
+    if absolute.startswith("\\\\"):
+        return "\\\\?\\UNC\\" + absolute[2:]
+    return "\\\\?\\" + absolute
+
+
+def extended_length_path(path: str | os.PathLike[str]) -> Path:
+    """Use extended-length syntax for absolute Windows filesystem access."""
+
+    raw = os.fspath(path)
+    if os.name != "nt":
+        return Path(raw)
+    return Path(_extended_windows_path(raw))
+
+
 def _path_kind(kind: PlatformPathKind | None = None) -> PlatformPathKind:
     if kind is not None:
         return kind
