@@ -307,14 +307,13 @@ all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
 SBOMs. Formula selection is bound to the installed package version, source
 hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
 recipes are reusable from an ignored cache. The preflight remains fail-closed
-for publication: pypdfium2 needs a reviewed composite SPDX conclusion and 32
-third-party libraries nested in Python wheels need flattened component/source
-reconciliation (the other 45 Python native objects now have exact top-level
-ownership). The former 19-crate Rust license-text blocker is closed by a
-tracked exact-version inventory that binds each package's Cargo VCS revision
-and repository path to hash-pinned upstream or SPDX 3.27.0 license texts.
-Required top-level copyleft/MPL source archives are now hash-verified and
-embedded. The
+for publication on the 32 third-party libraries nested in Python wheels that
+need flattened component/source reconciliation (the other 45 Python native
+objects now have exact top-level ownership). The former 19-crate Rust license-
+text blocker is closed by a tracked exact-version inventory that binds each
+package's Cargo VCS revision and repository path to hash-pinned upstream or
+SPDX 3.27.0 license texts. Required top-level copyleft/MPL source archives are
+now hash-verified and embedded. The
 aggregate SPDX already includes all 253 target-resolved Rust dependencies and
 11 conservative production Node dependencies, with 426 available license
 files and exact registry source checksums.
@@ -323,6 +322,15 @@ The baseline wheel audit overrides `pi_heif` 1.4.0's wrapper-only BSD package
 metadata with `BSD-3-Clause AND LGPL-3.0-only`, as required by the wheel's own
 bundled notice for libheif/libde265. The exact-version override fails closed on
 dependency drift and keeps both license files in the component manifest.
+
+The pypdfium2/PDFium aggregate now uses a version- and target-specific SPDX
+`LicenseRef` rather than an invalid comma-separated pseudo-expression. Its
+record separates the wrapper's declared `Apache-2.0 OR BSD-3-Clause` from the
+concluded macOS arm64 binary composite, pins the exact PyPI wheel and PDFium
+binary hashes, and compares the binary plus all 19 wheel-declared license files
+byte-for-byte with the staged runtime. The aggregate SPDX carries matching
+extracted-license provenance instead of pretending the many PDFium third-party
+terms are one standard SPDX expression.
 
 Tactical 003's first code checkpoint replaces the macOS-only shared launch
 contract with an exact allowlist of `macos/arm64` and `windows/x86_64` across

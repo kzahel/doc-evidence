@@ -715,6 +715,18 @@ set is now empty. Twelve focused macOS packaging tests and Ruff pass. This
 checkpoint does not close the remaining pypdfium2 or 32 nested-wheel-native
 component blockers, and it does not claim a rebuilt application or DMG yet.
 
+The next macOS compliance closure replaces pypdfium2's comma-separated package
+metadata with a target- and version-specific SPDX `LicenseRef`. The record
+keeps the wrapper's declared `Apache-2.0 OR BSD-3-Clause` separate from the
+concluded wheel composite, pins the exact macOS arm64 PyPI wheel and bundled
+PDFium binary hashes, and compares the binary plus every wheel-declared license
+file against the staged runtime. The real 5.5.0 wheel and existing runtime
+match byte-for-byte across the binary and all 19 license files. The aggregate
+SPDX will include the corresponding extracted-license record after the runtime
+and application are rebuilt. The 32 nested-wheel-native component records
+remain the only one of Tactical 002's three compliance blocker classes still
+open.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

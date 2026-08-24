@@ -5,6 +5,7 @@ import json
 import os
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from doc_evidence.desktop_packaging import (
@@ -15,6 +16,7 @@ from doc_evidence.desktop_packaging import (
     _files_containing,
     _installed_homebrew_bottle,
     _load_inputs,
+    _python_binary_compliance_record,
     _python_license_conclusion,
     _python_native_inventory,
     _recover_rust_license_files,
@@ -155,6 +157,10 @@ class DesktopPackagingTest(unittest.TestCase):
                     repository=root,
                 )
         self.assertEqual(_spdx_license("Apache License 2.0"), ("Apache-2.0", False))
+        self.assertEqual(
+            _spdx_license("LicenseRef-Pypdfium2-Binary"),
+            ("LicenseRef-Pypdfium2-Binary", False),
+        )
         self.assertEqual(
             _spdx_license("BSD-3-Clause, dependency licenses"),
             ("NOASSERTION", True),
@@ -348,6 +354,76 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertFalse(records[0]["wheel_owned"])
         self.assertFalse(records[1]["nested_dependency"])
         self.assertTrue(records[2]["nested_dependency"])
+
+    def test_python_binary_compliance_binds_exact_wheel_and_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            runtime = root / "runtime"
+            site = runtime / "python" / "lib" / "python3.12" / "site-packages"
+            binary_member = "demo_raw/libdemo.dylib"
+            license_member = "demo-1.0.0.dist-info/licenses/LICENSE.txt"
+            binary = b"exact native binary"
+            license_text = b"exact license text"
+            (site / binary_member).parent.mkdir(parents=True)
+            (site / binary_member).write_bytes(binary)
+            (site / license_member).parent.mkdir(parents=True)
+            (site / license_member).write_bytes(license_text)
+            cache = root / "cache"
+            cache.mkdir()
+            wheel = cache / "demo-1.0.0-py3-none-macosx_11_0_arm64.whl"
+            with zipfile.ZipFile(wheel, "w") as archive:
+                archive.writestr(binary_member, binary)
+                archive.writestr(license_member, license_text)
+            wheel_hash = hashlib.sha256(wheel.read_bytes()).hexdigest()
+            binary_hash = hashlib.sha256(binary).hexdigest()
+            inputs = {
+                "baseline_pack": {
+                    "python_license_conclusions": {
+                        "demo": {
+                            "version": "1.0.0",
+                            "license_declared": "MIT",
+                            "license_concluded": "LicenseRef-Demo-Binary",
+                            "wheel_url": (
+                                "https://files.pythonhosted.org/packages/demo/"
+                                f"{wheel.name}"
+                            ),
+                            "wheel_sha256": wheel_hash,
+                            "binary_member": binary_member,
+                            "binary_sha256": binary_hash,
+                        }
+                    }
+                }
+            }
+            component = {
+                "component_id": "python-demo",
+                "name": "demo",
+                "version": "1.0.0",
+                "license_concluded": "LicenseRef-Demo-Binary",
+            }
+
+            record = _python_binary_compliance_record(
+                component,
+                inputs=inputs,
+                runtime=runtime,
+                cache=cache,
+            )
+
+            self.assertIsNotNone(record)
+            assert record is not None
+            self.assertEqual(record["license_declared"], "MIT")
+            self.assertEqual(record["binary_sha256"], binary_hash)
+            self.assertEqual(
+                record["license_files"],
+                [f"python/lib/python3.12/site-packages/{license_member}"],
+            )
+            (site / license_member).write_bytes(b"tampered")
+            with self.assertRaisesRegex(RuntimeError, "wheel bytes drifted"):
+                _python_binary_compliance_record(
+                    component,
+                    inputs=inputs,
+                    runtime=runtime,
+                    cache=cache,
+                )
 
 
 if __name__ == "__main__":

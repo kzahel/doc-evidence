@@ -23,6 +23,15 @@
       "pi-heif": {
         "version": "1.4.0",
         "license_concluded": "BSD-3-Clause AND LGPL-3.0-only"
+      },
+      "pypdfium2": {
+        "version": "5.5.0",
+        "license_declared": "Apache-2.0 OR BSD-3-Clause",
+        "license_concluded": "LicenseRef-Pypdfium2-5.5.0-Darwin-Arm64-Binary-Composite",
+        "wheel_url": "https://files.pythonhosted.org/packages/bc/a9/379ec56c4481f39f0e37a7ce42f4844e6ddd7662571922e2b348105960ab/pypdfium2-5.5.0-py3-none-macosx_11_0_arm64.whl",
+        "wheel_sha256": "0770bd3f0be5c68443fc4017e43b1b1fe8f36877481cab70fd29b68b2c362e1b",
+        "binary_member": "pypdfium2_raw/libpdfium.dylib",
+        "binary_sha256": "40720223c09c96b894faa4d6b22fb78a1675b160f10402a25b79d3e31763eba1"
       }
     },
     "tools": {

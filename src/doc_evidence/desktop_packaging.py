@@ -21,6 +21,7 @@ import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 from collections import deque
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
@@ -970,8 +971,12 @@ for distribution in metadata.distributions():
             continue
         item = Path(path).resolve().relative_to(Path(sys.prefix).resolve()).as_posix()
         files.append(item)
-        lowered = Path(item).name.lower()
-        if any(name in lowered for name in ("license", "copying", "notice")):
+        lowered_parts = [part.lower() for part in Path(item).parts]
+        if any(
+            name in part
+            for part in lowered_parts
+            for name in ("license", "copying", "notice")
+        ):
             licenses.append(item)
     classifiers = value.get_all("Classifier") or []
     project_urls = value.get_all("Project-URL") or []
@@ -2959,6 +2964,123 @@ def _python_native_inventory(
     return records
 
 
+def _python_binary_compliance_record(
+    component: Mapping[str, Any],
+    *,
+    inputs: Mapping[str, Any],
+    runtime: Path,
+    cache: Path,
+) -> dict[str, Any] | None:
+    baseline = inputs.get("baseline_pack")
+    overrides = (
+        baseline.get("python_license_conclusions")
+        if isinstance(baseline, Mapping)
+        else None
+    )
+    if not isinstance(overrides, Mapping):
+        raise TypeError("baseline Python license conclusions are invalid")
+    normalized = str(component["name"]).lower().replace("_", "-")
+    override = overrides.get(normalized)
+    if not isinstance(override, Mapping) or "license_declared" not in override:
+        return None
+    version = str(component["version"])
+    declared = override.get("license_declared")
+    concluded = override.get("license_concluded")
+    wheel_url = override.get("wheel_url")
+    wheel_sha256 = override.get("wheel_sha256")
+    binary_member = override.get("binary_member")
+    binary_sha256 = override.get("binary_sha256")
+    if (
+        override.get("version") != version
+        or component.get("license_concluded") != concluded
+        or not isinstance(declared, str)
+        or not declared
+        or not isinstance(concluded, str)
+        or not concluded.startswith("LicenseRef-")
+        or not isinstance(wheel_url, str)
+        or not wheel_url.startswith("https://files.pythonhosted.org/")
+        or not isinstance(wheel_sha256, str)
+        or not _is_lower_hex(wheel_sha256, 64)
+        or not isinstance(binary_member, str)
+        or Path(binary_member).is_absolute()
+        or ".." in Path(binary_member).parts
+        or not isinstance(binary_sha256, str)
+        or not _is_lower_hex(binary_sha256, 64)
+    ):
+        raise RuntimeError(f"Python binary compliance record drifted: {normalized}")
+    wheel_name = Path(urllib.parse.urlparse(wheel_url).path).name
+    if not wheel_name.endswith(".whl") or Path(wheel_name).name != wheel_name:
+        raise RuntimeError(f"Python binary wheel URL is invalid: {normalized}")
+    wheel = acquire_declared_archive(
+        {
+            "cache_name": wheel_name,
+            "url": wheel_url,
+            "sha256": wheel_sha256,
+        },
+        cache,
+    )
+    site_prefix = Path("python/lib/python3.12/site-packages")
+    license_prefix = (
+        f"{str(component['name']).replace('-', '_')}-{version}.dist-info/licenses/"
+    )
+    with zipfile.ZipFile(wheel) as archive:
+        names = sorted(
+            name
+            for name in archive.namelist()
+            if not name.endswith("/") and name.startswith(license_prefix)
+        )
+        if not names or binary_member not in archive.namelist():
+            raise RuntimeError(
+                f"Python binary wheel license inventory is empty: {normalized}"
+            )
+        selected = [binary_member, *names]
+        installed = []
+        for member in selected:
+            relative = Path(member)
+            if relative.is_absolute() or ".." in relative.parts:
+                raise RuntimeError(f"Python binary wheel path is unsafe: {normalized}")
+            target = runtime / site_prefix / relative
+            if not target.is_file() or target.read_bytes() != archive.read(member):
+                raise RuntimeError(
+                    f"Python binary wheel bytes drifted: {normalized} {member}"
+                )
+            installed.append((site_prefix / relative).as_posix())
+    binary_path = (site_prefix / binary_member).as_posix()
+    if sha256_file(runtime / binary_path) != binary_sha256:
+        raise RuntimeError(f"Python binary payload hash drifted: {normalized}")
+    license_paths = installed[1:]
+    return {
+        "component_id": str(component["component_id"]),
+        "name": str(component["name"]),
+        "version": version,
+        "license_declared": declared,
+        "license_concluded": concluded,
+        "wheel_url": wheel_url,
+        "wheel_sha256": wheel_sha256,
+        "binary_path": binary_path,
+        "binary_sha256": binary_sha256,
+        "license_files": license_paths,
+        "extracted_licensing_info": {
+            "licenseId": concluded,
+            "extractedText": (
+                f"This LicenseRef identifies the exact {wheel_name} composite. "
+                f"The pypdfium2 wrapper declares {declared}; the bundled PDFium "
+                "binary and its third-party dependencies are governed by the "
+                "complete license files carried in that hash-pinned wheel."
+            ),
+            "comment": (
+                f"Wheel SHA-256: {wheel_sha256}. Binary member: {binary_member} "
+                f"({binary_sha256}). All {len(license_paths)} wheel-declared "
+                "license files were compared byte-for-byte with the staged runtime."
+            ),
+            "seeAlsos": [
+                wheel_url,
+                "https://github.com/pypdfium2-team/pypdfium2/tree/5.5.0",
+            ],
+        },
+    }
+
+
 def generate_compliance_preflight(
     app: Path,
     destination: Path,
@@ -2980,6 +3102,7 @@ def generate_compliance_preflight(
     manifest_path = runtime / "bundle-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     components = manifest["components"]
+    inputs = _load_inputs(repo)
     blockers: list[dict[str, str]] = []
 
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -3009,6 +3132,8 @@ def generate_compliance_preflight(
             _copy_compliance_file(repo / "LICENSE", staged / "LICENSE")
 
             copied_licenses: set[str] = set()
+            binary_compliance_records = []
+            extracted_licensing_info = []
             spdx_packages = [
                 {
                     "SPDXID": "SPDXRef-Package-Doc-Evidence",
@@ -3024,6 +3149,17 @@ def generate_compliance_preflight(
             relationships = []
             for component in components:
                 component_id = str(component["component_id"])
+                binary_compliance = _python_binary_compliance_record(
+                    component,
+                    inputs=inputs,
+                    runtime=runtime,
+                    cache=repo / "results" / "desktop" / "cache" / "wheels",
+                )
+                if binary_compliance is not None:
+                    binary_compliance_records.append(binary_compliance)
+                    extracted_licensing_info.append(
+                        binary_compliance["extracted_licensing_info"]
+                    )
                 license_value, unresolved = _spdx_license(
                     str(component["license_concluded"])
                 )
@@ -3036,7 +3172,10 @@ def generate_compliance_preflight(
                             ),
                         }
                     )
-                license_files = component.get("license_files") or []
+                license_files = list(component.get("license_files") or [])
+                if binary_compliance is not None:
+                    license_files.extend(binary_compliance["license_files"])
+                    license_files = sorted(set(license_files))
                 if not license_files:
                     blockers.append(
                         {
@@ -3073,7 +3212,11 @@ def generate_compliance_preflight(
                     ),
                     "filesAnalyzed": False,
                     "licenseConcluded": license_value,
-                    "licenseDeclared": license_value,
+                    "licenseDeclared": (
+                        binary_compliance["license_declared"]
+                        if binary_compliance is not None
+                        else license_value
+                    ),
                     "copyrightText": "NOASSERTION",
                 }
                 if unresolved:
@@ -3088,6 +3231,10 @@ def generate_compliance_preflight(
                         "relatedSpdxElement": spdx_component_id,
                     }
                 )
+            _write_json(
+                staged / "python-binary-compliance.json",
+                binary_compliance_records,
+            )
 
             homebrew_records, homebrew_blockers = _homebrew_component_provenance(
                 components,
@@ -3149,7 +3296,7 @@ def generate_compliance_preflight(
                     components=components,
                     homebrew=homebrew_records,
                     rust=rust_records,
-                    inputs=_load_inputs(repo),
+                    inputs=inputs,
                     metadata_destination=staged / "source-metadata" / "pypi",
                 )
                 source_archives, source_blockers = _embed_source_archives(
@@ -3163,6 +3310,7 @@ def generate_compliance_preflight(
             recipe_paths = (
                 "scripts/build-macos-desktop",
                 "desktop/packaging/macos-arm64.json",
+                "desktop/packaging/macos-rust-license-sources.json",
                 "desktop/packaging/baseline-requirements.in",
                 "desktop/packaging/baseline-requirements.txt",
                 "desktop/src-tauri/Cargo.lock",
@@ -3196,6 +3344,8 @@ def generate_compliance_preflight(
                 "packages": spdx_packages,
                 "relationships": relationships,
             }
+            if extracted_licensing_info:
+                spdx["hasExtractedLicensingInfos"] = extracted_licensing_info
             _write_json(staged / "doc-evidence.spdx.json", spdx)
 
             python_native = _python_native_inventory(
@@ -3248,6 +3398,7 @@ def generate_compliance_preflight(
                 "file_count": len(manifest["files"]),
                 "homebrew_source_record_count": len(homebrew_records),
                 "embedded_python_sbom_count": len(embedded_python_sboms),
+                "python_binary_compliance_count": len(binary_compliance_records),
                 "python_native_object_count": len(python_native),
                 "python_wheel_native_object_count": len(wheel_native),
                 "python_nested_native_dependency_count": len(nested_native),
