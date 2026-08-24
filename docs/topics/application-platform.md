@@ -398,6 +398,18 @@ longer than 260 characters. These gates are implemented but have not yet run
 on the Windows target, so no target-native runtime or OCR acceptance is
 claimed.
 
+Windows candidate packaging is now explicit rather than inheriting the macOS
+`app` target. The platform Tauri overlay selects only NSIS, current-user
+installation, English UI, LZMA compression, an embedded non-silent WebView2
+bootstrapper, and downgrade rejection. The target-only build command fixes the
+Rust target to `x86_64-pc-windows-msvc`, remaps source/Cargo paths, refuses
+signing, requires the exact `Doc Evidence_0.4.0_x64-setup.exe` output, validates
+the x86_64 application PE, records both hashes, and requires `NotSigned`
+Authenticode state for this local proof. It re-runs copied runtime smokes before
+accepting the installer. Installed-byte and uninstall preservation remain
+Machine Control gates; an unsigned installer-file audit is not presented as
+either.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;

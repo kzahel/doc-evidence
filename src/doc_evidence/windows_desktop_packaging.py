@@ -67,6 +67,26 @@ def stage_root(root: Path | None = None) -> Path:
     return base / "desktop" / "src-tauri" / "resources" / "desktop-runtime"
 
 
+def windows_release_root(root: Path | None = None) -> Path:
+    base = root or repository_root()
+    return (
+        base / "desktop" / "src-tauri" / "target" / "x86_64-pc-windows-msvc" / "release"
+    )
+
+
+def application_executable_path(root: Path | None = None) -> Path:
+    return windows_release_root(root) / "doc-evidence-desktop.exe"
+
+
+def nsis_installer_path(root: Path | None = None) -> Path:
+    return (
+        windows_release_root(root)
+        / "bundle"
+        / "nsis"
+        / f"Doc Evidence_{__version__}_x64-setup.exe"
+    )
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -1779,6 +1799,140 @@ def audit_runtime(
     return result
 
 
+def authenticode_status(path: Path) -> dict[str, str | None]:
+    """Read bounded Authenticode status without accepting a command string."""
+
+    powershell = shutil.which("pwsh") or shutil.which("powershell")
+    if powershell is None:
+        raise RuntimeError("PowerShell is required for Authenticode audit")
+    script = (
+        "$signature = Get-AuthenticodeSignature -LiteralPath $args[0]; "
+        "$subject = if ($null -eq $signature.SignerCertificate) {$null} "
+        "else {$signature.SignerCertificate.Subject}; "
+        "[ordered]@{Status=[string]$signature.Status; "
+        "StatusMessage=[string]$signature.StatusMessage; "
+        "Subject=$subject} | ConvertTo-Json -Compress"
+    )
+    result = _run(
+        [
+            powershell,
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            script,
+            str(path.resolve()),
+        ],
+        capture_output=True,
+        timeout_seconds=60,
+    )
+    value = json.loads(result.stdout)
+    if not isinstance(value, dict) or set(value) != {
+        "Status",
+        "StatusMessage",
+        "Subject",
+    }:
+        raise RuntimeError("Authenticode status record is invalid")
+    return {
+        "status": str(value["Status"]),
+        "status_message": str(value["StatusMessage"]),
+        "subject": None if value["Subject"] is None else str(value["Subject"]),
+    }
+
+
+def audit_unsigned_installer(
+    installer: Path,
+    *,
+    repository: Path | None = None,
+) -> dict[str, Any]:
+    """Audit the exact local NSIS candidate without claiming installed bytes."""
+
+    _require_windows_host()
+    repo = (repository or repository_root()).resolve()
+    candidate = installer.resolve()
+    expected = nsis_installer_path(repo).resolve()
+    if candidate != expected or not candidate.is_file():
+        raise RuntimeError(f"unexpected Windows NSIS candidate: {candidate}")
+    pe = inspect_pe(candidate)
+    signature = authenticode_status(candidate)
+    if signature["status"] != "NotSigned" or signature["subject"] is not None:
+        raise RuntimeError("unsigned Windows NSIS candidate has unexpected trust state")
+    application = application_executable_path(repo)
+    if not application.is_file():
+        raise RuntimeError("Windows desktop application executable is missing")
+    app_pe = inspect_pe(application)
+    if app_pe.machine != PE_X86_64_MACHINE or app_pe.format != "PE32+":
+        raise RuntimeError("Windows desktop application is not x86_64 PE32+")
+    app_signature = authenticode_status(application)
+    if app_signature["status"] != "NotSigned" or app_signature["subject"] is not None:
+        raise RuntimeError("unsigned Windows application has unexpected trust state")
+    runtime_audit = audit_runtime(stage_root(repo), repository=repo, smoke=True)
+    return {
+        "schema_version": "doc-evidence.windows-nsis-audit.v1",
+        "status": "passed",
+        "product": PRODUCT_NAME,
+        "identifier": PRODUCT_IDENTIFIER,
+        "version": __version__,
+        "target": "x86_64-pc-windows-msvc",
+        "installer": {
+            "path": str(candidate),
+            "bytes": candidate.stat().st_size,
+            "sha256": sha256_file(candidate),
+            "pe_machine": f"0x{pe.machine:04x}",
+            "pe_format": pe.format,
+            "authenticode": signature,
+        },
+        "application": {
+            "path": str(application),
+            "bytes": application.stat().st_size,
+            "sha256": sha256_file(application),
+            "pe_machine": "x86_64",
+            "pe_format": app_pe.format,
+            "authenticode": app_signature,
+        },
+        "runtime": runtime_audit,
+    }
+
+
+def build_application(*, root: Path | None = None) -> Path:
+    """Build the exact unsigned Windows x64 NSIS candidate."""
+
+    _require_windows_host()
+    repository = (root or repository_root()).resolve()
+    _run(["npm", "run", "build", "--prefix", "web"], cwd=repository)
+    audit_runtime(stage_root(repository), repository=repository, smoke=True)
+    environment = os.environ.copy()
+    environment["RUSTFLAGS"] = " ".join(
+        [
+            f"--remap-path-prefix={repository}=C:/doc-evidence-source",
+            f"--remap-path-prefix={Path.home() / '.cargo'}=C:/cargo",
+        ]
+    )
+    _run(
+        [
+            "npm",
+            "run",
+            "tauri",
+            "--prefix",
+            "desktop",
+            "--",
+            "build",
+            "--target",
+            "x86_64-pc-windows-msvc",
+            "--bundles",
+            "nsis",
+            "--no-sign",
+            "--ci",
+        ],
+        cwd=repository,
+        environment=environment,
+        timeout_seconds=1800,
+    )
+    installer = nsis_installer_path(repository)
+    audit_unsigned_installer(installer, repository=repository)
+    return installer
+
+
 def stage_runtime(
     *,
     root: Path | None = None,
@@ -1862,6 +2016,9 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     audit = subcommands.add_parser("audit")
     audit.add_argument("path", nargs="?", type=Path)
     audit.add_argument("--smoke", action="store_true")
+    subcommands.add_parser("build")
+    installer_audit = subcommands.add_parser("audit-installer")
+    installer_audit.add_argument("path", nargs="?", type=Path)
     values = parser.parse_args(arguments)
     if values.command == "stage":
         path = stage_runtime(
@@ -1871,6 +2028,13 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
             seven_zip=values.seven_zip,
         )
         print(path)
+        return 0
+    if values.command == "build":
+        print(build_application())
+        return 0
+    if values.command == "audit-installer":
+        path = values.path or nsis_installer_path()
+        print(json.dumps(audit_unsigned_installer(path), indent=2))
         return 0
     path = values.path or stage_root()
     print(json.dumps(audit_runtime(path, smoke=values.smoke), indent=2))

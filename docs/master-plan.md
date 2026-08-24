@@ -153,7 +153,11 @@ have landed. Both Python locks materialize a post-prune 123-file x86_64 PE
 graph, and the transactional target-only builder owns frozen installation,
 runtime/component/file manifests, copied-location OCR and sidecar smokes, and
 long-path I/O. Target-native execution, dependency compliance, and installed
-x86_64 acceptance remain release gates.
+x86_64 acceptance remain release gates. The Windows Tauri overlay and build
+audit also freeze a current-user English NSIS candidate, embedded WebView2
+bootstrapper, disabled downgrades, exact artifact name, x86_64 app identity,
+hashes, and expected unsigned Authenticode state; target execution remains
+open.
 Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding

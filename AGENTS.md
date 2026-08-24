@@ -343,9 +343,11 @@ bound language hashes, the Windows pack manifest, and the relocatable OCRmyPDF
 launcher source have landed. Exact Windows wheels form a closed 123-file PE
 graph after pruning. The transactional target-only runtime builder and copied-
 location OCR, sidecar, and long-path gates are implemented but have not run on
-Windows. Microsoft redistribution review, third-party Windows dependency
-compliance, target-native assembly/execution, and native Windows x86_64
-installed-artifact acceptance remain release-blocking. Do not touch signing
+Windows. The current-user NSIS overlay and exact unsigned app/installer audits
+have also landed without executing a target build. Microsoft redistribution
+review, third-party Windows dependency compliance, target-native assembly/
+execution, and native Windows x86_64 installed-artifact acceptance remain
+release-blocking. Do not touch signing
 credentials, repository/release setup, notarization, updater setup, tags, or
 publication without explicit maintainer authorization. Heavy extractor packs
 and alternative release channels remain outside it.

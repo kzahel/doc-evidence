@@ -16,6 +16,7 @@ from doc_evidence.windows_desktop_packaging import (
     BUILD_INPUTS_SCHEMA,
     _load_inputs,
     _locked_requirements,
+    application_executable_path,
     audit_flat_pe_closure,
     audit_runtime_pe_closure,
     build_inputs_path,
@@ -24,6 +25,7 @@ from doc_evidence.windows_desktop_packaging import (
     extract_poppler_component,
     extract_python_runtime,
     extract_tesseract_component,
+    nsis_installer_path,
     prune_python_runtime,
     repository_root,
     sha256_file,
@@ -349,6 +351,39 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
         self.assertGreater(
             module.rfind('if __name__ == "__main__"'),
             module.rfind("def audit_runtime_pe_closure"),
+        )
+
+    def test_windows_tauri_package_is_current_user_nsis(self) -> None:
+        config = json.loads(
+            (self.root / "desktop/src-tauri/tauri.windows.conf.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(config["bundle"]["targets"], ["nsis"])
+        self.assertEqual(
+            config["bundle"]["windows"],
+            {
+                "allowDowngrades": False,
+                "webviewInstallMode": {
+                    "type": "embedBootstrapper",
+                    "silent": False,
+                },
+                "nsis": {
+                    "installMode": "currentUser",
+                    "languages": ["English"],
+                    "displayLanguageSelector": False,
+                    "compression": "lzma",
+                },
+            },
+        )
+        self.assertEqual(
+            application_executable_path(self.root).name,
+            "doc-evidence-desktop.exe",
+        )
+        self.assertEqual(
+            nsis_installer_path(self.root).name,
+            "Doc Evidence_0.4.0_x64-setup.exe",
         )
 
     def test_python_extraction_rejects_links_and_windows_collisions(self) -> None:

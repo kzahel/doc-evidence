@@ -644,7 +644,7 @@ A dependency-free PE parser reads architecture, PE32/PE32+ identity, ordinary
 imports, and delay imports without requiring Visual Studio or LLVM during the
 audit. The flat-directory audit rejects non-x86_64 native bytes and any import
 that is neither a bundled file, an API-set contract, nor an explicitly
-allowlisted Windows system DLL. Seventeen focused manifest, extraction,
+allowlisted Windows system DLL. Eighteen focused manifest, extraction,
 launcher-source, pruning, parser, and closure tests pass, and the parser reads
 the actual pinned Poppler binaries locally.
 
@@ -686,6 +686,17 @@ EOF shutdown, and actual greater-than-260-character standalone-Python I/O.
 These gates are implemented but not yet executed on Windows. Target-native
 launcher/dependency installation, copied-out sidecar/OCR smoke, long-path I/O,
 and final Windows x86_64 installed acceptance remain open.
+
+The Windows-specific Tauri overlay now selects only a current-user English
+NSIS installer, rejects downgrades, uses LZMA compression, and embeds the
+visible WebView2 bootstrapper. The target-only unsigned build fixes
+`x86_64-pc-windows-msvc`, remaps repository and Cargo paths, and refuses
+signing. Its audit requires the exact
+`Doc Evidence_0.4.0_x64-setup.exe` name, a valid installer PE, an x86_64 PE32+
+application, exact hashes, and `NotSigned` Authenticode state for both app and
+installer, after re-running the staged runtime smoke. The merged Tauri config
+passes the pinned CLI schema locally. No target build, install, or uninstall
+claim is made yet.
 
 ## Falsifiable Stopping Condition
 

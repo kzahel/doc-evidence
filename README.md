@@ -171,7 +171,11 @@ graph after deterministic pruning. A transactional target-only runtime builder
 now owns frozen installation, component/file manifests, copied-location OCR
 and sidecar smokes, and long-path I/O. Target-native execution of those gates,
 third-party license/source and Microsoft redistribution review, and installed-
-application acceptance remain open.
+application acceptance remain open. A Windows-specific Tauri overlay now
+freezes the unsigned candidate as a current-user English NSIS installer with
+an embedded visible WebView2 bootstrapper and downgrades disabled; exact app,
+installer-name, PE, hash, and unsigned Authenticode audits are implemented for
+the target build.
 Local implementation is authorized; credentials, signing, remotes, tags, and
 publication remain separately unauthorized.
 
