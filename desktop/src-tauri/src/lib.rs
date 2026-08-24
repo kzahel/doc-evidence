@@ -83,8 +83,16 @@ struct DesktopRuntimeInfo {
     api_version: u8,
     platform: String,
     architecture: String,
-    baseline_pack: Option<DesktopPackIdentity>,
+    baseline_pack: Option<DesktopRuntimePackIdentity>,
     host_capabilities: HostCapabilities,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopRuntimePackIdentity {
+    pack_id: String,
+    version: String,
+    manifest_sha256: String,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -92,6 +100,16 @@ struct DesktopPackIdentity {
     pack_id: String,
     version: String,
     manifest_sha256: String,
+}
+
+impl From<DesktopPackIdentity> for DesktopRuntimePackIdentity {
+    fn from(value: DesktopPackIdentity) -> Self {
+        Self {
+            pack_id: value.pack_id,
+            version: value.version,
+            manifest_sha256: value.manifest_sha256,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -757,7 +775,7 @@ fn start_sidecar(
         api_version: 1,
         platform: target.platform.to_string(),
         architecture: target.architecture.to_string(),
-        baseline_pack: ready.baseline_pack,
+        baseline_pack: ready.baseline_pack.map(DesktopRuntimePackIdentity::from),
         host_capabilities: capabilities,
     };
     let child = Arc::new(Mutex::new(child));
@@ -1075,6 +1093,31 @@ mod tests {
         assert!(is_lower_hex_64(&first));
         assert!(is_lower_hex_64(&second));
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn runtime_info_serializes_nested_pack_for_typescript() {
+        let info = DesktopRuntimeInfo {
+            base_url: "http://127.0.0.1:43111".to_string(),
+            bearer_token: "a".repeat(64),
+            protocol_version: DESKTOP_PROTOCOL.to_string(),
+            application_version: APPLICATION_VERSION.to_string(),
+            api_version: 1,
+            platform: MACOS_TARGET.platform.to_string(),
+            architecture: MACOS_TARGET.architecture.to_string(),
+            baseline_pack: Some(DesktopRuntimePackIdentity::from(pack(MACOS_TARGET))),
+            host_capabilities: HostCapabilities::default(),
+        };
+        let value = serde_json::to_value(info).unwrap();
+        assert_eq!(
+            value["baselinePack"],
+            json!({
+                "packId": MACOS_TARGET.pack_id,
+                "version": "2026.08.1",
+                "manifestSha256": "a".repeat(64),
+            })
+        );
+        assert!(value.get("baseline_pack").is_none());
     }
 
     #[test]

@@ -807,6 +807,44 @@ and `23adac429b1b7a5ae1dc943b8c8c53c3b5ad7f36001e2be8e8a55a50b59531b4`.
 Strict signature verification exits nonzero with the expected
 unsigned-local-proof classification; no signing credential was accessed.
 
+That local signature classification proved too weak in the first isolated
+macOS workspace. The exact DMG hash matched after transfer and its application
+copied byte-for-byte, but LaunchServices refused the app because Tauri's
+no-sign output retained a linker signature without an outer resource seal.
+The builder now applies a final ad-hoc bundle seal only after Tauri has placed
+all resources. Review requires the exact application identifier, no team,
+sealed resources, and successful strict deep verification; an arbitrary
+signature failure is no longer accepted as proof of an unsigned lane.
+
+The first launch after that repair exposed a second final-composition bug. The
+outer Tauri response used camel case while its nested baseline-pack identity
+still serialized the internal snake-case record. React correctly rejected the
+incompatible value. A dedicated camel-case wire type now converts that nested
+identity without changing the Python ready/handshake or JSON-manifest
+contracts, and a Rust regression test checks the exact serialized field names.
+
+The final rebuilt local candidate is a 72,482,659-byte DMG with SHA-256
+`9d6a88b6c35f29a177dfb35a00f7f4d70e5d55ebd43f081e9cda5ec2a81b9780`.
+Its 3,824-file, 190,788,604-byte application tree is
+`325beebd7be4b98921082fd209c0ab9493ff3808d490d22e00a3747dcfcada2f`;
+the runtime tree remains
+`23adac429b1b7a5ae1dc943b8c8c53c3b5ad7f36001e2be8e8a55a50b59531b4`.
+In the isolated guest, the image hash matched, mounted read-only, copied
+without a byte difference, and passed strict deep installed verification. The
+app reached the real empty-home product screen. A second launch retained the
+same process, and normal terminate/relaunch produced a new working process and
+window. Native accessibility exposed the application and window but not the
+WebView contents, so the ordinary create-library/OCR product workflow remains
+assigned to the deterministic packaged acceptance harness rather than brittle
+coordinate input.
+
+The full exact-source compliance rerun remains release-ready with zero
+blockers, all 30 nested libraries reconciled, and 43 source archives totaling
+290,777,483 bytes. Its 287,122,136-byte archive has SHA-256
+`bcc9ee7aeb8d21d077c2c1c3a00fd6d1983933884769942fe493873cd32bf3be`
+and is bound to the final application tree above. No signing credential,
+remote, tag, notarization service, or publication surface was accessed.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

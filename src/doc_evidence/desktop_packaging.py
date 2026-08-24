@@ -1871,8 +1871,24 @@ def audit_application(
         text=True,
         capture_output=True,
     )
-    if signature.returncode == 0:
-        raise RuntimeError("unsigned desktop proof unexpectedly has a strict signature")
+    if signature.returncode != 0:
+        raise RuntimeError(
+            "local desktop proof has an invalid ad-hoc signature: "
+            f"{signature.stderr.strip()}"
+        )
+    displayed = _run(
+        ["codesign", "--display", "--verbose=4", bundle],
+        capture_output=True,
+    )
+    signature_details = f"{displayed.stdout}\n{displayed.stderr}"
+    required_signature_details = (
+        f"Identifier={PRODUCT_IDENTIFIER}",
+        "Signature=adhoc",
+        "TeamIdentifier=not set",
+        "Sealed Resources version=2",
+    )
+    if any(value not in signature_details for value in required_signature_details):
+        raise RuntimeError("local desktop proof is not an exact ad-hoc bundle seal")
     return {
         "schema_version": "doc-evidence.desktop-app-audit.v1",
         "status": "passed",
@@ -1891,7 +1907,7 @@ def audit_application(
         "symlinks": _audit_symlinks(bundle),
         "build_host_path_hits": {},
         "signature": {
-            "status": "expected-unsigned-local-proof",
+            "status": "ad-hoc-local-proof",
             "strict_verification_exit_code": signature.returncode,
         },
         "runtime": runtime_audit,
@@ -1929,6 +1945,18 @@ def build_application(*, root: Path | None = None) -> Path:
     app = application_bundle_path(repository)
     if not app.is_dir():
         raise RuntimeError("Tauri did not produce the expected application bundle")
+    _run(
+        [
+            "codesign",
+            "--force",
+            "--sign",
+            "-",
+            "--identifier",
+            PRODUCT_IDENTIFIER,
+            app,
+        ],
+        capture_output=True,
+    )
     return app
 
 

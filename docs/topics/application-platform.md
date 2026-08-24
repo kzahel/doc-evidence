@@ -288,23 +288,38 @@ English/German/orientation data, and the exact small Tesseract renderer
 configurations. All copied native inputs are arm64-only, have bundle-relative
 load paths, and have ambient Homebrew defaults neutralized before nested ad-hoc
 signing. Tauri verifies the bundle/pack identity before launch and requires the
-Python ready record to report the same pack. The current unsigned
-192,072,585-byte
-copied-out `.app` containing 3,840 files and 112 Mach-O objects passed real
-Ghostscript-free synthetic OCR and packaged-sidecar smokes without the
+Python ready record to report the same pack. The current 190,788,604-byte
+ad-hoc local `.app` contains 3,824 files and passes real Ghostscript-free
+synthetic OCR and packaged-sidecar smokes without the
 checkout, Homebrew on `PATH`, or a system Python. Broader Poppler non-Latin
 data behavior is not yet validated; a relocatable Poppler build or measured
 PDFium replacement remains preferable before claiming that coverage.
 A deterministic local DMG path avoids Finder automation, verifies the
 compressed image, mounts it read-only, re-audits the contained application,
-and detaches it. The rebuilt 72,305,879-byte unsigned image has SHA-256
-`d8b924230f9b3e9c05430a5852d3fa3b5e5fd8e9241e79c4fc2e654a28156488`
+and detaches it. The rebuilt 72,482,659-byte unsigned image has SHA-256
+`9d6a88b6c35f29a177dfb35a00f7f4d70e5d55ebd43f081e9cda5ec2a81b9780`
 and contains the exact current
-`42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
-application tree. The mounted 3,823-file application, embedded runtime,
-authenticated sidecar handshake, and parent-EOF shutdown all pass; the strict
-signature check fails with the expected unsigned-local-proof result. This is
-validation evidence, not a release artifact.
+`325beebd7be4b98921082fd209c0ab9493ff3808d490d22e00a3747dcfcada2f`
+application tree. The mounted 3,824-file application, embedded runtime,
+authenticated sidecar handshake, parent-EOF shutdown, and strict deep ad-hoc
+signature verification all pass. This is validation evidence, not a release
+artifact.
+
+The first isolated macOS guest run caught two failures that the former local
+review incorrectly accepted. Tauri's no-sign output retained only the linker's
+Mach-O signature, so LaunchServices refused the unsealed bundle; local builds
+now apply an outer ad-hoc seal after all resources are final, and the audit
+requires the exact product identifier, no team, sealed resources, and a valid
+strict deep signature. The subsequent launch exposed snake-case nested pack
+identity fields inside an otherwise camel-case Tauri response. Rust now uses a
+separate camel-case wire record for that nested value while preserving the
+snake-case Python and manifest contracts, with an exact serialization test.
+The corrected DMG matched its host hash in the guest, mounted read-only, copied
+byte-for-byte, passed installed signature verification, reached the real empty-
+home screen, retained one process on a second launch, and restarted normally.
+The deeper create-library/OCR workflow still requires the deterministic
+packaged-product harness because the guest's native accessibility tree exposes
+the Tauri window but not its WebView contents.
 
 The current compliance preflight accounts for 69 top-level staged components,
 all 3,818 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
@@ -339,10 +354,10 @@ Explicit runtime replacement validates the old runtime against its own exact
 manifest but does not require it to match a newly rebuilt current frontend;
 otherwise frontend drift would make the transactional repair unreachable.
 The new tree and all ordinary audits still require the current frontend hash.
-The resulting unsigned application contains 3,823 files at tree
-`42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
-and passes final application, embedded runtime, sidecar, OCR, and expected-
-unsigned checks.
+The resulting local application contains 3,824 files at tree
+`325beebd7be4b98921082fd209c0ab9493ff3808d490d22e00a3747dcfcada2f`
+and passes final application, embedded runtime, sidecar, OCR, and strict ad-hoc
+bundle checks.
 
 Pillow's 18 nested dylibs are flattened into 14 source components. The record
 binds the exact 12.3.0 macOS arm64 wheel and every conveyed dylib hash to the
@@ -361,11 +376,11 @@ and ad-hoc signs the modified Mach-O before comparing final bytes.
 The full exact-source pass now reports `passed` and `release_ready: true` with
 no blockers. It accounts for 74 Python Mach-O objects, reconciles all 30 nested
 libraries, and embeds 43 source archives totaling 290,777,483 bytes after
-historical Homebrew formula resolution. The resulting 287,122,122-byte
+historical Homebrew formula resolution. The resulting 287,122,136-byte
 preflight archive has SHA-256
-`e0de8d6babd75946d4ebea0a6d7d5e82714353a08e4da7d6ed7ca421bde96873`
+`bcc9ee7aeb8d21d077c2c1c3a00fd6d1983933884769942fe493873cd32bf3be`
 and remains bound to application tree
-`42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`.
+`325beebd7be4b98921082fd209c0ab9493ff3808d490d22e00a3747dcfcada2f`.
 
 The pypdfium2/PDFium aggregate now uses a version- and target-specific SPDX
 `LicenseRef` rather than an invalid comma-separated pseudo-expression. Its
