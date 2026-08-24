@@ -13,7 +13,11 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
 from doc_evidence.errors import ConfigError
-from doc_evidence.platform_paths import paths_overlap, resolve_collection_root
+from doc_evidence.platform_paths import (
+    extended_length_path,
+    paths_overlap,
+    resolve_collection_root,
+)
 from doc_evidence.util import hash_json
 
 
@@ -155,12 +159,13 @@ def load_config(path: str | Path) -> AppConfig:
             )
         )
 
-    store = _resolve_path(base, raw["store"]["path"])
+    display_store = _resolve_path(base, raw["store"]["path"])
     for collection in collections:
-        if paths_overlap(store, collection.source):
+        if paths_overlap(display_store, collection.source):
             raise ConfigError(
                 "derived store and source collection may not overlap: "
-                f"store={store}, collection={collection.id}:{collection.source}"
+                f"store={display_store}, collection={collection.id}:"
+                f"{collection.source}"
             )
     for index, left in enumerate(collections):
         for right in collections[index + 1 :]:
@@ -204,7 +209,7 @@ def load_config(path: str | Path) -> AppConfig:
             }
             for collection in collections
         ],
-        "store": str(store),
+        "store": str(display_store),
         "languages": raw.get("languages", []),
         "extraction": extraction.canonical(),
         "search": search.canonical(),
@@ -214,7 +219,7 @@ def load_config(path: str | Path) -> AppConfig:
         path=config_path,
         schema_version=raw["schema_version"],
         collections=tuple(collections),
-        store=store,
+        store=extended_length_path(display_store),
         languages=tuple(raw.get("languages", [])),
         extraction=extraction,
         search=search,
