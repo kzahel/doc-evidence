@@ -375,8 +375,14 @@ class Sidecar:
                 "Origin": self.origin,
             },
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
-            payload = response.read(MAX_RESPONSE_BYTES + 1)
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                payload = response.read(MAX_RESPONSE_BYTES + 1)
+        except urllib.error.HTTPError as error:
+            detail = error.read(8_192).decode("utf-8", errors="replace")
+            raise RuntimeError(
+                f"desktop binary request {path} failed with HTTP {error.code}: {detail}"
+            ) from error
         if len(payload) > MAX_RESPONSE_BYTES:
             raise RuntimeError("desktop binary response exceeded its bound")
         return payload
