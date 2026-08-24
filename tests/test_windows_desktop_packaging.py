@@ -22,6 +22,7 @@ from doc_evidence.windows_desktop_packaging import (
     audit_flat_pe_closure,
     audit_runtime_pe_closure,
     baseline_environment,
+    build_application,
     build_inputs_path,
     extract_flat_zip_component,
     extract_language_data,
@@ -395,6 +396,25 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
             module.rfind('if __name__ == "__main__"'),
             module.rfind("def audit_runtime_pe_closure"),
         )
+
+    def test_windows_build_resolves_the_npm_command_shim(self) -> None:
+        with (
+            patch("doc_evidence.windows_desktop_packaging._require_windows_host"),
+            patch(
+                "doc_evidence.windows_desktop_packaging.shutil.which",
+                return_value=r"C:\Program Files\nodejs\npm.cmd",
+            ) as which,
+            patch(
+                "doc_evidence.windows_desktop_packaging._run",
+                side_effect=RuntimeError("stop after npm"),
+            ) as run,
+            patch("doc_evidence.windows_desktop_packaging.os.name", "nt"),
+            self.assertRaisesRegex(RuntimeError, "stop after npm"),
+        ):
+            build_application(root=self.root)
+
+        which.assert_called_once_with("npm.cmd")
+        self.assertEqual(run.call_args.args[0][0], r"C:\Program Files\nodejs\npm.cmd")
 
     def test_windows_tauri_package_is_current_user_nsis(self) -> None:
         config = json.loads(

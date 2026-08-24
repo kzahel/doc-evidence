@@ -1966,7 +1966,10 @@ def build_application(*, root: Path | None = None) -> Path:
 
     _require_windows_host()
     repository = (root or repository_root()).resolve()
-    _run(["npm", "run", "build", "--prefix", "web"], cwd=repository)
+    npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
+    if npm is None:
+        raise RuntimeError("npm is required to build the desktop application")
+    _run([npm, "run", "build", "--prefix", "web"], cwd=repository)
     audit_runtime(stage_root(repository), repository=repository, smoke=True)
     environment = os.environ.copy()
     environment["RUSTFLAGS"] = " ".join(
@@ -1977,7 +1980,7 @@ def build_application(*, root: Path | None = None) -> Path:
     )
     _run(
         [
-            "npm",
+            npm,
             "run",
             "tauri",
             "--prefix",
