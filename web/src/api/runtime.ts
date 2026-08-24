@@ -20,6 +20,7 @@ export type Diagnostics = components["schemas"]["Diagnostics"];
 export type ExtractorCapabilityList = components["schemas"]["ExtractorCapabilityList"];
 export type ExtractorCapability = components["schemas"]["ExtractorCapability"];
 export type ExtractionJobRequest = components["schemas"]["ExtractionJobRequest"];
+export type InventoryJobRequest = components["schemas"]["InventoryJobRequest"];
 export type ExtractionBatchRequest = components["schemas"]["ExtractionBatchRequest"];
 export type ExtractionBatchPreflight = components["schemas"]["ExtractionBatchPreflight"];
 export type JobSummary = components["schemas"]["JobSummary"];
@@ -86,6 +87,7 @@ export interface DocEvidenceRuntime {
   getDiagnostics(libraryId: string, signal?: AbortSignal): Promise<Diagnostics>;
   getExtractors(libraryId: string, documentId?: string, signal?: AbortSignal): Promise<ExtractorCapabilityList>;
   createExtraction(libraryId: string, input: ExtractionJobRequest, idempotencyKey?: string, signal?: AbortSignal): Promise<JobCreationResponse>;
+  createInventory(libraryId: string, input: InventoryJobRequest, idempotencyKey?: string, signal?: AbortSignal): Promise<JobCreationResponse>;
   createExtractionBatch(libraryId: string, input: ExtractionBatchRequest, idempotencyKey?: string, signal?: AbortSignal): Promise<JobBatchCreationResponse>;
   preflightImageOnlyOcr(libraryId: string, signal?: AbortSignal): Promise<ExtractionBatchPreflight>;
   listJobs(libraryId: string, state?: string, offset?: number, limit?: number, signal?: AbortSignal): Promise<JobPage>;

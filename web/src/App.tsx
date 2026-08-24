@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useRuntime } from "./api/RuntimeProvider";
+import { useJobsQuery } from "./api/jobQueries";
 import { EmptyState, FailureState, LoadingState } from "./components/AsyncState";
 import { DocumentWorkspace } from "./components/DocumentWorkspace";
 import { ActivityCenter } from "./components/ActivityCenter";
@@ -57,6 +58,8 @@ export function App() {
     queryFn: ({ signal }) => runtime.getDiagnostics(activeLibraryId!, signal),
     enabled: activeLibraryId !== null,
   });
+  const jobs = useJobsQuery(activeLibraryId);
+  const latestInventory = jobs.data?.items.find((job) => job.request_kind === "inventory") ?? null;
   const activation = useMutation({
     mutationFn: (libraryId: string) => runtime.activateLibrary(libraryId),
     onSuccess: async (result) => {
@@ -83,7 +86,12 @@ export function App() {
   };
   const createManagedLibrary = useMutation({
     mutationFn: () => runtime.createManagedLibrary(),
-    onSuccess: refreshNativeLibrary,
+    onSuccess: async (result) => {
+      await refreshNativeLibrary(result);
+      if (result.outcome === "completed" && result.libraryId && result.status === "ready") {
+        inventory.mutate({ libraryId: result.libraryId, fullHashVerification: false });
+      }
+    },
   });
   const registerExistingLibrary = useMutation({
     mutationFn: () => runtime.registerExistingLibrary(),
@@ -97,6 +105,26 @@ export function App() {
         queryClient.invalidateQueries({ queryKey: ["libraries"] }),
         queryClient.invalidateQueries({ queryKey: ["library", result.libraryId] }),
       ]);
+      if (result.changed) {
+        inventory.mutate({ libraryId: result.libraryId, fullHashVerification: false });
+      }
+    },
+  });
+  const inventory = useMutation({
+    mutationFn: ({
+      libraryId,
+      fullHashVerification,
+    }: {
+      libraryId: string;
+      fullHashVerification: boolean;
+    }) =>
+      runtime.createInventory(libraryId, {
+        full_hash_verification: fullHashVerification,
+      }),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["library", result.job.library_id, "jobs"],
+      });
     },
   });
   const nativeOperationError =
@@ -124,6 +152,26 @@ export function App() {
       if (initial) selectDocument(initial.document_id);
     }
   }, [activeLibraryId, documents.data, selectDocument, selectedDocumentId]);
+
+  useEffect(() => {
+    if (!activeLibraryId || !latestInventory) return;
+    if (!["succeeded", "failed", "cancelled", "interrupted"].includes(latestInventory.state)) return;
+    if (latestInventory.state === "succeeded") selectDocument(null);
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["library", activeLibraryId, "workspace"] }),
+      queryClient.invalidateQueries({ queryKey: ["library", activeLibraryId, "documents"] }),
+      queryClient.invalidateQueries({ queryKey: ["library", activeLibraryId, "search"] }),
+      queryClient.invalidateQueries({ queryKey: ["library", activeLibraryId, "diagnostics"] }),
+      queryClient.invalidateQueries({ queryKey: ["library", activeLibraryId, "detail"] }),
+    ]);
+  }, [
+    activeLibraryId,
+    latestInventory?.job_id,
+    latestInventory?.state,
+    latestInventory?.updated_at,
+    queryClient,
+    selectDocument,
+  ]);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -304,6 +352,34 @@ export function App() {
               Preflight distinguishes sibling additions, parent expansion, covered children,
               and source/store overlap without accepting browser-supplied paths.
             </p>
+            <span>
+              Index status · {latestInventory
+                ? `${latestInventory.state}${latestInventory.outcome ? ` · ${latestInventory.outcome.replaceAll("_", " ")}` : ""}`
+                : workspace.data.catalog_inventory_run_id
+                  ? "ready"
+                  : "not scanned"}
+            </span>
+            <span className={styles.nativeActions}>
+              <button
+                disabled={inventory.isPending || ["queued", "starting", "running", "cancelling"].includes(latestInventory?.state ?? "")}
+                type="button"
+                onClick={() => inventory.mutate({ libraryId: activeLibraryId, fullHashVerification: false })}
+              >
+                {inventory.isPending ? "Queueing scan…" : "Scan now"}
+              </button>
+              <button
+                disabled={inventory.isPending || ["queued", "starting", "running", "cancelling"].includes(latestInventory?.state ?? "")}
+                type="button"
+                onClick={() => {
+                  if (window.confirm("Re-read and hash every source file? This may take substantially longer.")) {
+                    inventory.mutate({ libraryId: activeLibraryId, fullHashVerification: true });
+                  }
+                }}
+              >
+                Verify all file hashes…
+              </button>
+            </span>
+            {inventory.error && <span role="alert">{inventory.error.message}</span>}
             {runtime.hostCapabilities.addCollection && activeLibrary?.store_mode === "managed" && (
               <span className={styles.nativeActions}>
                 <button

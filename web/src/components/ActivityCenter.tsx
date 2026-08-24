@@ -33,6 +33,16 @@ function age(timestamp: string | null): string {
   return `${Math.floor(seconds / 3_600)}h`;
 }
 
+function jobLabel(job: JobSummary): string {
+  return job.request_kind === "inventory" ? "Library inventory" : (job.extractor_id ?? "Extraction");
+}
+
+function targetLabel(job: JobSummary): string {
+  return job.request_kind === "inventory"
+    ? "All configured collections"
+    : `${job.document_id?.slice(0, 18) ?? "Unknown document"}…`;
+}
+
 export function ActivityCenter({ libraryId }: { libraryId: string }) {
   const runtime = useRuntime();
   const queryClient = useQueryClient();
@@ -183,11 +193,11 @@ export function ActivityCenter({ libraryId }: { libraryId: string }) {
         <span>{counts.active} active · {counts.queued} queued · {counts.failed} failed</span>
       </button>
       {open && (
-        <aside aria-label="Extraction activity" className={styles.panel}>
+        <aside aria-label="Library activity" className={styles.panel}>
           <header>
             <div>
               <p>Library operations</p>
-              <h2>Extraction activity</h2>
+              <h2>Library activity</h2>
             </div>
             <button aria-label="Close activity" type="button" onClick={() => setOpen(false)}>×</button>
           </header>
@@ -238,10 +248,10 @@ export function ActivityCenter({ libraryId }: { libraryId: string }) {
                 onClick={() => setSelectedJobId(job.job_id)}
               >
                 <div>
-                  <strong>{job.extractor_id}</strong>
+                  <strong>{jobLabel(job)}</strong>
                   <span className={`${styles.state} ${styles[job.state]}`}>{job.state}</span>
                 </div>
-                <span>{job.document_id.slice(0, 18)}… · {job.resource_class}</span>
+                <span>{targetLabel(job)} · {job.resource_class}</span>
                 <span>{job.outcome === "cache_hit" ? "Fulfilled from exact cache; no worker started" : job.error_summary ?? job.outcome ?? job.queue_reason ?? "Waiting for scheduler"}</span>
                 <span>{age(job.started_at ?? job.queued_at)} elapsed</span>
               </button>
@@ -319,12 +329,12 @@ export function ActivityCenter({ libraryId }: { libraryId: string }) {
                   <header>
                     <div>
                       <p>Selected job</p>
-                      <h3>{selected.data.job.extractor_id} · {selected.data.job.state}</h3>
+                      <h3>{jobLabel(selected.data.job)} · {selected.data.job.state}</h3>
                     </div>
                     <button type="button" onClick={() => setSelectedJobId(null)}>Close detail</button>
                   </header>
                   <dl>
-                    <div><dt>Run key</dt><dd><code>{selected.data.job.run_key ?? "pending"}</code></dd></div>
+                    <div><dt>{selected.data.job.request_kind === "inventory" ? "Inventory run" : "Run key"}</dt><dd><code>{selected.data.job.request_kind === "inventory" ? (selected.data.job.result_run_id ?? "pending") : (selected.data.job.run_key ?? "pending")}</code></dd></div>
                     <div><dt>Mode</dt><dd>{selected.data.job.execution_mode.replaceAll("_", " ")}</dd></div>
                     <div><dt>Outcome</dt><dd>{selected.data.job.outcome ?? "pending"}</dd></div>
                     <div><dt>Queue</dt><dd>{selected.data.job.queue_reason ?? "claimed or complete"}</dd></div>

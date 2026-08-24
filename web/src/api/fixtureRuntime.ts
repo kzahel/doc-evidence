@@ -15,6 +15,7 @@ import type {
   LibraryActivation,
   ExtractorCapabilityList,
   ExtractionJobRequest,
+  InventoryJobRequest,
   ExtractionBatchRequest,
   ExtractionBatchPreflight,
   JobCreationResponse,
@@ -207,6 +208,12 @@ export class FixtureRuntime implements DocEvidenceRuntime {
   }
 
   async createExtraction(_libraryId: string, _input: ExtractionJobRequest): Promise<JobCreationResponse> {
+    this.check();
+    if (!this.data.jobCreation) throw new Error("Fixture job creation not configured");
+    return this.data.jobCreation;
+  }
+
+  async createInventory(_libraryId: string, _input: InventoryJobRequest): Promise<JobCreationResponse> {
     this.check();
     if (!this.data.jobCreation) throw new Error("Fixture job creation not configured");
     return this.data.jobCreation;

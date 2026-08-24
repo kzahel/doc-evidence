@@ -80,7 +80,7 @@ export function ExtractionPanel({
     },
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ["library", libraryId, "jobs"] });
-      if (result.job.state === "succeeded") {
+      if (result.job.state === "succeeded" && result.job.extractor_id) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["library", libraryId, "extractors", documentId] }),
           queryClient.invalidateQueries({ queryKey: ["library", libraryId, "page-groups", documentId] }),
@@ -109,7 +109,7 @@ export function ExtractionPanel({
           queryClient.invalidateQueries({ queryKey: ["library", libraryId, "page-groups", documentId] }),
           queryClient.invalidateQueries({ queryKey: ["library", libraryId, "document", documentId] }),
         ]);
-        onRepresentationReady(job.extractor_id);
+        if (job.extractor_id) onRepresentationReady(job.extractor_id);
       }
     }
   }, [currentJobs, documentId, libraryId, onRepresentationReady, queryClient]);

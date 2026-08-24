@@ -16,6 +16,7 @@ import {
   documents,
   extractorCapabilities,
   failedJob,
+  inventoryJob,
   jobPage,
   pageGroups,
   runningJob,
@@ -118,6 +119,44 @@ describe("application states", () => {
     await waitFor(() => expect(create).not.toBeDisabled());
   });
 
+  it("queues the first inventory after native library creation", async () => {
+    const user = userEvent.setup();
+    const runtime = new FixtureRuntime({
+      workspace,
+      documents,
+      app: {
+        schema_version: 1,
+        active_library_id: null,
+        default_library_id: null,
+        last_library_id: null,
+      },
+      libraries: { schema_version: 1, items: [] },
+      hostCapabilities: {
+        createManagedLibrary: true,
+        registerExistingLibrary: true,
+        addCollection: true,
+      },
+      nativeLibraryOperation: {
+        outcome: "completed",
+        libraryId: workspace.library_id,
+        status: "ready",
+      },
+      jobCreation: {
+        schema_version: 1,
+        disposition: "created",
+        job: inventoryJob,
+      },
+    });
+    const createInventory = vi.spyOn(runtime, "createInventory");
+    renderApp(runtime);
+
+    await user.click(await screen.findByRole("button", { name: "New library…" }));
+    await waitFor(() => expect(createInventory).toHaveBeenCalledTimes(1));
+    expect(createInventory).toHaveBeenCalledWith(workspace.library_id, {
+      full_hash_verification: false,
+    });
+  });
+
   it("switches explicit library identity and exposes collection settings", async () => {
     const user = userEvent.setup();
     const secondLibrary = {
@@ -165,6 +204,61 @@ describe("application states", () => {
     );
     expect(await screen.findByText("Library settings · 1 collection(s)")).toBeInTheDocument();
     expect(window.location.search).toContain("library=second-library");
+  });
+
+  it("offers incremental and deliberate full inventory controls", async () => {
+    const user = userEvent.setup();
+    const runtime = new FixtureRuntime({
+      workspace,
+      documents,
+      details: { [documentId]: detail },
+      groups: { [`${documentId}|1`]: pageGroups },
+      jobCreation: {
+        schema_version: 1,
+        disposition: "created",
+        job: inventoryJob,
+      },
+    });
+    const createInventory = vi.spyOn(runtime, "createInventory");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderApp(runtime);
+
+    await user.click(await screen.findByText(/Library settings ·/));
+    await user.click(screen.getByRole("button", { name: "Scan now" }));
+    expect(createInventory).toHaveBeenCalledWith(workspace.library_id, {
+      full_hash_verification: false,
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Verify all file hashes…" })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: "Verify all file hashes…" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(createInventory).toHaveBeenLastCalledWith(workspace.library_id, {
+      full_hash_verification: true,
+    });
+  });
+
+  it("renders inventory safely in shared library activity", async () => {
+    const user = userEvent.setup();
+    renderApp(
+      new FixtureRuntime({
+        workspace,
+        documents,
+        details: { [documentId]: detail },
+        groups: { [`${documentId}|1`]: pageGroups },
+        jobs: {
+          ...jobPage,
+          items: [inventoryJob],
+          total: 1,
+          counts: { active: 0, queued: 1, failed: 0 },
+        },
+      }),
+    );
+
+    await user.click(await screen.findByRole("button", { name: /Activity/ }));
+    await user.click(screen.getByRole("button", { name: "Queued" }));
+    expect(screen.getByText("Library inventory")).toBeInTheDocument();
+    expect(screen.getByText(/All configured collections/)).toBeInTheDocument();
   });
 
   it("shows a bounded workspace failure", async () => {

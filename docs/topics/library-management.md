@@ -15,8 +15,9 @@ per-user local application data in the host and implements case/separator path
 identity, fixed-drive admission, and reparse/offline traversal policy. Actual
 long-path I/O and installed-app acceptance remain open. A durable,
 library-scoped inventory job and authenticated API operation now close the
-backend half of fresh-library indexing; the automatic React trigger and
-settings control remain in progress. Store relocation remains later scope.
+fresh-library indexing gap, including automatic React triggers and explicit
+settings controls. Packaged workflow acceptance remains open. Store relocation
+remains later scope.
 
 ## Purpose
 
@@ -464,5 +465,8 @@ operation, leaving a first-time user with an indefinitely empty workspace.
 Inventory is now a durable library job above the existing atomic membership
 generation protocol. Its request records no source path, coalesces while
 active, reports bounded progress, responds to cancellation, and reconciles
-both post-publication and interrupted-building restart cases. The typed React
-trigger and automatic post-completion workspace refresh remain next.
+both post-publication and interrupted-building restart cases. React queues the
+ordinary incremental job after native creation or a real scope change, exposes
+incremental and confirmed full-hash actions in settings, refreshes catalog
+consumers after completion, and shows inventory in shared activity without
+exposing paths. Component, type, and production-build gates pass.

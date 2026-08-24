@@ -221,21 +221,32 @@ class JobRepository:
                         )
                     connection.commit()
                     return JobCreation(record, "idempotent")
-            active = connection.execute(
-                """
-                SELECT * FROM jobs
-                WHERE library_id = ? AND request_kind = ? AND cache_key = ?
-                  AND execution_mode = ?
-                  AND state IN ('queued', 'starting', 'running', 'cancelling')
-                ORDER BY created_at, job_id LIMIT 1
-                """,
-                (
-                    spec.library_id,
-                    spec.request_kind,
-                    spec.cache_key,
-                    spec.execution_mode,
-                ),
-            ).fetchone()
+            if spec.request_kind == "inventory":
+                active = connection.execute(
+                    """
+                    SELECT * FROM jobs
+                    WHERE library_id = ? AND request_kind = 'inventory'
+                      AND state IN ('queued', 'starting', 'running', 'cancelling')
+                    ORDER BY created_at, job_id LIMIT 1
+                    """,
+                    (spec.library_id,),
+                ).fetchone()
+            else:
+                active = connection.execute(
+                    """
+                    SELECT * FROM jobs
+                    WHERE library_id = ? AND request_kind = ? AND cache_key = ?
+                      AND execution_mode = ?
+                      AND state IN ('queued', 'starting', 'running', 'cancelling')
+                    ORDER BY created_at, job_id LIMIT 1
+                    """,
+                    (
+                        spec.library_id,
+                        spec.request_kind,
+                        spec.cache_key,
+                        spec.execution_mode,
+                    ),
+                ).fetchone()
             if active is not None:
                 if spec.idempotency_key is not None:
                     connection.execute(

@@ -128,12 +128,15 @@ class ExtractionJobApplicationTest(unittest.TestCase):
             application, _source = self.empty_application(Path(temporary_directory))
             created = application.enqueue_inventory()
             coalesced = application.enqueue_inventory()
+            full_coalesced = application.enqueue_inventory(full_hash_verification=True)
 
             self.assertEqual(created.job.request_kind, "inventory")
             self.assertIsNone(created.job.document_id)
             self.assertIsNone(created.job.extractor_id)
             self.assertEqual(coalesced.disposition, "coalesced")
             self.assertEqual(coalesced.job.job_id, created.job.job_id)
+            self.assertEqual(full_coalesced.disposition, "coalesced")
+            self.assertEqual(full_coalesced.job.job_id, created.job.job_id)
 
             scheduler = LibraryScheduler(
                 application,

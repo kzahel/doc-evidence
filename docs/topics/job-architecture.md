@@ -538,8 +538,11 @@ filesystem work, publishes through the existing inactive-generation protocol,
 and can therefore reconcile a crash after publication or fail an abandoned
 building generation without hiding the prior active catalog. Focused
 persistence, scheduler, recovery, progress, coalescing, authenticated API, and
-contract-drift tests pass. The React trigger and refresh surface are the next
-slice.
+contract-drift tests pass. React now queues incremental inventory after native
+library creation and collection-scope changes, exposes manual incremental and
+confirmed full-hash controls, refreshes workspace projections after terminal
+success, and represents inventory honestly in shared activity. TypeScript,
+component, and production-build gates pass.
 
 ## Implementing Tactical
 

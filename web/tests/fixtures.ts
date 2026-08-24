@@ -235,6 +235,7 @@ function job(overrides: Partial<JobSummary> = {}): JobSummary {
   return {
     job_id: "job-running",
     library_id: workspace.library_id,
+    request_kind: "extraction",
     batch_id: null,
     document_id: documentId,
     extractor_id: "poppler",
@@ -263,6 +264,17 @@ function job(overrides: Partial<JobSummary> = {}): JobSummary {
 }
 
 export const runningJob = job();
+export const inventoryJob = job({
+  job_id: "job-inventory",
+  request_kind: "inventory",
+  document_id: null,
+  extractor_id: null,
+  execution_mode: "reuse_or_execute",
+  run_key: null,
+  state: "queued",
+  active_attempt_id: null,
+  started_at: null,
+});
 export const failedJob = job({
   job_id: "job-failed",
   extractor_id: "docling-standard",

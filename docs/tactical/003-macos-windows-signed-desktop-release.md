@@ -859,8 +859,12 @@ publishes through the atomic inactive-generation switch. Recovery promotes a
 generation published just before a crash and marks an abandoned building
 generation failed while retaining the prior active catalog. Focused
 persistence, inventory, scheduler/recovery, authenticated API, contract-drift,
-Ruff, and Pyright gates pass. The React automatic trigger/settings action and
-packaged workflow harness remain the next checkpoint.
+Ruff, and Pyright gates pass. React now queues the ordinary incremental scan
+after native creation and actual collection changes, offers incremental and
+confirmed full-hash settings actions, refreshes workspace consumers after
+completion, and renders inventory safely in shared library activity. The
+TypeScript, 35-test component, and production-build gates pass. The packaged
+workflow harness remains the next checkpoint.
 
 ## Falsifiable Stopping Condition
 

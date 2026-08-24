@@ -163,6 +163,16 @@ export function createHttpRuntime(baseUrl: string, launchToken: string): DocEvid
       if (!data) throw failure(error, response);
       return data;
     },
+    async createInventory(libraryId, input, idempotencyKey, signal) {
+      const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/inventories", {
+        params: { path: { library_id: libraryId } },
+        body: input,
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        signal,
+      });
+      if (!data) throw failure(error, response);
+      return data;
+    },
     async createExtractionBatch(libraryId, input, idempotencyKey, signal) {
       const { data, error, response } = await client.POST("/api/v1/libraries/{library_id}/jobs/extraction-batches", {
         params: { path: { library_id: libraryId } },
