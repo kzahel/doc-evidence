@@ -288,19 +288,19 @@ English/German/orientation data, and the exact small Tesseract renderer
 configurations. All copied native inputs are arm64-only, have bundle-relative
 load paths, and have ambient Homebrew defaults neutralized before nested ad-hoc
 signing. Tauri verifies the bundle/pack identity before launch and requires the
-Python ready record to report the same pack. The current 190,788,604-byte
-ad-hoc local `.app` contains 3,824 files and passes real Ghostscript-free
+Python ready record to report the same pack. The current 190,841,600-byte
+ad-hoc local `.app` contains 3,825 files and passes real Ghostscript-free
 synthetic OCR and packaged-sidecar smokes without the
 checkout, Homebrew on `PATH`, or a system Python. Broader Poppler non-Latin
 data behavior is not yet validated; a relocatable Poppler build or measured
 PDFium replacement remains preferable before claiming that coverage.
 A deterministic local DMG path avoids Finder automation, verifies the
 compressed image, mounts it read-only, re-audits the contained application,
-and detaches it. The rebuilt 72,482,659-byte unsigned image has SHA-256
-`9d6a88b6c35f29a177dfb35a00f7f4d70e5d55ebd43f081e9cda5ec2a81b9780`
+and detaches it. The rebuilt 72,498,487-byte unsigned image has SHA-256
+`53116a0a261035df1228ada878b216e881b1f6487c5546ee788534ac6ca5dbef`
 and contains the exact current
-`325beebd7be4b98921082fd209c0ab9493ff3808d490d22e00a3747dcfcada2f`
-application tree. The mounted 3,824-file application, embedded runtime,
+`60e62ea9ab3a7399be6e024e22792e1417fb1c6bd0fa76993d5ec5a23c4e0e90`
+application tree. The mounted 3,825-file application, embedded runtime,
 authenticated sidecar handshake, parent-EOF shutdown, and strict deep ad-hoc
 signature verification all pass. This is validation evidence, not a release
 artifact.
@@ -322,17 +322,17 @@ packaged-product harness because the guest's native accessibility tree exposes
 the Tauri window but not its WebView contents.
 
 That deterministic harness now exists below the UI automation boundary and
-must execute under the packaged interpreter. Its first macOS arm64 staged-
-runtime run created a managed library, durably inventoried two synthetic
-read-only collections, rendered a PNG page, executed English/German
-Ghostscript-free OCR, recovered searchable text and the page representation,
-listed both inventory and extraction activity, survived clean and forced-
-sidecar restarts, and preserved both source hashes. The exact copied-out
-application runtime remains the final macOS invocation point; Windows adds an
-installed-artifact run with an actual greater-than-280-character fixture path.
+must execute under the packaged interpreter. Both its macOS arm64 staged-
+runtime run and its exact copied-application run in an isolated guest created a
+managed library, durably inventoried two synthetic read-only collections,
+rendered a PNG page, executed English/German Ghostscript-free OCR, recovered
+searchable text and the page representation, listed both inventory and
+extraction activity, survived clean and forced-sidecar restarts, and preserved
+both source hashes. Windows adds an installed-artifact run with an actual
+greater-than-280-character fixture path.
 
 The current compliance preflight accounts for 69 top-level staged components,
-all 3,818 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
+all 3,819 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
 24 exact historical Homebrew formula revisions, five embedded Python-wheel
 SBOMs, and 24 flattened components from the Pillow and pikepdf wheels. Formula
 selection is bound to the installed package version, source hash, bottle hash,
@@ -354,9 +354,9 @@ by upstream security advisory GHSA-xpw3-9rhw-482x. `pi-heif` is discontinued,
 OCRmyPDF treats HEIF conversion as optional, and HEIF input is not a baseline
 release promise. The platform manifests therefore exclude that distribution
 after lock resolution, and runtime manifest generation and audits reject its
-re-entry. The rebuilt macOS tree contains 41 Python distributions, 3,819 files,
+re-entry. The rebuilt macOS tree contains 41 Python distributions, 3,820 files,
 and 109 Mach-O objects at
-`23adac429b1b7a5ae1dc943b8c8c53c3b5ad7f36001e2be8e8a55a50b59531b4`;
+`0a50c76239b94864078333b8cd4daad696c677f6a386d6dba810c0a795f74db7`;
 sidecar and real Ghostscript-free OCR smokes pass without `pi_heif`, libheif,
 or libde265.
 
@@ -364,8 +364,8 @@ Explicit runtime replacement validates the old runtime against its own exact
 manifest but does not require it to match a newly rebuilt current frontend;
 otherwise frontend drift would make the transactional repair unreachable.
 The new tree and all ordinary audits still require the current frontend hash.
-The resulting local application contains 3,824 files at tree
-`325beebd7be4b98921082fd209c0ab9493ff3808d490d22e00a3747dcfcada2f`
+The resulting local application contains 3,825 files at tree
+`60e62ea9ab3a7399be6e024e22792e1417fb1c6bd0fa76993d5ec5a23c4e0e90`
 and passes final application, embedded runtime, sidecar, OCR, and strict ad-hoc
 bundle checks.
 
@@ -386,11 +386,11 @@ and ad-hoc signs the modified Mach-O before comparing final bytes.
 The full exact-source pass now reports `passed` and `release_ready: true` with
 no blockers. It accounts for 74 Python Mach-O objects, reconciles all 30 nested
 libraries, and embeds 43 source archives totaling 290,777,483 bytes after
-historical Homebrew formula resolution. The resulting 287,122,136-byte
+historical Homebrew formula resolution. The resulting 287,122,309-byte
 preflight archive has SHA-256
-`bcc9ee7aeb8d21d077c2c1c3a00fd6d1983933884769942fe493873cd32bf3be`
+`555877c6960499cd3f318a9a22a948411ef4a2385493eec402012702471aff6a`
 and remains bound to application tree
-`325beebd7be4b98921082fd209c0ab9493ff3808d490d22e00a3747dcfcada2f`.
+`60e62ea9ab3a7399be6e024e22792e1417fb1c6bd0fa76993d5ec5a23c4e0e90`.
 
 The pypdfium2/PDFium aggregate now uses a version- and target-specific SPDX
 `LicenseRef` rather than an invalid comma-separated pseudo-expression. Its

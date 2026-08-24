@@ -886,6 +886,41 @@ the final copied-out macOS application and the installed Windows candidate;
 this staged-runtime evidence is not substituted for either native artifact
 gate.
 
+The harness then entered the exact rebuilt application rather than remaining
+a staging-only proof. The final ad-hoc `.app` contains 3,825 files and
+190,841,600 bytes at tree
+`60e62ea9ab3a7399be6e024e22792e1417fb1c6bd0fa76993d5ec5a23c4e0e90`;
+its 3,820-file runtime is
+`0a50c76239b94864078333b8cd4daad696c677f6a386d6dba810c0a795f74db7`.
+Final application review, strict deep ad-hoc verification, embedded sidecar/
+OCR smokes, and the complete product workflow all pass. The matching
+72,498,487-byte DMG has SHA-256
+`53116a0a261035df1228ada878b216e881b1f6487c5546ee788534ac6ca5dbef`
+and passed its independent read-only mounted-image review.
+
+An isolated Machine Control macOS workspace then received that exact image and
+recomputed the same hash. It mounted read-only, copied without a file-byte
+difference, and passed strict deep verification. The copied application ran
+the full packaged workflow again with the same bundle/pack identities, two
+successful inventories, executed OCR, searchable text, restart coverage, and
+unchanged source hashes. Native launch exposed the expected real empty-home
+window; a second launch retained the original process, normal termination was
+observed shortly after the resident's bounded immediate observation window,
+and relaunch produced a new process and window. A target-native exact-window
+capture succeeded. The owned guest staging was removed, the isolated
+workspace was discarded through its receipt-bound release, no temporary
+workspace or claim remained, and the macOS base returned to its stopped
+state.
+
+The corresponding exact-source compliance pass remains release-ready with no
+blockers. It reconciles all 30 nested libraries and the same 43 source
+archives; its 287,122,309-byte archive has SHA-256
+`555877c6960499cd3f318a9a22a948411ef4a2385493eec402012702471aff6a`
+and binds bundle manifest
+`1f7f60e36d66381cba4563426477e88826dca1340052104f549c12b5ba66b514`
+to the new application tree. No signing credential, remote, tag,
+notarization service, or publication surface was accessed.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer
