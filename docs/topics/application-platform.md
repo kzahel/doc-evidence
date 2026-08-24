@@ -317,9 +317,19 @@ snake-case Python and manifest contracts, with an exact serialization test.
 The corrected DMG matched its host hash in the guest, mounted read-only, copied
 byte-for-byte, passed installed signature verification, reached the real empty-
 home screen, retained one process on a second launch, and restarted normally.
-The deeper create-library/OCR workflow still requires the deterministic
+The deeper create-library/OCR workflow therefore uses the deterministic
 packaged-product harness because the guest's native accessibility tree exposes
 the Tauri window but not its WebView contents.
+
+That deterministic harness now exists below the UI automation boundary and
+must execute under the packaged interpreter. Its first macOS arm64 staged-
+runtime run created a managed library, durably inventoried two synthetic
+read-only collections, rendered a PNG page, executed English/German
+Ghostscript-free OCR, recovered searchable text and the page representation,
+listed both inventory and extraction activity, survived clean and forced-
+sidecar restarts, and preserved both source hashes. The exact copied-out
+application runtime remains the final macOS invocation point; Windows adds an
+installed-artifact run with an actual greater-than-280-character fixture path.
 
 The current compliance preflight accounts for 69 top-level staged components,
 all 3,818 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,

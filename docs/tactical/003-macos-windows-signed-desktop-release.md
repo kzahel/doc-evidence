@@ -864,7 +864,27 @@ after native creation and actual collection changes, offers incremental and
 confirmed full-hash settings actions, refreshes workspace consumers after
 completion, and renders inventory safely in shared library activity. The
 TypeScript, 35-test component, and production-build gates pass. The packaged
-workflow harness remains the next checkpoint.
+workflow harness is now implemented as a platform-bound module that must run
+under the packaged interpreter. It starts the authenticated sidecar with the
+same runtime/host-control separation as Tauri, creates a managed library with
+two synthetic read-only collections, inventories both, renders a page, runs
+real English/German Ghostscript-free OCR, searches its result, inspects
+activity and page representations, and verifies normal plus forced-sidecar
+restart while comparing source hashes before and after. On Windows it also
+places the image-only fixture beyond 280 path characters.
+
+The first standalone macOS arm64 staged-runtime pass completed that entire
+workflow with two `inventory_completed` outcomes and one executed OCR result.
+The runtime reported bundle manifest SHA-256
+`1f7f60e36d66381cba4563426477e88826dca1340052104f549c12b5ba66b514`
+and pack manifest SHA-256
+`88b8e8741b6d8ad867b6189c9d40612be26fc0faac23c56d6bd9352a10cff58c`;
+both restarts retained two documents and searchable OCR text, the rendered
+page was a PNG, and both source files remained byte-identical. Five focused
+harness tests, Ruff, and Pyright pass. The same harness still must run from
+the final copied-out macOS application and the installed Windows candidate;
+this staged-runtime evidence is not substituted for either native artifact
+gate.
 
 ## Falsifiable Stopping Condition
 
