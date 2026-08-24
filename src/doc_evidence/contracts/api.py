@@ -300,6 +300,10 @@ class ExtractionJobRequest(ContractModel):
     )
 
 
+class InventoryJobRequest(ContractModel):
+    full_hash_verification: bool = False
+
+
 class ExtractionBatchRequest(ContractModel):
     document_ids: list[str] = Field(min_length=1, max_length=200)
     extractor_ids: list[str] = Field(min_length=1, max_length=5)
@@ -329,9 +333,10 @@ class ExtractionBatchPreflight(ContractModel):
 class JobSummary(ContractModel):
     job_id: str
     library_id: str
+    request_kind: Literal["extraction", "inventory"]
     batch_id: str | None
-    document_id: str
-    extractor_id: str
+    document_id: str | None
+    extractor_id: str | None
     settings: dict[str, Any]
     execution_mode: Literal["reuse_or_execute", "fresh_verification"]
     run_key: str | None

@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import threading
+import time
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -43,9 +44,15 @@ from doc_evidence.extractor_registry import (
     ExtractorRegistry,
     PreparedExtraction,
 )
+from doc_evidence.inventory import (
+    INVENTORY_SCHEMA_VERSION,
+    InventoryCancelled,
+    execute_inventory,
+    prepare_inventory,
+)
 from doc_evidence.persistence import LibraryDatabase
 from doc_evidence.persistence.jobs import JobRepository
-from doc_evidence.util import hash_file, hash_json
+from doc_evidence.util import hash_file, hash_json, isoformat_z
 from doc_evidence.windows_job import process_is_alive as windows_process_is_alive
 
 
@@ -262,6 +269,7 @@ class LocalExtractionJobs:
         return self.repository.create(
             JobSpec(
                 library_id=self.library_id,
+                request_kind="extraction",
                 document_id=source.document_id,
                 content_sha256=source.content_sha256,
                 extractor_id=extractor_id,
@@ -282,6 +290,48 @@ class LocalExtractionJobs:
             cached=cached,
         )
 
+    def enqueue_inventory(
+        self,
+        *,
+        full_hash_verification: bool = False,
+        idempotency_key: str | None = None,
+    ) -> JobCreation:
+        if idempotency_key is not None and not 1 <= len(idempotency_key) <= 200:
+            raise RequestError("idempotency key is outside its allowed bounds")
+        collection_ids = [collection.id for collection in self.config.collections]
+        cache_key = hash_json(
+            {
+                "request_kind": "inventory",
+                "config_hash": self.config.config_hash,
+                "collection_ids": collection_ids,
+                "inventory_schema_version": INVENTORY_SCHEMA_VERSION,
+                "full_hash_verification": full_hash_verification,
+            }
+        )
+        return self.repository.create(
+            JobSpec(
+                library_id=self.library_id,
+                request_kind="inventory",
+                document_id=None,
+                content_sha256=None,
+                extractor_id=None,
+                cache_key=cache_key,
+                settings={"full_hash_verification": full_hash_verification},
+                execution={
+                    "timeout_seconds": 86_400,
+                    "resource_class": "light",
+                    "config_hash": self.config.config_hash,
+                    "collection_ids": collection_ids,
+                    "inventory_schema_version": INVENTORY_SCHEMA_VERSION,
+                },
+                execution_mode="reuse_or_execute",
+                run_key=None,
+                priority=200,
+                resource_class="light",
+                idempotency_key=idempotency_key,
+            )
+        )
+
     def execute_claimed(
         self,
         claimed: ClaimedJob,
@@ -289,6 +339,14 @@ class LocalExtractionJobs:
         cancel: threading.Event,
     ) -> JobRecord:
         job = claimed.job
+        if job.request_kind == "inventory":
+            return self._execute_inventory_job(claimed, cancel=cancel)
+        if (
+            job.document_id is None
+            or job.content_sha256 is None
+            or job.extractor_id is None
+        ):
+            raise RequestError("persisted extraction job identity is incomplete")
         source = self.source(job.document_id)
         payload = job.execution
         if (
@@ -362,6 +420,93 @@ class LocalExtractionJobs:
             attempt_id=claimed.attempt_id,
             result=result,
             projection_failure=projection_failure,
+        )
+
+    def _execute_inventory_job(
+        self,
+        claimed: ClaimedJob,
+        *,
+        cancel: threading.Event,
+    ) -> JobRecord:
+        job = claimed.job
+        payload = job.execution
+        expected_collections = [collection.id for collection in self.config.collections]
+        if (
+            payload.get("config_hash") != self.config.config_hash
+            or payload.get("collection_ids") != expected_collections
+            or payload.get("inventory_schema_version") != INVENTORY_SCHEMA_VERSION
+        ):
+            raise RequestError("persisted inventory execution identity is stale")
+        plan = prepare_inventory(
+            self.config,
+            expected_collections,
+            library_id=self.library_id,
+            full_hash_verification=bool(
+                job.settings.get("full_hash_verification", False)
+            ),
+        )
+        artifact_path = (Path("manifests") / plan.run_id).as_posix()
+        self.repository.record_operation_identity(
+            job_id=job.job_id,
+            attempt_id=claimed.attempt_id,
+            run_id=plan.run_id,
+            artifact_path=artifact_path,
+        )
+        last_update = 0.0
+        last_stage: str | None = None
+
+        def progress(
+            stage: str,
+            current: int | None,
+            total: int | None,
+        ) -> None:
+            nonlocal last_stage, last_update
+            now = time.monotonic()
+            if stage == last_stage and now - last_update < 0.5:
+                return
+            self.repository.attempt_update(
+                job_id=job.job_id,
+                attempt_id=claimed.attempt_id,
+                worker_pid=None,
+                process_group_id=None,
+                heartbeat_at=isoformat_z(),
+                stage=stage,
+                progress_current=current,
+                progress_total=total,
+            )
+            last_stage = stage
+            last_update = now
+
+        try:
+            result = execute_inventory(
+                plan,
+                on_progress=progress,
+                cancelled=cancel.is_set,
+            )
+        except InventoryCancelled as error:
+            return self.repository.finish_operation(
+                job_id=job.job_id,
+                attempt_id=claimed.attempt_id,
+                state="cancelled",
+                outcome="cancelled",
+                run_id=plan.run_id,
+                artifact_path=None,
+                failure_class="cancelled",
+                error_summary=str(error),
+            )
+        return self.repository.finish_operation(
+            job_id=job.job_id,
+            attempt_id=claimed.attempt_id,
+            state="succeeded",
+            outcome=(
+                "inventory_completed_with_errors"
+                if result.errors
+                else "inventory_completed"
+            ),
+            run_id=result.run_id,
+            artifact_path=artifact_path,
+            failure_class=None,
+            error_summary=None,
         )
 
     def get(self, job_id: str) -> JobRecord:
@@ -439,6 +584,34 @@ class LocalExtractionJobs:
         attempt = attempts.get(attempt_id)
         if attempt is None:
             raise NotFoundError("job attempt was not found")
+        if job.request_kind == "inventory":
+            return AttemptDiagnosticsRecord(
+                attempt_id=attempt_id,
+                retained=False,
+                stdout_tail="",
+                stderr_tail="",
+                stdout_truncated_bytes=0,
+                stderr_truncated_bytes=0,
+                extractor_descriptor={"kind": "inventory"},
+                settings=dict(job.settings),
+                environment={
+                    "python": platform.python_version(),
+                    "platform": platform.system(),
+                    "machine": platform.machine(),
+                },
+                staging_status="inventory generation",
+                validation_status=(
+                    "passed"
+                    if attempt.state == "succeeded"
+                    else ("failed" if attempt.completed_at else "pending")
+                ),
+                publication_status=attempt.publication_outcome or "pending",
+                projection_status=(
+                    "active generation" if job.state == "succeeded" else "not published"
+                ),
+            )
+        if job.content_sha256 is None:
+            raise CatalogError("extraction attempt is missing content identity")
         relative = self.repository.attempt_path(job_id, attempt_id)
         if relative is None:
             relative = (
@@ -513,6 +686,8 @@ class LocalExtractionJobs:
 
     def repair_projection(self, job_id: str) -> JobRecord:
         job = self.get(job_id)
+        if job.request_kind != "extraction":
+            raise RequestError("only extraction jobs have repairable projections")
         if not (
             job.state == "failed"
             and job.outcome == "published_projection_failed"
@@ -522,6 +697,8 @@ class LocalExtractionJobs:
         ):
             raise RequestError("job does not have a repairable catalog projection")
         root = self.config.store.resolve()
+        assert job.extractor_id is not None
+        assert job.content_sha256 is not None
         run_dir = (root / job.result_artifact_path).resolve()
         if not run_dir.is_relative_to(root):
             raise CatalogError("published artifact path escaped the library store")
@@ -824,6 +1001,48 @@ class LocalExtractionJobs:
 
         recovered: list[JobRecord] = []
         for job in self.repository.active_jobs():
+            if job.request_kind == "inventory":
+                generation = (
+                    self.database.inventory_generation(job.result_run_id)
+                    if job.result_run_id is not None
+                    else None
+                )
+                if generation is not None and generation.status == "active":
+                    recovered.append(
+                        self.repository.reconcile_published(
+                            job.job_id,
+                            run_id=generation.inventory_run_id,
+                            artifact_path=(
+                                job.result_artifact_path
+                                or (
+                                    Path("manifests") / generation.inventory_run_id
+                                ).as_posix()
+                            ),
+                        )
+                    )
+                    continue
+                if generation is not None and generation.status == "building":
+                    self.database.fail_generation(
+                        generation_id=generation.generation_id,
+                        error_summary=(
+                            "scheduler disappeared while inventory was active"
+                        ),
+                    )
+                recovered.append(
+                    self.repository.interrupt(
+                        job.job_id,
+                        detail="scheduler disappeared while inventory was active",
+                    )
+                )
+                continue
+            if job.content_sha256 is None or job.extractor_id is None:
+                recovered.append(
+                    self.repository.interrupt(
+                        job.job_id,
+                        detail="persisted extraction identity is incomplete",
+                    )
+                )
+                continue
             if job.run_key is not None:
                 run_dir = (
                     self.config.store
@@ -891,7 +1110,32 @@ class LocalExtractionJobs:
             )
         succeeded, _total = self.repository.list(states=("succeeded",), limit=200)
         for job in succeeded:
-            if job.run_key is None or job.result_artifact_path is None:
+            if job.request_kind == "inventory":
+                generation = (
+                    self.database.inventory_generation(job.result_run_id)
+                    if job.result_run_id is not None
+                    else None
+                )
+                if generation is None or generation.status not in {
+                    "active",
+                    "superseded",
+                }:
+                    recovered.append(
+                        self.repository.integrity_failure(
+                            job.job_id,
+                            detail=(
+                                "successful inventory job does not retain a "
+                                "published generation"
+                            ),
+                        )
+                    )
+                continue
+            if (
+                job.run_key is None
+                or job.result_artifact_path is None
+                or job.extractor_id is None
+                or job.content_sha256 is None
+            ):
                 recovered.append(
                     self.repository.integrity_failure(
                         job.job_id,
@@ -917,7 +1161,11 @@ class LocalExtractionJobs:
         return recovered
 
     def _publication_evidence(self, job: JobRecord) -> bool:
-        if job.active_attempt_id is None or job.run_key is None:
+        if (
+            job.active_attempt_id is None
+            or job.run_key is None
+            or job.content_sha256 is None
+        ):
             return False
         attempt_dir = (
             self.config.store
@@ -950,7 +1198,7 @@ class LocalExtractionJobs:
         groups: set[int] = set()
         root = self.config.store.resolve()
         for job in self.repository.active_jobs():
-            if job.active_attempt_id is None:
+            if job.active_attempt_id is None or job.content_sha256 is None:
                 continue
             identity_path = (
                 root

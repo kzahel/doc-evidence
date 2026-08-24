@@ -1,4 +1,4 @@
-"""Framework-independent durable extraction-job contracts and service port."""
+"""Framework-independent durable local-job contracts and service port."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ JobState = Literal[
     "cancelled",
     "interrupted",
 ]
+JobKind = Literal["extraction", "inventory"]
 ExecutionMode = Literal["reuse_or_execute", "fresh_verification"]
 TERMINAL_STATES = frozenset({"succeeded", "failed", "cancelled", "interrupted"})
 ACTIVE_STATES = frozenset({"queued", "starting", "running", "cancelling"})
@@ -25,14 +26,15 @@ ACTIVE_STATES = frozenset({"queued", "starting", "running", "cancelling"})
 @dataclass(frozen=True)
 class JobSpec:
     library_id: str
-    document_id: str
-    content_sha256: str
-    extractor_id: str
+    request_kind: JobKind
+    document_id: str | None
+    content_sha256: str | None
+    extractor_id: str | None
     cache_key: str
     settings: dict[str, Any]
     execution: dict[str, Any]
     execution_mode: ExecutionMode
-    run_key: str
+    run_key: str | None
     priority: int
     resource_class: ResourceClass
     idempotency_key: str | None = None
@@ -49,11 +51,12 @@ class CachedResult:
 class JobRecord:
     job_id: str
     library_id: str
+    request_kind: JobKind
     batch_id: str | None
     idempotency_key: str | None
-    document_id: str
-    content_sha256: str
-    extractor_id: str
+    document_id: str | None
+    content_sha256: str | None
+    extractor_id: str | None
     cache_key: str
     settings: dict[str, Any]
     execution: dict[str, Any]
@@ -260,6 +263,13 @@ class JobService(Protocol):
         priority: int = 100,
         idempotency_key: str | None = None,
         batch_id: str | None = None,
+    ) -> JobCreation: ...
+
+    def enqueue_inventory(
+        self,
+        *,
+        full_hash_verification: bool = False,
+        idempotency_key: str | None = None,
     ) -> JobCreation: ...
 
     def get(self, job_id: str) -> JobRecord: ...

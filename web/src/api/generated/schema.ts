@@ -498,6 +498,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/libraries/{library_id}/jobs/inventories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Inventory Job */
+        post: operations["create_inventory_job_api_v1_libraries__library_id__jobs_inventories_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/libraries/{library_id}/jobs/queue": {
         parameters: {
             query?: never;
@@ -1204,6 +1221,14 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InventoryJobRequest */
+        InventoryJobRequest: {
+            /**
+             * Full Hash Verification
+             * @default false
+             */
+            full_hash_verification: boolean;
+        };
         /** JobAttempt */
         JobAttempt: {
             /** Artifact Manifest Sha256 */
@@ -1440,7 +1465,7 @@ export interface components {
             /** Created At */
             created_at: string;
             /** Document Id */
-            document_id: string;
+            document_id: string | null;
             /** Error Summary */
             error_summary: string | null;
             /**
@@ -1449,7 +1474,7 @@ export interface components {
              */
             execution_mode: "reuse_or_execute" | "fresh_verification";
             /** Extractor Id */
-            extractor_id: string;
+            extractor_id: string | null;
             /** Failure Class */
             failure_class: string | null;
             /** Job Id */
@@ -1464,6 +1489,11 @@ export interface components {
             queue_reason: string | null;
             /** Queued At */
             queued_at: string;
+            /**
+             * Request Kind
+             * @enum {string}
+             */
+            request_kind: "extraction" | "inventory";
             /**
              * Resource Class
              * @enum {string}
@@ -2661,6 +2691,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ExtractionJobRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobCreationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_inventory_job_api_v1_libraries__library_id__jobs_inventories_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                library_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InventoryJobRequest"];
             };
         };
         responses: {

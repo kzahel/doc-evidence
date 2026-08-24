@@ -453,6 +453,34 @@ class ApplicationIntegrationTest(unittest.TestCase):
         self.assertTrue(diagnostics.json()["retained"])
         self.assertIn("stdout_tail", diagnostics.json())
         self.assertNotIn(str(self.root), diagnostics.text)
+
+        inventory = self.client.post(
+            prefix + "/jobs/inventories",
+            headers={**self.headers, "Idempotency-Key": "api-inventory"},
+            json={"full_hash_verification": True},
+        )
+        self.assertEqual(inventory.status_code, 200, inventory.text)
+        self.assertEqual(inventory.json()["job"]["request_kind"], "inventory")
+        self.assertIsNone(inventory.json()["job"]["document_id"])
+        inventory_id = inventory.json()["job"]["job_id"]
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            inventory_detail = self.client.get(
+                prefix + f"/jobs/{inventory_id}", headers=self.headers
+            )
+            if inventory_detail.json()["job"]["state"] in {
+                "succeeded",
+                "failed",
+                "cancelled",
+            }:
+                break
+            time.sleep(0.05)
+        else:
+            self.fail("API-enqueued inventory did not complete")
+        self.assertEqual(inventory_detail.json()["job"]["state"], "succeeded")
+        self.assertEqual(
+            inventory_detail.json()["job"]["outcome"], "inventory_completed"
+        )
         self.manager.shutdown()
         self.assertEqual(current.json()["job"]["state"], "succeeded")
         self.assertEqual(current.json()["job"]["outcome"], "verified_cache_match")

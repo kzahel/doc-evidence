@@ -19,7 +19,7 @@ from doc_evidence.util import hash_json, isoformat_z
 if TYPE_CHECKING:
     from doc_evidence.inventory import DocumentRecord, InventoryResult
 
-DATABASE_SCHEMA_VERSION = 3
+DATABASE_SCHEMA_VERSION = 4
 BUSY_TIMEOUT_MS = 5_000
 
 
@@ -34,6 +34,16 @@ class ScanFingerprint:
     modified_ns: int
     changed_ns: int
     content_sha256: str
+
+
+@dataclass(frozen=True)
+class InventoryGenerationRecord:
+    generation_id: str
+    inventory_run_id: str
+    status: str
+    summary: dict[str, Any] | None
+    started_at: str
+    completed_at: str | None
 
 
 def _connect(path: Path, *, readonly: bool = False) -> sqlite3.Connection:
@@ -424,6 +434,89 @@ def _migration_3(connection: sqlite3.Connection) -> None:
     )
 
 
+def _migration_4(connection: sqlite3.Connection) -> None:
+    connection.executescript(
+        """
+        PRAGMA foreign_keys = OFF;
+        BEGIN IMMEDIATE;
+
+        CREATE TABLE jobs_v4 (
+            job_id TEXT PRIMARY KEY,
+            library_id TEXT NOT NULL,
+            batch_id TEXT REFERENCES job_batches(batch_id) ON DELETE SET NULL,
+            idempotency_key TEXT,
+            request_kind TEXT NOT NULL CHECK (
+                request_kind IN ('extraction', 'inventory')
+            ),
+            document_id TEXT,
+            content_sha256 TEXT REFERENCES content_objects(content_sha256),
+            extractor_id TEXT,
+            cache_key TEXT NOT NULL,
+            settings_json TEXT NOT NULL,
+            execution_json TEXT NOT NULL,
+            execution_mode TEXT NOT NULL CHECK (
+                execution_mode IN ('reuse_or_execute', 'fresh_verification')
+            ),
+            run_key TEXT,
+            priority INTEGER NOT NULL,
+            resource_class TEXT NOT NULL CHECK (
+                resource_class IN ('light', 'ocr', 'model_heavy')
+            ),
+            state TEXT NOT NULL CHECK (
+                state IN (
+                    'queued', 'starting', 'running', 'cancelling',
+                    'succeeded', 'failed', 'cancelled', 'interrupted'
+                )
+            ),
+            outcome TEXT,
+            queue_reason TEXT,
+            retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+            automatic_retry_count INTEGER NOT NULL DEFAULT 0
+                CHECK (automatic_retry_count BETWEEN 0 AND 1),
+            cancellation_requested INTEGER NOT NULL DEFAULT 0
+                CHECK (cancellation_requested IN (0, 1)),
+            active_attempt_id TEXT,
+            result_run_id TEXT,
+            result_artifact_path TEXT,
+            failure_class TEXT,
+            error_summary TEXT,
+            created_at TEXT NOT NULL,
+            queued_at TEXT NOT NULL,
+            started_at TEXT,
+            completed_at TEXT,
+            updated_at TEXT NOT NULL,
+            CHECK (
+                request_kind != 'extraction'
+                OR (
+                    document_id IS NOT NULL
+                    AND content_sha256 IS NOT NULL
+                    AND extractor_id IS NOT NULL
+                )
+            )
+        );
+        INSERT INTO jobs_v4 SELECT * FROM jobs;
+        DROP TABLE jobs;
+        ALTER TABLE jobs_v4 RENAME TO jobs;
+
+        CREATE UNIQUE INDEX jobs_idempotency_idx
+            ON jobs(library_id, idempotency_key)
+            WHERE idempotency_key IS NOT NULL;
+        CREATE INDEX jobs_queue_idx
+            ON jobs(state, priority DESC, queued_at, job_id);
+        CREATE INDEX jobs_content_idx
+            ON jobs(content_sha256, extractor_id, created_at DESC);
+        CREATE INDEX jobs_cache_idx
+            ON jobs(cache_key, execution_mode, created_at DESC);
+
+        INSERT INTO schema_migrations (version, applied_at)
+        VALUES (4, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+        PRAGMA user_version = 4;
+        COMMIT;
+        PRAGMA foreign_keys = ON;
+        """
+    )
+
+
 def _migrate(connection: sqlite3.Connection) -> None:
     version = int(connection.execute("PRAGMA user_version").fetchone()[0])
     if version > DATABASE_SCHEMA_VERSION:
@@ -453,6 +546,15 @@ def _migrate(connection: sqlite3.Connection) -> None:
         except sqlite3.Error as error:
             if connection.in_transaction:
                 connection.rollback()
+            raise CatalogError(f"cannot migrate library database: {error}") from error
+        version = 3
+    if version == 3:
+        try:
+            _migration_4(connection)
+        except sqlite3.Error as error:
+            if connection.in_transaction:
+                connection.rollback()
+            connection.execute("PRAGMA foreign_keys = ON")
             raise CatalogError(f"cannot migrate library database: {error}") from error
 
 
@@ -810,6 +912,60 @@ class LibraryDatabase:
         finally:
             connection.close()
         return generation_id
+
+    def inventory_generation(self, run_id: str) -> InventoryGenerationRecord | None:
+        connection = self.connect(readonly=True)
+        try:
+            row = connection.execute(
+                """
+                SELECT generation_id, inventory_run_id, status, summary_json,
+                       started_at, completed_at
+                FROM inventory_generations WHERE inventory_run_id = ?
+                """,
+                (run_id,),
+            ).fetchone()
+        finally:
+            connection.close()
+        if row is None:
+            return None
+        return InventoryGenerationRecord(
+            generation_id=str(row["generation_id"]),
+            inventory_run_id=str(row["inventory_run_id"]),
+            status=str(row["status"]),
+            summary=(
+                json.loads(str(row["summary_json"]))
+                if row["summary_json"] is not None
+                else None
+            ),
+            started_at=str(row["started_at"]),
+            completed_at=(
+                str(row["completed_at"]) if row["completed_at"] is not None else None
+            ),
+        )
+
+    def fail_generation(self, *, generation_id: str, error_summary: str) -> None:
+        connection = self.connect()
+        try:
+            connection.execute(
+                """
+                UPDATE inventory_generations
+                SET status = 'failed', summary_json = ?, completed_at = ?
+                WHERE generation_id = ? AND status = 'building'
+                """,
+                (
+                    json.dumps(
+                        {"error_summary": error_summary[:1_000]}, sort_keys=True
+                    ),
+                    isoformat_z(),
+                    generation_id,
+                ),
+            )
+            connection.commit()
+        except sqlite3.Error as error:
+            connection.rollback()
+            raise CatalogError(f"cannot fail inventory generation: {error}") from error
+        finally:
+            connection.close()
 
     def cached_fingerprint(
         self,

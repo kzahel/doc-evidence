@@ -9,7 +9,9 @@ atomic catalog membership generations, extractor registration, supervised
 attempt execution, atomic artifact publication, durable job persistence,
 bounded per-library scheduling, authenticated API/runtime operations, document
 execution controls, bounded batches, and the global activity/debug UI are
-implemented. Fault/restart, isolated-browser, and authorized
+implemented. Inventory refresh now uses the same durable queue, attempt,
+event, cancellation, and restart-reconciliation model. Fault/restart,
+isolated-browser, and authorized
 private-integration gates pass; explicit maintainer interaction acceptance
 remains. Tactical 002 packages the first macOS execution environment and
 baseline extractor pack. Tactical 003 plans Windows-native process-tree
@@ -25,9 +27,9 @@ processes, extractor execution, artifact publication, cancellation, recovery,
 concurrency, and operational diagnostics.
 
 The first implementation applies the architecture to explicit extraction
-requests from the document workspace. Later tacticals may reuse it for
-inventory, rendering, comparison materialization, candidate generation, and
-exports without changing its reliability model.
+requests from the document workspace and explicit library inventory refreshes.
+Later tacticals may reuse it for rendering, comparison materialization,
+candidate generation, and exports without changing its reliability model.
 
 The application remains local-first and single-user. Source collections are
 read-only. Opening or browsing a document never starts expensive work.
@@ -384,6 +386,7 @@ GET  /api/v1/libraries
 GET  /api/v1/libraries/{library_id}
 GET  /api/v1/libraries/{library_id}/extractors
 POST /api/v1/libraries/{library_id}/jobs/extractions
+POST /api/v1/libraries/{library_id}/jobs/inventories
 POST /api/v1/libraries/{library_id}/jobs/extraction-batches
 GET  /api/v1/libraries/{library_id}/jobs
 GET  /api/v1/libraries/{library_id}/jobs/{job_id}
@@ -436,6 +439,12 @@ panel supports:
 - queue pause/resume where safe;
 - batch grouping and preflight results; and
 - automatic refresh of document runs after successful publication.
+
+Inventory is an explicit library-scoped job. Creating a library or changing
+managed collection scope may enqueue the ordinary incremental mode; settings
+also offer a deliberate refresh and full hash verification. Inventory progress
+and failures use the same activity surface while a prior active generation
+remains readable until its replacement publishes atomically.
 
 ### Operational debug view
 
@@ -517,6 +526,20 @@ The core recovery invariant is:
 - Durable human review and observation history will share the unified database
   but require their own tactical and portable export contract.
 - Long-term attempt/log retention defaults require measured library use.
+
+## Inventory Job Implementation Evidence
+
+The shared job schema now distinguishes extraction and inventory requests while
+retaining one queue, scheduler lease, attempt/event history, cancellation path,
+and activity contract. Schema migration 4 makes extraction-only identities
+nullable only for an explicit inventory kind and preserves existing job
+relationships and indexes. An inventory claim records its run identity before
+filesystem work, publishes through the existing inactive-generation protocol,
+and can therefore reconcile a crash after publication or fail an abandoned
+building generation without hiding the prior active catalog. Focused
+persistence, scheduler, recovery, progress, coalescing, authenticated API, and
+contract-drift tests pass. The React trigger and refresh surface are the next
+slice.
 
 ## Implementing Tactical
 

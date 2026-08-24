@@ -13,8 +13,10 @@ Python host-control operations, Tauri dialogs, packaged startup, and macOS
 application-data injection are implemented. Tactical 003 now selects Windows
 per-user local application data in the host and implements case/separator path
 identity, fixed-drive admission, and reparse/offline traversal policy. Actual
-long-path I/O and installed-app acceptance remain open. Store relocation
-remains later scope.
+long-path I/O and installed-app acceptance remain open. A durable,
+library-scoped inventory job and authenticated API operation now close the
+backend half of fresh-library indexing; the automatic React trigger and
+settings control remain in progress. Store relocation remains later scope.
 
 ## Purpose
 
@@ -326,7 +328,9 @@ The shared runtime supports:
 - inspect library and collection settings;
 - register/import an existing descriptor through an authorized platform or
   development adapter; and
-- preflight collection addition/replacement without performing extraction.
+- preflight collection addition/replacement without performing extraction; and
+- enqueue an incremental or full-verification inventory refresh without
+  accepting a browser-supplied path.
 
 Tactical 001's localhost implementation provides the platform-neutral
 registry, selection, identity, and known-library UI. It uses an explicit
@@ -453,3 +457,12 @@ The target-native Windows suite passes Unicode names, spaces, case-alias
 overlap, fixed/non-fixed classification, and junction cases. Long comparison
 aliases pass; actual greater-than-260-character I/O remains a standalone-
 runtime and installed-app acceptance gate.
+
+The next Tactical 003 release-readiness slice found that native library
+creation produced a valid empty database but exposed no in-app inventory
+operation, leaving a first-time user with an indefinitely empty workspace.
+Inventory is now a durable library job above the existing atomic membership
+generation protocol. Its request records no source path, coalesces while
+active, reports bounded progress, responds to cancellation, and reconciles
+both post-publication and interrupted-building restart cases. The typed React
+trigger and automatic post-completion workspace refresh remain next.

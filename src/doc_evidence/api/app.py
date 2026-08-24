@@ -39,6 +39,7 @@ from doc_evidence.contracts.api import (
     ExtractorCapability,
     ExtractorCapabilityList,
     ExtractorDependency,
+    InventoryJobRequest,
     JobAttempt,
     JobBatchCancellationResponse,
     JobBatchCancelRequest,
@@ -87,6 +88,7 @@ def _job_summary(record: JobRecord) -> JobSummary:
     return JobSummary(
         job_id=record.job_id,
         library_id=record.library_id,
+        request_kind=record.request_kind,
         batch_id=record.batch_id,
         document_id=record.document_id,
         extractor_id=record.extractor_id,
@@ -363,6 +365,27 @@ def create_app(
             extractor_id=body.extractor_id,
             settings=body.settings,
             execution_mode=body.execution_mode,
+            idempotency_key=idempotency_key,
+        )
+        if creation.job.state == "queued":
+            manager(request).start_jobs(library_id)
+        return JobCreationResponse(
+            disposition=creation.disposition,
+            job=_job_summary(creation.job),
+        )
+
+    @router.post(
+        "/libraries/{library_id}/jobs/inventories",
+        response_model=JobCreationResponse,
+    )
+    def create_inventory_job(
+        request: Request,
+        library_id: str,
+        body: InventoryJobRequest,
+        idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+    ) -> JobCreationResponse:
+        creation = job_service(request, library_id).enqueue_inventory(
+            full_hash_verification=body.full_hash_verification,
             idempotency_key=idempotency_key,
         )
         if creation.job.state == "queued":

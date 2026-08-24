@@ -17,7 +17,7 @@ from doc_evidence.app_home import legacy_library_id
 from doc_evidence.attempts import AttemptSupervisor
 from doc_evidence.config import load_config
 from doc_evidence.errors import CatalogError, RequestError
-from doc_evidence.inventory import run_inventory
+from doc_evidence.inventory import execute_inventory, prepare_inventory, run_inventory
 from doc_evidence.persistence import ensure_library_database
 from doc_evidence.scheduler import LibraryScheduler, ResourceLimits
 from doc_evidence.util import atomic_write_json, isoformat_z
@@ -45,6 +45,23 @@ store:
     "Poppler tools are required for durable job integration",
 )
 class ExtractionJobApplicationTest(unittest.TestCase):
+    def empty_application(self, root: Path) -> tuple[LocalExtractionJobs, Path]:
+        documents = root / "documents"
+        documents.mkdir()
+        source = documents / "one.pdf"
+        write_minimal_pdf(source, "durable inventory evidence")
+        config = load_config(_write_config(root))
+        library_id = legacy_library_id(config.path)
+        database = ensure_library_database(config, library_id=library_id)
+        return (
+            LocalExtractionJobs(
+                library_id=library_id,
+                config=config,
+                database=database,
+            ),
+            source,
+        )
+
     def application(self, root: Path) -> tuple[LocalExtractionJobs, str, Path]:
         documents = root / "documents"
         documents.mkdir()
@@ -105,6 +122,112 @@ class ExtractionJobApplicationTest(unittest.TestCase):
                     execution_mode="fresh_verification",
                     idempotency_key="cached-request",
                 )
+
+    def test_inventory_job_builds_first_generation_and_reports_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, _source = self.empty_application(Path(temporary_directory))
+            created = application.enqueue_inventory()
+            coalesced = application.enqueue_inventory()
+
+            self.assertEqual(created.job.request_kind, "inventory")
+            self.assertIsNone(created.job.document_id)
+            self.assertIsNone(created.job.extractor_id)
+            self.assertEqual(coalesced.disposition, "coalesced")
+            self.assertEqual(coalesced.job.job_id, created.job.job_id)
+
+            scheduler = LibraryScheduler(
+                application,
+                resource_limits=ResourceLimits(light=1, ocr=1, model_heavy=1),
+                poll_seconds=0.02,
+                heartbeat_seconds=0.05,
+            )
+            self.assertTrue(scheduler.start())
+            try:
+                deadline = time.monotonic() + 10
+                while time.monotonic() < deadline:
+                    job = application.get(created.job.job_id)
+                    if job.state in {"succeeded", "failed", "cancelled"}:
+                        break
+                    time.sleep(0.02)
+                else:
+                    self.fail("durable inventory job did not finish")
+            finally:
+                scheduler.stop()
+
+            job = application.get(created.job.job_id)
+            events = application.events(job.job_id)
+            self.assertEqual(job.state, "succeeded")
+            self.assertEqual(job.outcome, "inventory_completed")
+            self.assertIsNotNone(application.database.active_generation_id())
+            connection = application.database.connect(readonly=True)
+            try:
+                document_count = int(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM content_objects"
+                    ).fetchone()[0]
+                )
+            finally:
+                connection.close()
+            self.assertEqual(document_count, 1)
+            self.assertTrue(any(event.stage == "hashing" for event in events))
+            self.assertEqual(events[-1].event_type, "inventory_completed")
+
+    def test_inventory_recovery_promotes_publication_or_interrupts_build(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            application, _source = self.empty_application(Path(temporary_directory))
+            repository = application.repository
+            self.assertTrue(repository.acquire_lease("lost", stale_after_seconds=0))
+            created = application.enqueue_inventory()
+            claimed = repository.claim_next(
+                scheduler_instance_id="lost", resource_classes={"light"}
+            )
+            self.assertIsNotNone(claimed)
+            assert claimed is not None
+            plan = prepare_inventory(
+                application.config,
+                library_id=application.library_id,
+            )
+            repository.record_operation_identity(
+                job_id=created.job.job_id,
+                attempt_id=claimed.attempt_id,
+                run_id=plan.run_id,
+                artifact_path=(Path("manifests") / plan.run_id).as_posix(),
+            )
+            execute_inventory(plan)
+            repository.release_lease("lost")
+
+            application.reconcile()
+            recovered = application.get(created.job.job_id)
+            self.assertEqual(recovered.state, "succeeded")
+            self.assertEqual(recovered.outcome, "recovered_published")
+
+            self.assertTrue(repository.acquire_lease("lost", stale_after_seconds=0))
+            interrupted = application.enqueue_inventory(full_hash_verification=True)
+            claimed = repository.claim_next(
+                scheduler_instance_id="lost", resource_classes={"light"}
+            )
+            self.assertIsNotNone(claimed)
+            assert claimed is not None
+            building = prepare_inventory(
+                application.config,
+                library_id=application.library_id,
+                full_hash_verification=True,
+            )
+            repository.record_operation_identity(
+                job_id=interrupted.job.job_id,
+                attempt_id=claimed.attempt_id,
+                run_id=building.run_id,
+                artifact_path=(Path("manifests") / building.run_id).as_posix(),
+            )
+            repository.release_lease("lost")
+
+            application.reconcile()
+            recovered = application.get(interrupted.job.job_id)
+            generation = application.database.inventory_generation(building.run_id)
+            self.assertEqual(recovered.state, "interrupted")
+            self.assertIsNotNone(generation)
+            assert generation is not None
+            self.assertEqual(generation.status, "failed")
 
     def test_scheduler_executes_fresh_attempt_and_persists_events(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -539,6 +662,7 @@ class ExtractionJobApplicationTest(unittest.TestCase):
                 [sys.executable, "-c", "import time; time.sleep(120)"],
                 start_new_session=True,
             )
+            assert created.job.content_sha256 is not None
             attempt_dir = (
                 application.config.store
                 / "blobs"

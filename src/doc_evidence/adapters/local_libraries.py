@@ -300,7 +300,7 @@ class LocalLibraryManager(LibraryManager):
             counts = service.counts()
             if counts.queued or counts.active:
                 raise ApplicationStateError(
-                    "library configuration cannot change while extraction jobs are active"
+                    "library configuration cannot change while jobs are active"
                 )
         scheduler = self._schedulers.pop(library_id, None)
         if scheduler is not None:

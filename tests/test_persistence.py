@@ -6,7 +6,9 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from doc_evidence.adapters.local_jobs import LocalExtractionJobs
 from doc_evidence.app_home import legacy_library_id
 from doc_evidence.catalog import build_catalog
 from doc_evidence.config import load_config
@@ -175,14 +177,72 @@ class LibraryPersistenceTest(unittest.TestCase):
             connection = database.connect(readonly=True)
             try:
                 self.assertEqual(
-                    connection.execute("PRAGMA user_version").fetchone()[0], 3
+                    connection.execute("PRAGMA user_version").fetchone()[0], 4
                 )
                 migrations = connection.execute(
                     "SELECT version FROM schema_migrations"
                 ).fetchall()
             finally:
                 connection.close()
-            self.assertEqual([row[0] for row in migrations], [1, 2, 3])
+            self.assertEqual([row[0] for row in migrations], [1, 2, 3, 4])
+
+    def test_schema_four_preserves_existing_extraction_jobs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source = root / "documents" / "child"
+            source.mkdir(parents=True)
+            write_minimal_pdf(source / "one.pdf", "migration evidence")
+            config = load_config(_write_config(root))
+            with patch(
+                "doc_evidence.persistence.library_database._migration_4",
+                autospec=True,
+            ):
+                result = run_inventory(config)
+                library_id = legacy_library_id(config.path)
+                database = ensure_library_database(config, library_id=library_id)
+                application = LocalExtractionJobs(
+                    library_id=library_id,
+                    config=config,
+                    database=database,
+                )
+                created = application.enqueue(
+                    document_id=result.documents[0].document_id,
+                    extractor_id="poppler",
+                    execution_mode="fresh_verification",
+                )
+                self.assertTrue(
+                    application.repository.acquire_lease(
+                        "migration-owner", stale_after_seconds=0
+                    )
+                )
+                claimed = application.repository.claim_next(
+                    scheduler_instance_id="migration-owner",
+                    resource_classes={"light"},
+                )
+                self.assertIsNotNone(claimed)
+                application.repository.release_lease("migration-owner")
+
+            migrated = ensure_library_database(config, library_id=library_id)
+            connection = migrated.connect(readonly=True)
+            try:
+                job = connection.execute(
+                    "SELECT request_kind, document_id FROM jobs WHERE job_id = ?",
+                    (created.job.job_id,),
+                ).fetchone()
+                attempts = connection.execute(
+                    "SELECT COUNT(*) FROM job_attempts WHERE job_id = ?",
+                    (created.job.job_id,),
+                ).fetchone()[0]
+                foreign_keys = connection.execute("PRAGMA foreign_key_check").fetchall()
+                version = connection.execute("PRAGMA user_version").fetchone()[0]
+            finally:
+                connection.close()
+            self.assertEqual(version, 4)
+            self.assertEqual(
+                tuple(job), ("extraction", result.documents[0].document_id)
+            )
+            self.assertEqual(attempts, 1)
+            self.assertEqual(foreign_keys, [])
 
 
 if __name__ == "__main__":

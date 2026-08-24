@@ -109,15 +109,17 @@ rewrite prior run output; it creates a new run identity.
 The runtime configuration schema is packaged with the Python distribution and
 tested for byte equality with the documented schema under `schemas/`.
 
-## Durable Extraction Jobs
+## Durable Jobs
 
-Operational extraction records are schema-versioned SQLite contracts inside
-the owning library's `doc-evidence.sqlite`, not extractor artifacts. A job
-retains stable library, document/content, extractor, settings, exact run/cache
-identity, execution mode, priority/resource class, lifecycle, result, and
-bounded failure fields. Its execution JSON is an immutable server-produced
-snapshot; client requests cannot supply commands, paths, executables, or
-environment variables.
+Operational records are schema-versioned SQLite contracts inside the owning
+library's `doc-evidence.sqlite`, not extractor artifacts. Every job retains an
+explicit kind, stable library identity, settings, operation/cache identity,
+priority/resource class, lifecycle, result, and bounded failure fields.
+Extraction jobs additionally require document/content, extractor, and exact
+run identity. Inventory jobs deliberately omit those extraction-only fields
+and publish an atomic membership generation. Execution JSON is an immutable
+server-produced snapshot; client requests cannot supply commands, paths,
+executables, or environment variables.
 
 Each technical attempt retains its number, scheduler and process identity,
 deadline/heartbeat, execution snapshot, attempt/log location, exit and

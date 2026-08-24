@@ -1,4 +1,4 @@
-"""SQLite repository for durable extraction jobs, attempts, and events."""
+"""SQLite repository for durable local jobs, attempts, and events."""
 
 from __future__ import annotations
 
@@ -39,13 +39,20 @@ def _record(row: sqlite3.Row) -> JobRecord:
     return JobRecord(
         job_id=str(row["job_id"]),
         library_id=str(row["library_id"]),
+        request_kind=str(row["request_kind"]),  # type: ignore[arg-type]
         batch_id=str(row["batch_id"]) if row["batch_id"] is not None else None,
         idempotency_key=(
             str(row["idempotency_key"]) if row["idempotency_key"] is not None else None
         ),
-        document_id=str(row["document_id"]),
-        content_sha256=str(row["content_sha256"]),
-        extractor_id=str(row["extractor_id"]),
+        document_id=(
+            str(row["document_id"]) if row["document_id"] is not None else None
+        ),
+        content_sha256=(
+            str(row["content_sha256"]) if row["content_sha256"] is not None else None
+        ),
+        extractor_id=(
+            str(row["extractor_id"]) if row["extractor_id"] is not None else None
+        ),
         cache_key=str(row["cache_key"]),
         settings=json.loads(str(row["settings_json"])),
         execution=json.loads(str(row["execution_json"])),
@@ -167,9 +174,24 @@ class JobRepository:
         *,
         cached: CachedResult | None = None,
     ) -> JobCreation:
+        if spec.request_kind == "extraction" and (
+            spec.document_id is None
+            or spec.content_sha256 is None
+            or spec.extractor_id is None
+        ):
+            raise RequestError("extraction job identity is incomplete")
+        if spec.request_kind == "inventory" and (
+            spec.document_id is not None
+            or spec.content_sha256 is not None
+            or spec.extractor_id is not None
+            or spec.batch_id is not None
+            or spec.run_key is not None
+        ):
+            raise RequestError("inventory job contains extraction-only identity")
         now = isoformat_z()
         request_hash = hash_json(
             {
+                "request_kind": spec.request_kind,
                 "cache_key": spec.cache_key,
                 "execution_mode": spec.execution_mode,
                 "priority": spec.priority,
@@ -202,11 +224,17 @@ class JobRepository:
             active = connection.execute(
                 """
                 SELECT * FROM jobs
-                WHERE library_id = ? AND cache_key = ? AND execution_mode = ?
+                WHERE library_id = ? AND request_kind = ? AND cache_key = ?
+                  AND execution_mode = ?
                   AND state IN ('queued', 'starting', 'running', 'cancelling')
                 ORDER BY created_at, job_id LIMIT 1
                 """,
-                (spec.library_id, spec.cache_key, spec.execution_mode),
+                (
+                    spec.library_id,
+                    spec.request_kind,
+                    spec.cache_key,
+                    spec.execution_mode,
+                ),
             ).fetchone()
             if active is not None:
                 if spec.idempotency_key is not None:
@@ -239,14 +267,15 @@ class JobRepository:
                     priority, resource_class, state, outcome, result_run_id,
                     result_artifact_path, created_at, queued_at, completed_at,
                     updated_at
-                ) VALUES (?, ?, ?, ?, 'extraction', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                          ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                          ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     job_id,
                     spec.library_id,
                     spec.batch_id,
                     spec.idempotency_key,
+                    spec.request_kind,
                     spec.document_id,
                     spec.content_sha256,
                     spec.extractor_id,
@@ -303,7 +332,7 @@ class JobRepository:
             connection.rollback()
             if isinstance(error, RequestError):
                 raise
-            raise CatalogError(f"cannot create extraction job: {error}") from error
+            raise CatalogError(f"cannot create job: {error}") from error
         finally:
             connection.close()
 
@@ -824,6 +853,8 @@ class JobRepository:
         process_group_id: int | None,
         heartbeat_at: str,
         stage: str,
+        progress_current: int | None = None,
+        progress_total: int | None = None,
     ) -> None:
         connection = self.database.connect()
         try:
@@ -867,12 +898,155 @@ class JobRepository:
                 event_type="heartbeat" if stage == "running" else stage,
                 stage=stage,
                 detail={"attempt_id": attempt_id, "worker_pid": worker_pid},
+                progress_current=progress_current,
+                progress_total=progress_total,
                 created_at=heartbeat_at,
             )
             connection.commit()
         except sqlite3.Error as error:
             connection.rollback()
             raise CatalogError(f"cannot update job attempt: {error}") from error
+        finally:
+            connection.close()
+
+    def record_operation_identity(
+        self,
+        *,
+        job_id: str,
+        attempt_id: str,
+        run_id: str,
+        artifact_path: str,
+    ) -> None:
+        now = isoformat_z()
+        connection = self.database.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT state FROM jobs WHERE job_id = ? AND active_attempt_id = ?",
+                (job_id, attempt_id),
+            ).fetchone()
+            if row is None or str(row["state"]) not in {
+                "starting",
+                "running",
+                "cancelling",
+            }:
+                raise RequestError("job is not awaiting this operation identity")
+            connection.execute(
+                """
+                UPDATE jobs SET result_run_id = ?, result_artifact_path = ?,
+                    updated_at = ? WHERE job_id = ?
+                """,
+                (run_id, artifact_path, now, job_id),
+            )
+            self._append_event(
+                connection,
+                job_id=job_id,
+                event_type="operation_started",
+                stage="starting",
+                detail={"attempt_id": attempt_id, "run_id": run_id},
+                created_at=now,
+            )
+            connection.commit()
+        except (sqlite3.Error, RequestError) as error:
+            connection.rollback()
+            if isinstance(error, RequestError):
+                raise
+            raise CatalogError(f"cannot record operation identity: {error}") from error
+        finally:
+            connection.close()
+
+    def finish_operation(
+        self,
+        *,
+        job_id: str,
+        attempt_id: str,
+        state: Literal["succeeded", "failed", "cancelled"],
+        outcome: str,
+        run_id: str | None,
+        artifact_path: str | None,
+        failure_class: str | None,
+        error_summary: str | None,
+    ) -> JobRecord:
+        completed_at = isoformat_z()
+        attempt_state = {
+            "succeeded": "succeeded",
+            "failed": "failed",
+            "cancelled": "cancelled",
+        }[state]
+        connection = self.database.connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT state FROM jobs WHERE job_id = ? AND active_attempt_id = ?",
+                (job_id, attempt_id),
+            ).fetchone()
+            if row is None or str(row["state"]) not in {
+                "starting",
+                "running",
+                "cancelling",
+            }:
+                raise RequestError("job is not awaiting this operation result")
+            connection.execute(
+                """
+                UPDATE job_attempts SET state = ?, heartbeat_at = ?,
+                    publication_outcome = ?, failure_class = ?,
+                    error_summary = ?, completed_at = ?
+                WHERE attempt_id = ? AND job_id = ?
+                """,
+                (
+                    attempt_state,
+                    completed_at,
+                    outcome,
+                    failure_class,
+                    error_summary[:1_000] if error_summary else None,
+                    completed_at,
+                    attempt_id,
+                    job_id,
+                ),
+            )
+            connection.execute(
+                """
+                UPDATE jobs SET state = ?, outcome = ?, active_attempt_id = NULL,
+                    result_run_id = ?, result_artifact_path = ?,
+                    failure_class = ?, error_summary = ?, completed_at = ?,
+                    updated_at = ? WHERE job_id = ?
+                """,
+                (
+                    state,
+                    outcome,
+                    run_id,
+                    artifact_path,
+                    failure_class,
+                    error_summary[:1_000] if error_summary else None,
+                    completed_at,
+                    completed_at,
+                    job_id,
+                ),
+            )
+            self._append_event(
+                connection,
+                job_id=job_id,
+                event_type=outcome,
+                stage="completed",
+                detail={
+                    "attempt_id": attempt_id,
+                    "run_id": run_id,
+                    "failure_class": failure_class,
+                    "message": error_summary,
+                },
+                created_at=completed_at,
+            )
+            final = connection.execute(
+                "SELECT * FROM jobs WHERE job_id = ?", (job_id,)
+            ).fetchone()
+            connection.commit()
+            assert final is not None
+            return _record(final)
+        except (sqlite3.Error, RequestError) as error:
+            connection.rollback()
+            if isinstance(error, RequestError):
+                raise
+            raise CatalogError(f"cannot finish operation: {error}") from error
         finally:
             connection.close()
 
@@ -1073,6 +1247,7 @@ class JobRepository:
                 UPDATE jobs SET state = 'queued', outcome = NULL,
                     queue_reason = NULL, retry_count = retry_count + 1,
                     cancellation_requested = 0, active_attempt_id = NULL,
+                    result_run_id = NULL, result_artifact_path = NULL,
                     failure_class = NULL, error_summary = NULL, queued_at = ?,
                     completed_at = NULL, updated_at = ? WHERE job_id = ?
                 """,
@@ -1168,7 +1343,8 @@ class JobRepository:
                 UPDATE jobs SET state = 'queued', outcome = NULL,
                     queue_reason = 'delayed automatic retry',
                     automatic_retry_count = automatic_retry_count + 1,
-                    active_attempt_id = NULL, failure_class = NULL,
+                    active_attempt_id = NULL, result_run_id = NULL,
+                    result_artifact_path = NULL, failure_class = NULL,
                     error_summary = NULL, queued_at = ?, completed_at = NULL,
                     updated_at = ? WHERE job_id = ?
                 """,

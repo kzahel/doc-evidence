@@ -845,6 +845,23 @@ blockers, all 30 nested libraries reconciled, and 43 source archives totaling
 and is bound to the final application tree above. No signing credential,
 remote, tag, notarization service, or publication surface was accessed.
 
+The first deterministic product-workflow pass then found a release-blocking
+fresh-library gap before the packaged harness could honestly claim usability:
+native creation authorized a collection and created the managed database, but
+the product exposed no inventory operation, so the workspace remained empty
+unless the maintainer left the app and used the CLI. The backend half of that
+gap is now closed through the existing durable execution boundary rather than
+a Tauri-owned or ephemeral background task. Database schema 4 adds an explicit
+inventory job kind while preserving extraction identities and history. An
+inventory request coalesces in the shared queue, records its generation/run
+identity before scanning, emits bounded progress, accepts cancellation, and
+publishes through the atomic inactive-generation switch. Recovery promotes a
+generation published just before a crash and marks an abandoned building
+generation failed while retaining the prior active catalog. Focused
+persistence, inventory, scheduler/recovery, authenticated API, contract-drift,
+Ruff, and Pyright gates pass. The React automatic trigger/settings action and
+packaged workflow harness remain the next checkpoint.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer
