@@ -166,9 +166,12 @@ audit closes across their exact extracted bytes. The pack assembler now safely
 selects those bytes, the Poppler data tree, support files, and the exact three
 language files, writes a schema-checked Windows pack manifest, and includes a
 tracked relocatable OCRmyPDF launcher source. The production and baseline
-Python locks resolve for CPython 3.12 on Windows x86_64. Target-native launcher
-compilation/runtime assembly, third-party license/source and Microsoft
-redistribution review, and copied-out OCR remain gates.
+Python locks resolve and their selected Windows wheels close a 123-file PE
+graph after deterministic pruning. A transactional target-only runtime builder
+now owns frozen installation, component/file manifests, copied-location OCR
+and sidecar smokes, and long-path I/O. Target-native execution of those gates,
+third-party license/source and Microsoft redistribution review, and installed-
+application acceptance remain open.
 Local implementation is authorized; credentials, signing, remotes, tags, and
 publication remain separately unauthorized.
 

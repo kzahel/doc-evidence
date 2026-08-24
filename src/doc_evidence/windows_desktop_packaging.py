@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
+import platform
+import queue
 import re
+import secrets
 import shutil
 import subprocess
 import tarfile
 import tempfile
+import threading
+import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
@@ -19,11 +25,23 @@ from typing import Any
 
 import jsonschema
 
+from doc_evidence import __version__
+from doc_evidence.contracts.desktop import (
+    DESKTOP_ARCHITECTURE_ENV,
+    DESKTOP_PLATFORM_ENV,
+    DESKTOP_PROTOCOL_VERSION,
+    WINDOWS_DESKTOP_ORIGIN,
+)
+from doc_evidence.desktop_pack import load_baseline_pack
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, inspect_pe
 
 BUILD_INPUTS_SCHEMA = "doc-evidence.desktop-build-inputs.v1"
+RUNTIME_MANIFEST_SCHEMA = "doc-evidence.desktop-runtime-manifest.v1"
+BUNDLE_MANIFEST_SCHEMA = "doc-evidence.desktop-bundle-manifest.v1"
 WINDOWS_PLATFORM = "windows"
 WINDOWS_ARCHITECTURE = "x86_64"
+PRODUCT_NAME = "Doc Evidence"
+PRODUCT_IDENTIFIER = "io.github.kzahel.doc-evidence"
 EXPECTED_NATIVE_COMPONENTS = {"msvc-runtime", "poppler", "tesseract"}
 EXPECTED_TOOLS = {"pdfinfo", "pdftoppm", "pdftotext", "tesseract"}
 _HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -72,12 +90,14 @@ def _run(
     arguments: Sequence[str | Path],
     *,
     cwd: Path | None = None,
+    environment: Mapping[str, str] | None = None,
     capture_output: bool = False,
     timeout_seconds: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [str(argument) for argument in arguments],
         cwd=cwd,
+        env=None if environment is None else dict(environment),
         check=True,
         text=True,
         capture_output=capture_output,
@@ -292,6 +312,190 @@ def acquire_archive(record: Mapping[str, Any], cache: Path) -> Path:
     finally:
         partial.unlink(missing_ok=True)
     return destination
+
+
+def _require_windows_host() -> None:
+    system = platform.system()
+    machine = platform.machine().casefold()
+    if system != "Windows" or machine not in {"amd64", "x86_64", "arm64", "aarch64"}:
+        raise RuntimeError(
+            "Windows desktop packaging requires a Windows x64-capable host"
+        )
+
+
+def extract_python_runtime(archive: Path, destination: Path) -> Path:
+    """Extract the standalone runtime without links or Windows path collisions."""
+
+    if destination.exists():
+        raise RuntimeError(f"standalone Python destination exists: {destination}")
+    destination.mkdir(parents=True)
+    folded: set[str] = set()
+    with tarfile.open(archive, "r:gz") as source:
+        members = source.getmembers()
+        for member in members:
+            relative = _safe_archive_relative(member.name, "standalone Python")
+            identity = relative.as_posix().casefold()
+            if identity in folded:
+                raise RuntimeError(
+                    f"standalone Python repeats a Windows path: {relative}"
+                )
+            folded.add(identity)
+            if member.issym() or member.islnk() or member.isdev():
+                raise RuntimeError(
+                    f"standalone Python contains an unsupported member: {relative}"
+                )
+        source.extractall(destination, members=members, filter="data")
+    python_root = destination / "python"
+    python = python_root / "python.exe"
+    if not python.is_file():
+        raise RuntimeError("standalone Python archive has an unexpected layout")
+    pe = inspect_pe(python)
+    if pe.machine != PE_X86_64_MACHINE or pe.format != "PE32+":
+        raise RuntimeError("standalone Python interpreter is not x86_64 PE32+")
+    return python_root
+
+
+def _baseline_requirements(repository: Path) -> Path:
+    return repository / "desktop" / "packaging" / "baseline-requirements.txt"
+
+
+def _locked_requirements(path: Path) -> list[str]:
+    values: list[str] = []
+    pattern = re.compile(r"^([A-Za-z0-9_.-]+)==([^ ;\\]+)")
+    for line in path.read_text(encoding="utf-8").splitlines():
+        matched = pattern.match(line)
+        if matched:
+            values.append(f"{matched.group(1)}=={matched.group(2)}")
+    if not values:
+        raise RuntimeError("baseline Python requirements are empty")
+    return values
+
+
+def stage_python_dependencies(
+    repository: Path,
+    python_root: Path,
+    inputs: Mapping[str, Any],
+) -> list[str]:
+    """Install frozen production and baseline dependencies into target Python."""
+
+    python = python_root / "python.exe"
+    requirements = python_root.parent / ".desktop-requirements.txt"
+    _run(
+        [
+            "uv",
+            "export",
+            "--frozen",
+            "--no-dev",
+            "--no-editable",
+            "--no-emit-project",
+            "--format",
+            "requirements-txt",
+            "--output-file",
+            requirements,
+        ],
+        cwd=repository,
+        capture_output=True,
+    )
+    baseline = _baseline_requirements(repository)
+    if sha256_file(baseline) != inputs["baseline_pack"]["requirements_sha256"]:
+        raise RuntimeError("baseline Python requirements identity changed")
+    try:
+        for locked in (requirements, baseline):
+            _run(
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--python",
+                    python,
+                    "--requirements",
+                    locked,
+                    "--require-hashes",
+                    "--strict",
+                    "--only-binary",
+                    ":all:",
+                    "--link-mode",
+                    "copy",
+                ],
+                cwd=repository,
+                timeout_seconds=600,
+            )
+        _run(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--python",
+                python,
+                "--no-deps",
+                "--reinstall",
+                "--link-mode",
+                "copy",
+                repository,
+            ],
+            cwd=repository,
+            timeout_seconds=300,
+        )
+    finally:
+        requirements.unlink(missing_ok=True)
+    return _locked_requirements(baseline)
+
+
+def _remove_path(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink(missing_ok=True)
+
+
+def prune_python_runtime(python_root: Path) -> None:
+    """Remove development, installer, GUI, and relocatability-hostile bytes."""
+
+    for relative in (
+        "include",
+        "Lib/idlelib",
+        "Lib/test",
+        "Lib/tkinter",
+        "Lib/turtledemo",
+        "Lib/venv",
+        "Scripts",
+        "tcl",
+        "pythonw.exe",
+    ):
+        _remove_path(python_root / relative)
+    for name in (
+        "_msi.pyd",
+        "_tkinter.pyd",
+        "_wmi.pyd",
+        "tcl86t.dll",
+        "tk86t.dll",
+        "winsound.pyd",
+    ):
+        _remove_path(python_root / "DLLs" / name)
+    for test_binary in (python_root / "DLLs").glob("_test*.pyd"):
+        _remove_path(test_binary)
+
+    site_packages = python_root / "Lib" / "site-packages"
+    for candidate in list(site_packages.glob("pip*")):
+        _remove_path(candidate)
+    for imaging_tk in (site_packages / "PIL").glob("_imagingtk*.pyd"):
+        _remove_path(imaging_tk)
+    for module in (
+        "desktop_packaging.py",
+        "windows_desktop_packaging.py",
+        "windows_pe.py",
+    ):
+        _remove_path(site_packages / "doc_evidence" / module)
+    for direct_url in site_packages.glob("*.dist-info/direct_url.json"):
+        direct_url.unlink()
+    for cache in sorted(
+        python_root.rglob("__pycache__"),
+        key=lambda value: len(value.parts),
+        reverse=True,
+    ):
+        _remove_path(cache)
+    for bytecode in python_root.rglob("*.py[co]"):
+        bytecode.unlink()
 
 
 def _safe_archive_relative(value: str, purpose: str) -> PurePosixPath:
@@ -590,6 +794,50 @@ def _write_json(path: Path, value: Any) -> None:
     )
 
 
+def stage_pypdfium2_licenses(
+    runtime_root: Path,
+    baseline: Mapping[str, Any],
+    *,
+    cache: Path,
+) -> list[str]:
+    """Stage license material from the exact pypdfium2 source archive."""
+
+    source_record = next(
+        (
+            item
+            for item in baseline["source_archives"]
+            if item["component_id"] == "python-pypdfium2"
+        ),
+        None,
+    )
+    if source_record is None:
+        raise RuntimeError("pypdfium2 license source is not declared")
+    archive = acquire_archive(source_record, cache)
+    destination = runtime_root / "baseline-pack" / "licenses" / "python" / "pypdfium2"
+    copied: list[str] = []
+    with tarfile.open(archive, "r:gz") as source:
+        for member in source.getmembers():
+            relative = _safe_archive_relative(member.name, "pypdfium2 license")
+            if (
+                not member.isfile()
+                or len(relative.parts) < 3
+                or relative.parts[1] not in {"LICENSES", "BUILD_LICENSES"}
+            ):
+                continue
+            output_relative = Path(*relative.parts[1:])
+            output = destination / output_relative
+            output.parent.mkdir(parents=True, exist_ok=True)
+            stream = source.extractfile(member)
+            if stream is None:
+                raise RuntimeError("pypdfium2 license member is unreadable")
+            with stream, output.open("xb") as target:
+                shutil.copyfileobj(stream, target)
+            copied.append(output.relative_to(runtime_root).as_posix())
+    if not copied:
+        raise RuntimeError("pypdfium2 source archive has no license material")
+    return sorted(copied)
+
+
 def stage_baseline_pack(
     repository: Path,
     runtime_root: Path,
@@ -638,6 +886,7 @@ def stage_baseline_pack(
     language = baseline["language_data"]
     language_archive = acquire_archive(language["archive"], cache)
     language_data = extract_language_data(language_archive, language, pack)
+    pypdfium2_licenses = stage_pypdfium2_licenses(runtime_root, baseline, cache=cache)
 
     launcher = compile_ocrmypdf_launcher(repository, pack / "bin" / "ocrmypdf.exe")
     closure = audit_flat_pe_closure(
@@ -727,6 +976,8 @@ def stage_baseline_pack(
             file_owners[path.relative_to(runtime_root).as_posix()] = component_id
     for item in language_data:
         file_owners[f"baseline-pack/{item['path']}"] = "tesseract-language-data"
+    for path in pypdfium2_licenses:
+        file_owners[path] = "python-pypdfium2"
     file_owners[launcher.relative_to(runtime_root).as_posix()] = "python-ocrmypdf"
     file_owners[manifest_path.relative_to(runtime_root).as_posix()] = (
         "baseline-pack-metadata"
@@ -777,7 +1028,857 @@ def stage_baseline_pack(
         "components": component_records,
         "file_owners": file_owners,
         "native_closure": closure_by_path,
+        "package_license_files": {"pypdfium2": pypdfium2_licenses},
     }
+
+
+_DISTRIBUTION_SCRIPT = r"""
+import importlib.metadata as metadata
+import json
+import sys
+from pathlib import Path
+
+items = []
+for distribution in metadata.distributions():
+    value = distribution.metadata
+    files = []
+    licenses = []
+    for relative in distribution.files or []:
+        path = distribution.locate_file(relative)
+        try:
+            if not path.is_file():
+                continue
+        except OSError:
+            continue
+        item = Path(path).resolve().relative_to(Path(sys.prefix).resolve()).as_posix()
+        files.append(item)
+        lowered = Path(item).name.lower()
+        if any(name in lowered for name in ("license", "copying", "notice")):
+            licenses.append(item)
+    classifiers = value.get_all("Classifier") or []
+    items.append({
+        "name": value.get("Name", distribution.name),
+        "version": distribution.version,
+        "license": value.get("License"),
+        "license_expression": value.get("License-Expression"),
+        "license_classifiers": [
+            item for item in classifiers if item.startswith("License ::")
+        ],
+        "files": sorted(files),
+        "license_files": sorted(licenses),
+    })
+print(json.dumps(sorted(items, key=lambda item: item["name"].lower())))
+"""
+
+
+def distribution_inventory(python_root: Path) -> list[dict[str, Any]]:
+    result = _run(
+        [python_root / "python.exe", "-I", "-B", "-c", _DISTRIBUTION_SCRIPT],
+        capture_output=True,
+        timeout_seconds=60,
+    )
+    value = json.loads(result.stdout)
+    if not isinstance(value, list):
+        raise TypeError("Windows Python distribution inventory is invalid")
+    return value
+
+
+def _license_conclusion(distribution: Mapping[str, Any]) -> str:
+    expression = distribution.get("license_expression")
+    if isinstance(expression, str) and expression.strip() not in {"", "UNKNOWN"}:
+        return expression.strip()
+    raw = distribution.get("license")
+    if isinstance(raw, str) and 0 < len(raw.strip()) <= 100 and "\n" not in raw:
+        return raw.strip()
+    classifiers = distribution.get("license_classifiers")
+    if isinstance(classifiers, list) and classifiers:
+        return str(classifiers[0]).removeprefix("License :: ")
+    raise RuntimeError(
+        f"Python distribution lacks reviewed license metadata: {distribution['name']}"
+    )
+
+
+def _python_license_conclusion(
+    distribution: Mapping[str, Any], baseline: Mapping[str, Any]
+) -> str:
+    normalized = str(distribution["name"]).lower().replace("_", "-")
+    override = baseline["python_license_conclusions"].get(normalized)
+    if override is None:
+        return _license_conclusion(distribution)
+    if (
+        not isinstance(override, Mapping)
+        or override.get("version") != distribution.get("version")
+        or not isinstance(override.get("license_concluded"), str)
+    ):
+        raise RuntimeError(f"Python license conclusion drifted: {normalized}")
+    return str(override["license_concluded"])
+
+
+def _component_id(name: str) -> str:
+    normalized = "".join(
+        character if character.isalnum() else "-" for character in name.lower()
+    )
+    return "python-" + "-".join(filter(None, normalized.split("-")))
+
+
+def write_runtime_manifests(
+    repository: Path,
+    runtime_root: Path,
+    python_archive: Path,
+    inputs: Mapping[str, Any],
+    baseline_metadata: Mapping[str, Any],
+) -> None:
+    """Bind all staged Windows bytes to package, component, and bundle manifests."""
+
+    python_root = runtime_root / "python"
+    packages = distribution_inventory(python_root)
+    if not packages:
+        raise RuntimeError("staged Windows Python package inventory is empty")
+    forbidden = {
+        str(name).lower().replace("_", "-")
+        for name in inputs["forbidden_python_distributions"]
+    }
+    package_license_files = baseline_metadata["package_license_files"]
+    baseline = inputs["baseline_pack"]
+    for package in packages:
+        normalized = str(package["name"]).lower().replace("_", "-")
+        if normalized in forbidden:
+            raise RuntimeError(
+                f"development distribution entered Windows runtime: {package['name']}"
+            )
+        external = package_license_files.get(normalized, [])
+        if not package["files"] or not (package["license_files"] or external):
+            raise RuntimeError(
+                f"Windows Python distribution is not fully licensed: {package['name']}"
+            )
+
+    notices = [
+        "Doc Evidence third-party notices (generated from staged bytes)",
+        "",
+        "Complete available license texts remain beside their components.",
+        "",
+        (
+            f"CPython {inputs['python']['version']} — "
+            f"{inputs['python']['license_concluded']}"
+        ),
+    ]
+    components: list[dict[str, Any]] = [
+        {
+            "component_id": "cpython",
+            "name": "CPython",
+            "version": inputs["python"]["version"],
+            "license_concluded": inputs["python"]["license_concluded"],
+            "source_url": inputs["python"]["url"],
+            "source_sha256": inputs["python"]["sha256"],
+            "license_files": ["python/LICENSE.txt"],
+            "bundled_paths": ["python"],
+        }
+    ]
+    baseline_components = baseline_metadata["components"]
+    components.extend(baseline_components)
+    notices.extend(
+        f"{component['name']} {component['version']} — {component['license_concluded']}"
+        for component in baseline_components
+    )
+    file_owners = {
+        str(path): str(owner)
+        for path, owner in baseline_metadata["file_owners"].items()
+    }
+    for package in packages:
+        name = str(package["name"])
+        normalized = name.lower().replace("_", "-")
+        component_id = _component_id(name)
+        external_licenses = [
+            str(path) for path in package_license_files.get(normalized, [])
+        ]
+        conclusion = _python_license_conclusion(package, baseline)
+        notices.append(f"{name} {package['version']} — {conclusion}")
+        bundled_paths = [f"python/{path}" for path in package["files"]]
+        if component_id == "python-ocrmypdf":
+            bundled_paths.append("baseline-pack/bin/ocrmypdf.exe")
+        for path in package["files"]:
+            file_owners[f"python/{path}"] = component_id
+        components.append(
+            {
+                "component_id": component_id,
+                "name": name,
+                "version": package["version"],
+                "license_concluded": conclusion,
+                "source_url": f"https://pypi.org/project/{name}/{package['version']}/",
+                "license_files": [f"python/{path}" for path in package["license_files"]]
+                + external_licenses,
+                "bundled_paths": sorted([*bundled_paths, *external_licenses]),
+            }
+        )
+
+    notice_path = runtime_root / "THIRD_PARTY_NOTICES.txt"
+    notice_path.write_text("\n".join(notices) + "\n", encoding="utf-8")
+    runtime_manifest = {
+        "schema_version": RUNTIME_MANIFEST_SCHEMA,
+        "platform": WINDOWS_PLATFORM,
+        "architecture": WINDOWS_ARCHITECTURE,
+        "python": {
+            **inputs["python"],
+            "archive_bytes": python_archive.stat().st_size,
+        },
+        "application_version": __version__,
+        "packages": [
+            {
+                "name": package["name"],
+                "version": package["version"],
+                "license_concluded": _python_license_conclusion(package, baseline),
+            }
+            for package in packages
+        ],
+        "build": {
+            "dependency_locks": [
+                "uv.lock",
+                "desktop/packaging/baseline-requirements.txt",
+            ],
+            "production_only": True,
+            "isolated_python": True,
+        },
+    }
+    runtime_manifest_path = runtime_root / "runtime-manifest.json"
+    _write_json(runtime_manifest_path, runtime_manifest)
+    project_license = next(
+        f"python/{path}"
+        for package in packages
+        if str(package["name"]).lower().replace("_", "-") == "doc-evidence"
+        for path in package["license_files"]
+    )
+    components.append(
+        {
+            "component_id": "desktop-runtime-metadata",
+            "name": "Doc Evidence desktop runtime metadata",
+            "version": __version__,
+            "license_concluded": "Apache-2.0",
+            "source_url": "https://github.com/kzahel/doc-evidence",
+            "license_files": [project_license],
+            "bundled_paths": ["runtime-manifest.json", "THIRD_PARTY_NOTICES.txt"],
+        }
+    )
+    file_owners["runtime-manifest.json"] = "desktop-runtime-metadata"
+    file_owners["THIRD_PARTY_NOTICES.txt"] = "desktop-runtime-metadata"
+
+    component_ids = [str(component["component_id"]) for component in components]
+    if len(component_ids) != len(set(component_ids)):
+        raise RuntimeError("Windows runtime repeats a component identifier")
+    frontend = repository / "web" / "dist"
+    if not frontend.is_dir():
+        raise RuntimeError("web/dist must be built before Windows runtime staging")
+    pe_records = {
+        record["path"]: record
+        for record in audit_runtime_pe_closure(
+            runtime_root, system_dlls=list(baseline["system_dlls"])
+        )
+    }
+    files = []
+    for path in sorted(runtime_root.rglob("*")):
+        if (
+            not path.is_file()
+            or path.is_symlink()
+            or path.name == "bundle-manifest.json"
+        ):
+            continue
+        relative = path.relative_to(runtime_root).as_posix()
+        record = {
+            "path": relative,
+            "bytes": path.stat().st_size,
+            "sha256": sha256_file(path),
+            "component_id": file_owners.get(relative, "cpython"),
+        }
+        if relative in pe_records:
+            record["pe_architecture"] = "x86_64"
+        files.append(record)
+    if not set(file_owners).issubset({item["path"] for item in files}):
+        raise RuntimeError("Windows runtime ownership names a missing file")
+    bundle_manifest = {
+        "schema_version": BUNDLE_MANIFEST_SCHEMA,
+        "product": PRODUCT_NAME,
+        "version": __version__,
+        "identifier": PRODUCT_IDENTIFIER,
+        "platform": WINDOWS_PLATFORM,
+        "architecture": WINDOWS_ARCHITECTURE,
+        "python_version": inputs["python"]["version"],
+        "frontend_sha256": sha256_tree(frontend),
+        "runtime_manifest_sha256": sha256_file(runtime_manifest_path),
+        "extractor_packs": [baseline_metadata["identity"]],
+        "components": components,
+        "files": files,
+    }
+    schema = json.loads(
+        (
+            repository
+            / "src"
+            / "doc_evidence"
+            / "schema_files"
+            / "desktop-bundle-manifest.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    jsonschema.Draft202012Validator(
+        schema, format_checker=jsonschema.FormatChecker()
+    ).validate(bundle_manifest)
+    _write_json(runtime_root / "bundle-manifest.json", bundle_manifest)
+
+
+def validate_bundle_manifest(runtime_root: Path, repository: Path) -> dict[str, Any]:
+    """Validate target identity plus the exact current runtime file inventory."""
+
+    manifest_path = runtime_root / "bundle-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    schema = json.loads(
+        (
+            repository
+            / "src"
+            / "doc_evidence"
+            / "schema_files"
+            / "desktop-bundle-manifest.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    jsonschema.Draft202012Validator(
+        schema, format_checker=jsonschema.FormatChecker()
+    ).validate(manifest)
+    if (manifest["platform"], manifest["architecture"]) != (
+        WINDOWS_PLATFORM,
+        WINDOWS_ARCHITECTURE,
+    ):
+        raise RuntimeError("Windows bundle manifest target is incompatible")
+    if manifest["frontend_sha256"] != sha256_tree(repository / "web" / "dist"):
+        raise RuntimeError("staged Windows frontend identity changed")
+    runtime_manifest = runtime_root / "runtime-manifest.json"
+    if manifest["runtime_manifest_sha256"] != sha256_file(runtime_manifest):
+        raise RuntimeError("staged Windows runtime manifest identity changed")
+    pack_identity = load_baseline_pack(
+        runtime_root / "baseline-pack",
+        expected_platform=WINDOWS_PLATFORM,
+        expected_architecture=WINDOWS_ARCHITECTURE,
+    )
+    if manifest["extractor_packs"] != [pack_identity.model_dump(mode="json")]:
+        raise RuntimeError("staged Windows baseline-pack identity changed")
+    expected = {
+        item["path"]: (item["bytes"], item["sha256"]) for item in manifest["files"]
+    }
+    actual = {
+        path.relative_to(runtime_root).as_posix(): (
+            path.stat().st_size,
+            sha256_file(path),
+        )
+        for path in runtime_root.rglob("*")
+        if path.is_file()
+        and not path.is_symlink()
+        and path.name != "bundle-manifest.json"
+    }
+    if expected != actual:
+        raise RuntimeError("staged Windows runtime file inventory changed")
+    return manifest
+
+
+def _audit_no_symlinks(root: Path) -> list[str]:
+    links = [
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_symlink()
+    ]
+    if links:
+        raise RuntimeError(f"Windows desktop runtime contains links: {links[:10]}")
+    return links
+
+
+def baseline_environment(runtime_root: Path, writable_root: Path) -> dict[str, str]:
+    pack = runtime_root / "baseline-pack"
+    cache = writable_root / "cache"
+    temporary = writable_root / "tmp"
+    cache.mkdir(parents=True, exist_ok=True)
+    temporary.mkdir(parents=True, exist_ok=True)
+    system_root = os.environ.get("SystemRoot") or os.environ.get("WINDIR")
+    if not system_root:
+        raise RuntimeError("Windows system root is unavailable")
+    environment = {
+        "DOC_EVIDENCE_BASELINE_PACK": str(pack),
+        "PATH": os.pathsep.join(
+            [
+                str(pack / "bin"),
+                str(runtime_root / "python"),
+                str(Path(system_root) / "System32"),
+                system_root,
+            ]
+        ),
+        "TESSDATA_PREFIX": str(pack / "tessdata"),
+        "XDG_CACHE_HOME": str(cache),
+        "TEMP": str(temporary),
+        "TMP": str(temporary),
+        "SystemRoot": system_root,
+        "WINDIR": system_root,
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONUTF8": "1",
+    }
+    return environment
+
+
+def smoke_baseline_pack(
+    runtime_root: Path, inputs: Mapping[str, Any]
+) -> dict[str, Any]:
+    pack = runtime_root / "baseline-pack"
+    identity = load_baseline_pack(
+        pack,
+        expected_platform=WINDOWS_PLATFORM,
+        expected_architecture=WINDOWS_ARCHITECTURE,
+    )
+    baseline = inputs["baseline_pack"]
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-windows-ocr-") as raw:
+        working = Path(raw)
+        environment = baseline_environment(runtime_root, working)
+        commands = {
+            "pdfinfo": [pack / "bin" / "pdfinfo.exe", "-v"],
+            "pdftotext": [pack / "bin" / "pdftotext.exe", "-v"],
+            "pdftoppm": [pack / "bin" / "pdftoppm.exe", "-v"],
+            "tesseract": [pack / "bin" / "tesseract.exe", "--version"],
+            "ocrmypdf": [pack / "bin" / "ocrmypdf.exe", "--version"],
+        }
+        versions = {}
+        for name, command in commands.items():
+            result = _run(
+                command,
+                cwd=working,
+                environment=environment,
+                capture_output=True,
+                timeout_seconds=60,
+            )
+            lines = (result.stdout + result.stderr).splitlines()
+            if not lines:
+                raise RuntimeError(f"Windows baseline tool returned no version: {name}")
+            versions[name] = lines[0]
+        expected_versions = {
+            "pdfinfo": str(baseline["native_components"]["poppler"]["version"]),
+            "pdftotext": str(baseline["native_components"]["poppler"]["version"]),
+            "pdftoppm": str(baseline["native_components"]["poppler"]["version"]),
+            "tesseract": str(baseline["native_components"]["tesseract"]["version"]),
+            "ocrmypdf": str(baseline["python_components"]["ocrmypdf"]),
+        }
+        for name, expected in expected_versions.items():
+            if expected not in versions[name]:
+                raise RuntimeError(f"Windows baseline tool version drifted: {name}")
+        language_result = _run(
+            [pack / "bin" / "tesseract.exe", "--list-langs"],
+            cwd=working,
+            environment=environment,
+            capture_output=True,
+            timeout_seconds=60,
+        )
+        languages = {
+            line.strip()
+            for line in (language_result.stdout + language_result.stderr).splitlines()
+            if line.strip() in {"eng", "deu", "osd"}
+        }
+        if languages != {"eng", "deu", "osd"}:
+            raise RuntimeError("Windows baseline Tesseract languages are unavailable")
+        for name in ("gs.exe", "gswin32c.exe", "gswin64c.exe"):
+            if shutil.which(name, path=environment["PATH"]) is not None:
+                raise RuntimeError("Ghostscript entered the Windows baseline runtime")
+
+        source = working / "synthetic scan.pdf"
+        fixture_script = r"""
+import os
+import sys
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
+image = Image.new("RGB", (1800, 1100), "white")
+draw = ImageDraw.Draw(image)
+font = ImageFont.truetype(str(Path(os.environ["WINDIR"]) / "Fonts" / "arial.ttf"), 72)
+lines = [
+    "DOC EVIDENCE 12345",
+    "LOCAL DOCUMENT REVIEW",
+    "SOURCE PROVENANCE RECORD",
+    "EXTRACTED TEXT VALIDATION",
+    "HUMAN CONFIRMATION REQUIRED",
+]
+for index, line in enumerate(lines):
+    draw.text((80, 100 + index * 180), line, fill="black", font=font)
+image.save(sys.argv[1], "PDF", resolution=200.0)
+"""
+        _run(
+            [
+                runtime_root / "python" / "python.exe",
+                "-I",
+                "-B",
+                "-c",
+                fixture_script,
+                source,
+            ],
+            cwd=working,
+            environment=environment,
+            capture_output=True,
+            timeout_seconds=60,
+        )
+        output = working / "ocr output.pdf"
+        sidecar = working / "ocr sidecar.txt"
+        try:
+            ocr = _run(
+                [
+                    pack / "bin" / "ocrmypdf.exe",
+                    "--language",
+                    "eng+deu",
+                    "--rotate-pages",
+                    "--deskew",
+                    "--skip-text",
+                    "--output-type",
+                    "pdf",
+                    "--optimize",
+                    "0",
+                    "--sidecar",
+                    sidecar,
+                    source,
+                    output,
+                ],
+                cwd=working,
+                environment=environment,
+                capture_output=True,
+                timeout_seconds=300,
+            )
+        except subprocess.CalledProcessError as error:
+            detail = ((error.stdout or "") + (error.stderr or ""))[-4000:]
+            raise RuntimeError(
+                f"Ghostscript-free Windows baseline OCR failed: {detail}"
+            ) from error
+        if not output.is_file() or not sidecar.is_file():
+            raise RuntimeError("Windows baseline OCR produced no output")
+        extracted = _run(
+            [pack / "bin" / "pdftotext.exe", output, "-"],
+            cwd=working,
+            environment=environment,
+            capture_output=True,
+            timeout_seconds=60,
+        ).stdout
+        if "12345" not in extracted:
+            raise RuntimeError(
+                "Windows baseline OCR synthetic text was not recoverable"
+            )
+        combined_log = ocr.stdout + ocr.stderr
+        if str(repository_root()) in combined_log:
+            raise RuntimeError("Windows baseline OCR leaked a build-host path")
+        return {
+            "status": "passed",
+            "identity": identity.model_dump(mode="json"),
+            "versions": versions,
+            "languages": sorted(languages),
+            "ghostscript_available": False,
+            "synthetic_ocr_text": "DOC EVIDENCE 12345",
+        }
+
+
+def _read_ready_line(process: subprocess.Popen[str], *, timeout_seconds: float) -> str:
+    stdout = process.stdout
+    if stdout is None:
+        raise RuntimeError("Windows sidecar startup output is unavailable")
+    result: queue.Queue[tuple[bool, str]] = queue.Queue(maxsize=1)
+
+    def read() -> None:
+        try:
+            result.put((True, stdout.readline(64 * 1024 + 1)))
+        except (OSError, ValueError) as error:
+            result.put((False, str(error)))
+
+    threading.Thread(target=read, daemon=True).start()
+    try:
+        ok, value = result.get(timeout=timeout_seconds)
+    except queue.Empty as error:
+        raise RuntimeError("Windows desktop sidecar did not become ready") from error
+    if not ok:
+        raise RuntimeError(f"Windows desktop ready record is unreadable: {value}")
+    if len(value.encode()) > 64 * 1024 or not value.endswith("\n"):
+        raise RuntimeError("Windows desktop ready record exceeded its bound")
+    return value
+
+
+def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
+    runtime_token = secrets.token_hex(32)
+    control_token = secrets.token_hex(32)
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-windows-sidecar-") as raw:
+        working = Path(raw)
+        environment = {
+            **baseline_environment(runtime_root, working),
+            "DOC_EVIDENCE_DESKTOP_RUNTIME_TOKEN": runtime_token,
+            "DOC_EVIDENCE_DESKTOP_HOST_CONTROL_TOKEN": control_token,
+            "DOC_EVIDENCE_DESKTOP_APP_HOME": str(working / "application data"),
+            DESKTOP_PLATFORM_ENV: WINDOWS_PLATFORM,
+            DESKTOP_ARCHITECTURE_ENV: WINDOWS_ARCHITECTURE,
+        }
+        process = subprocess.Popen(
+            [
+                str(runtime_root / "python" / "python.exe"),
+                "-I",
+                "-B",
+                "-m",
+                "doc_evidence.desktop_sidecar",
+                "--expected-protocol",
+                DESKTOP_PROTOCOL_VERSION,
+                "--desktop-origin",
+                WINDOWS_DESKTOP_ORIGIN,
+            ],
+            cwd=working,
+            env=environment,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if process.stdin is None or process.stderr is None:
+            process.kill()
+            raise RuntimeError("Windows desktop smoke pipes are unavailable")
+        try:
+            ready_line = _read_ready_line(process, timeout_seconds=30)
+            ready = json.loads(ready_line)
+            expected_pack = load_baseline_pack(
+                runtime_root / "baseline-pack",
+                expected_platform=WINDOWS_PLATFORM,
+                expected_architecture=WINDOWS_ARCHITECTURE,
+            ).model_dump(mode="json")
+            if (
+                ready.get("protocol_version") != DESKTOP_PROTOCOL_VERSION
+                or ready.get("application_version") != __version__
+                or ready.get("host") != "127.0.0.1"
+                or ready.get("platform") != WINDOWS_PLATFORM
+                or ready.get("architecture") != WINDOWS_ARCHITECTURE
+                or ready.get("baseline_pack") != expected_pack
+            ):
+                raise RuntimeError("Windows desktop ready record is incompatible")
+            url = f"http://127.0.0.1:{ready['port']}/api/v1/desktop/handshake"
+            unauthenticated = urllib.request.Request(
+                url, headers={"Origin": WINDOWS_DESKTOP_ORIGIN}
+            )
+            try:
+                urllib.request.urlopen(unauthenticated, timeout=3)
+            except urllib.error.HTTPError as error:
+                if error.code != 401:
+                    raise RuntimeError(
+                        "Windows desktop smoke returned unexpected auth status"
+                    ) from error
+            else:
+                raise RuntimeError(
+                    "Windows desktop smoke accepted an unauthenticated request"
+                )
+            authenticated = urllib.request.Request(
+                url,
+                headers={
+                    "Authorization": f"Bearer {runtime_token}",
+                    "Origin": WINDOWS_DESKTOP_ORIGIN,
+                },
+            )
+            with urllib.request.urlopen(authenticated, timeout=3) as response:
+                handshake = json.load(response)
+            if handshake.get("protocol_version") != DESKTOP_PROTOCOL_VERSION:
+                raise RuntimeError("Windows desktop smoke handshake is incompatible")
+            process.stdin.close()
+            if process.wait(timeout=20) != 0:
+                raise RuntimeError("Windows desktop sidecar did not stop cleanly")
+            stderr = process.stderr.read()
+            if (
+                runtime_token in ready_line
+                or runtime_token in stderr
+                or control_token in stderr
+            ):
+                raise RuntimeError("Windows desktop smoke leaked a launch credential")
+            return {
+                "status": "passed",
+                "protocol_version": DESKTOP_PROTOCOL_VERSION,
+                "unauthenticated_status": 401,
+                "parent_eof_shutdown": True,
+            }
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+
+
+def smoke_long_path_io(runtime_root: Path) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-windows-long-path-") as raw:
+        working = Path(raw)
+        environment = baseline_environment(runtime_root, working)
+        script = r"""
+import json
+import sys
+from pathlib import Path
+root = Path(sys.argv[1])
+path = root.joinpath(*[("segment-" + str(i).zfill(2) + "-" + "x" * 36) for i in range(7)])
+target = path / "evidence.txt"
+target.parent.mkdir(parents=True)
+target.write_text("long-path-ok", encoding="utf-8")
+if target.read_text(encoding="utf-8") != "long-path-ok":
+    raise RuntimeError("long path round trip changed bytes")
+print(json.dumps({"path_length": len(str(target)), "round_trip": True}))
+"""
+        result = _run(
+            [
+                runtime_root / "python" / "python.exe",
+                "-I",
+                "-B",
+                "-c",
+                script,
+                working / "library with spaces",
+            ],
+            cwd=working,
+            environment=environment,
+            capture_output=True,
+            timeout_seconds=60,
+        )
+        record = json.loads(result.stdout)
+        if record.get("path_length", 0) <= 260 or record.get("round_trip") is not True:
+            raise RuntimeError("standalone Python did not exercise long-path I/O")
+        return {"status": "passed", **record}
+
+
+def audit_runtime(
+    runtime_root: Path,
+    *,
+    repository: Path | None = None,
+    smoke: bool = False,
+) -> dict[str, Any]:
+    root = runtime_root.resolve()
+    repo = (repository or repository_root()).resolve()
+    if not root.is_dir():
+        raise RuntimeError(f"Windows desktop runtime does not exist: {root}")
+    inputs = _load_inputs(repo)
+    manifest = validate_bundle_manifest(root, repo)
+    packages = distribution_inventory(root / "python")
+    forbidden = {
+        str(name).lower().replace("_", "-")
+        for name in inputs["forbidden_python_distributions"]
+    }
+    included = {str(item["name"]).lower().replace("_", "-") for item in packages}
+    unexpected = sorted(forbidden & included)
+    if unexpected:
+        raise RuntimeError(
+            f"development packages entered Windows desktop runtime: {unexpected}"
+        )
+    result = {
+        "schema_version": "doc-evidence.desktop-runtime-audit.v1",
+        "status": "passed",
+        "root": str(root),
+        "tree_sha256": sha256_tree(root),
+        "installed_bytes": sum(
+            path.stat().st_size for path in root.rglob("*") if path.is_file()
+        ),
+        "file_count": sum(1 for path in root.rglob("*") if path.is_file()),
+        "package_count": len(packages),
+        "native_files": audit_runtime_pe_closure(
+            root, system_dlls=list(inputs["baseline_pack"]["system_dlls"])
+        ),
+        "symlinks": _audit_no_symlinks(root),
+        "manifest": {
+            "version": manifest["version"],
+            "python_version": manifest["python_version"],
+            "component_count": len(manifest["components"]),
+        },
+    }
+    if smoke:
+        result["baseline_smoke"] = smoke_baseline_pack(root, inputs)
+        result["sidecar_smoke"] = smoke_sidecar(root)
+        result["long_path_smoke"] = smoke_long_path_io(root)
+    return result
+
+
+def stage_runtime(
+    *,
+    root: Path | None = None,
+    cache: Path | None = None,
+    destination: Path | None = None,
+    replace: bool = False,
+    seven_zip: str | Path | None = None,
+) -> Path:
+    """Transactionally stage and copied-out-smoke the Windows desktop runtime."""
+
+    _require_windows_host()
+    repository = (root or repository_root()).resolve()
+    target = (destination or stage_root(repository)).resolve()
+    cache_directory = (cache or cache_root(repository)).resolve()
+    previous = target.with_name(f"{target.name}.previous")
+    if previous.exists():
+        raise RuntimeError(f"stale Windows runtime rollback exists: {previous}")
+    if target.exists():
+        if not replace:
+            raise RuntimeError(f"Windows runtime staging target exists: {target}")
+        audit_runtime(target, repository=repository, smoke=False)
+        os.replace(target, previous)
+    inputs = _load_inputs(repository)
+    python_archive = acquire_archive(inputs["python"], cache_directory)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="doc-evidence-windows-runtime-", dir=target.parent
+        ) as raw:
+            temporary = Path(raw)
+            python_root = extract_python_runtime(
+                python_archive, temporary / "standalone"
+            )
+            python_components = stage_python_dependencies(
+                repository, python_root, inputs
+            )
+            prune_python_runtime(python_root)
+            staged = temporary / "desktop-runtime"
+            staged.mkdir()
+            os.replace(python_root, staged / "python")
+            baseline_metadata = stage_baseline_pack(
+                repository,
+                staged,
+                inputs,
+                python_components,
+                cache=cache_directory,
+                seven_zip=seven_zip,
+            )
+            write_runtime_manifests(
+                repository,
+                staged,
+                python_archive,
+                inputs,
+                baseline_metadata,
+            )
+            audit_runtime(staged, repository=repository, smoke=False)
+            with tempfile.TemporaryDirectory(
+                prefix="doc-evidence-windows-copy-", dir=target.parent
+            ) as copied_raw:
+                copied = Path(copied_raw) / "copied desktop runtime"
+                shutil.copytree(staged, copied)
+                audit_runtime(copied, repository=repository, smoke=True)
+            os.replace(staged, target)
+    except BaseException:
+        if previous.exists() and not target.exists():
+            os.replace(previous, target)
+        raise
+    if previous.exists():
+        shutil.rmtree(previous)
+    return target
+
+
+def _cli(arguments: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subcommands = parser.add_subparsers(dest="command", required=True)
+    stage = subcommands.add_parser("stage")
+    stage.add_argument("--replace", action="store_true")
+    stage.add_argument("--cache", type=Path)
+    stage.add_argument("--destination", type=Path)
+    stage.add_argument("--seven-zip", type=Path)
+    audit = subcommands.add_parser("audit")
+    audit.add_argument("path", nargs="?", type=Path)
+    audit.add_argument("--smoke", action="store_true")
+    values = parser.parse_args(arguments)
+    if values.command == "stage":
+        path = stage_runtime(
+            cache=values.cache,
+            destination=values.destination,
+            replace=values.replace,
+            seven_zip=values.seven_zip,
+        )
+        print(path)
+        return 0
+    path = values.path or stage_root()
+    print(json.dumps(audit_runtime(path, smoke=values.smoke), indent=2))
+    return 0
+
+
+def main() -> None:
+    raise SystemExit(_cli())
 
 
 def _is_windows_api_set(name: str) -> bool:
@@ -840,3 +1941,112 @@ def audit_flat_pe_closure(
         )
         raise RuntimeError(f"Windows native dependency closure is incomplete: {detail}")
     return records
+
+
+def audit_runtime_pe_closure(
+    root: Path, *, system_dlls: list[str]
+) -> list[dict[str, Any]]:
+    """Audit architecture and bounded loader/package closure for every runtime PE."""
+
+    native = sorted(
+        (
+            path
+            for path in root.rglob("*")
+            if path.is_file()
+            and not path.is_symlink()
+            and path.suffix.casefold() in _NATIVE_SUFFIXES
+        ),
+        key=lambda path: path.relative_to(root).as_posix().casefold(),
+    )
+    if not native:
+        raise RuntimeError("Windows desktop runtime has no PE files")
+    by_name: dict[str, list[Path]] = {}
+    by_relative: dict[str, Path] = {}
+    for path in native:
+        relative = path.relative_to(root).as_posix()
+        folded_relative = relative.casefold()
+        if folded_relative in by_relative:
+            raise RuntimeError(f"Windows runtime repeats a path: {relative}")
+        by_relative[folded_relative] = path
+        by_name.setdefault(path.name.casefold(), []).append(path)
+    search_roots = [
+        root / "python",
+        root / "python" / "DLLs",
+        root / "baseline-pack" / "bin",
+    ]
+    allowed_system = {name.casefold() for name in system_dlls}
+    missing: dict[str, set[str]] = {}
+    ambiguous: dict[str, set[str]] = {}
+    records: list[dict[str, Any]] = []
+    for path in native:
+        pe = inspect_pe(path)
+        relative = path.relative_to(root).as_posix()
+        if pe.machine != PE_X86_64_MACHINE or pe.format != "PE32+":
+            raise RuntimeError(f"Windows runtime PE is not x86_64 PE32+: {relative}")
+        dependencies: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for name in (*pe.imports, *pe.delay_imports):
+            folded = name.casefold()
+            if folded in seen:
+                continue
+            seen.add(folded)
+            if folded in allowed_system or _is_windows_api_set(name):
+                dependencies.append({"name": name, "kind": "windows-system"})
+                continue
+            candidates = by_name.get(folded, [])
+            loader_candidates = []
+            for directory in (path.parent, *search_roots):
+                match = next(
+                    (
+                        candidate
+                        for candidate in candidates
+                        if candidate.parent == directory
+                    ),
+                    None,
+                )
+                if match is not None and match not in loader_candidates:
+                    loader_candidates.append(match)
+            if loader_candidates:
+                resolved = loader_candidates[0]
+                kind = "bundled-loader-path"
+            elif len(candidates) == 1:
+                resolved = candidates[0]
+                kind = "bundled-package-private"
+            elif not candidates:
+                missing.setdefault(relative, set()).add(name)
+                continue
+            else:
+                ambiguous.setdefault(relative, set()).add(name)
+                continue
+            dependencies.append(
+                {
+                    "name": name,
+                    "kind": kind,
+                    "path": resolved.relative_to(root).as_posix(),
+                }
+            )
+        records.append(
+            {
+                "path": relative,
+                "sha256": sha256_file(path),
+                "machine": "x86_64",
+                "format": pe.format,
+                "dependencies": dependencies,
+            }
+        )
+    problems = []
+    for label, values in (("missing", missing), ("ambiguous", ambiguous)):
+        problems.extend(
+            f"{source}: {label} {', '.join(sorted(names, key=str.casefold))}"
+            for source, names in sorted(values.items())
+        )
+    if problems:
+        raise RuntimeError(
+            "Windows runtime PE dependency closure is incomplete: "
+            + "; ".join(problems)
+        )
+    return records
+
+
+if __name__ == "__main__":
+    main()

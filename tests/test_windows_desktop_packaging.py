@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -13,15 +15,20 @@ from unittest.mock import patch
 from doc_evidence.windows_desktop_packaging import (
     BUILD_INPUTS_SCHEMA,
     _load_inputs,
+    _locked_requirements,
     audit_flat_pe_closure,
+    audit_runtime_pe_closure,
     build_inputs_path,
     extract_flat_zip_component,
     extract_language_data,
     extract_poppler_component,
+    extract_python_runtime,
     extract_tesseract_component,
+    prune_python_runtime,
     repository_root,
     sha256_file,
     sha256_tree,
+    stage_pypdfium2_licenses,
 )
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, PortableExecutable
 
@@ -134,6 +141,53 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
                 self.assertRaisesRegex(RuntimeError, "developer-only.dll"),
             ):
                 audit_flat_pe_closure(root, system_dlls=["KERNEL32.dll"])
+
+    def test_runtime_pe_audit_distinguishes_loader_and_package_private_files(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            python = root / "python"
+            package = python / "Lib" / "site-packages" / "example"
+            pack = root / "baseline-pack" / "bin"
+            for directory in (python, package, pack):
+                directory.mkdir(parents=True, exist_ok=True)
+            files = {
+                python / "python.exe": ("python312.dll", "private.dll"),
+                python / "python312.dll": ("KERNEL32.dll",),
+                package / "private.dll": (),
+                pack / "tool.exe": ("python312.dll",),
+            }
+            for path in files:
+                path.write_bytes(b"pe")
+
+            def inspect(path: Path) -> PortableExecutable:
+                return PortableExecutable(
+                    machine=PE_X86_64_MACHINE,
+                    format="PE32+",
+                    imports=files[path],
+                    delay_imports=(),
+                )
+
+            with patch(
+                "doc_evidence.windows_desktop_packaging.inspect_pe",
+                side_effect=inspect,
+            ):
+                records = audit_runtime_pe_closure(root, system_dlls=["KERNEL32.dll"])
+
+            python_record = next(
+                item for item in records if item["path"] == "python/python.exe"
+            )
+            self.assertEqual(
+                [item["kind"] for item in python_record["dependencies"]],
+                ["bundled-loader-path", "bundled-package-private"],
+            )
+            tool_record = next(
+                item for item in records if item["path"] == "baseline-pack/bin/tool.exe"
+            )
+            self.assertEqual(
+                tool_record["dependencies"][0]["path"], "python/python312.dll"
+            )
 
     def test_poppler_extraction_selects_exact_payload_and_data_tree(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -280,3 +334,112 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
         self.assertIn('.arg("ocrmypdf")', source)
         self.assertIn(".args(env::args_os().skip(1))", source)
         self.assertNotIn("cmd.exe", source.casefold())
+
+    def test_windows_build_entrypoint_is_tracked_and_executable(self) -> None:
+        entrypoint = self.root / "scripts" / "build-windows-desktop"
+
+        self.assertTrue(entrypoint.stat().st_mode & stat.S_IXUSR)
+        self.assertIn(
+            "doc_evidence.windows_desktop_packaging",
+            entrypoint.read_text(encoding="utf-8"),
+        )
+        module = (
+            self.root / "src/doc_evidence/windows_desktop_packaging.py"
+        ).read_text(encoding="utf-8")
+        self.assertGreater(
+            module.rfind('if __name__ == "__main__"'),
+            module.rfind("def audit_runtime_pe_closure"),
+        )
+
+    def test_python_extraction_rejects_links_and_windows_collisions(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            archive = root / "python.tar.gz"
+            with tarfile.open(archive, "w:gz") as output:
+                first = tarfile.TarInfo("python/File.txt")
+                first.size = 1
+                output.addfile(first, fileobj=io.BytesIO(b"a"))
+                second = tarfile.TarInfo("python/file.TXT")
+                second.size = 1
+                output.addfile(second, fileobj=io.BytesIO(b"b"))
+            with self.assertRaisesRegex(RuntimeError, "Windows path"):
+                extract_python_runtime(archive, root / "output")
+
+            archive = root / "linked.tar.gz"
+            with tarfile.open(archive, "w:gz") as output:
+                link = tarfile.TarInfo("python/link")
+                link.type = tarfile.SYMTYPE
+                link.linkname = "../escape"
+                output.addfile(link)
+            with self.assertRaisesRegex(RuntimeError, "unsupported member"):
+                extract_python_runtime(archive, root / "linked-output")
+
+    def test_python_pruning_removes_packagers_scripts_and_gui_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            python = Path(raw) / "python"
+            removable = (
+                "Lib/test/example.py",
+                "Lib/site-packages/pip/__init__.py",
+                "Lib/site-packages/PIL/_imagingtk.cp312-win_amd64.pyd",
+                "Lib/site-packages/doc_evidence/windows_desktop_packaging.py",
+                "Lib/site-packages/example/__pycache__/value.pyc",
+                "DLLs/_tkinter.pyd",
+                "Scripts/ocrmypdf.exe",
+            )
+            for relative in removable:
+                path = python / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"unused")
+            keep = python / "Lib/site-packages/doc_evidence/desktop_sidecar.py"
+            keep.parent.mkdir(parents=True, exist_ok=True)
+            keep.write_bytes(b"keep")
+
+            prune_python_runtime(python)
+
+            self.assertTrue(keep.is_file())
+            self.assertFalse(
+                any((python / relative).exists() for relative in removable)
+            )
+
+    def test_locked_requirement_inventory_is_version_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            requirements = Path(raw) / "requirements.txt"
+            requirements.write_text(
+                "example==1.2.3 \\\n+    --hash=sha256:" + "a" * 64 + "\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(_locked_requirements(requirements), ["example==1.2.3"])
+
+    def test_pypdfium_license_staging_selects_declared_license_trees(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            archive = root / "pypdfium2.tar.gz"
+            with tarfile.open(archive, "w:gz") as output:
+                for name, content in (
+                    ("source/LICENSES/Apache-2.0.txt", b"license"),
+                    ("source/BUILD_LICENSES/BSD.txt", b"build license"),
+                    ("source/src/private.py", b"not selected"),
+                ):
+                    member = tarfile.TarInfo(name)
+                    member.size = len(content)
+                    output.addfile(member, io.BytesIO(content))
+            baseline = {
+                "source_archives": [
+                    {
+                        "component_id": "python-pypdfium2",
+                        "cache_name": archive.name,
+                        "url": "https://example.invalid/pypdfium2.tar.gz",
+                        "sha256": sha256_file(archive),
+                    }
+                ]
+            }
+            runtime = root / "runtime"
+            runtime.mkdir()
+
+            copied = stage_pypdfium2_licenses(runtime, baseline, cache=root)
+
+            self.assertEqual(len(copied), 2)
+            self.assertFalse(
+                (runtime / "baseline-pack/licenses/python/pypdfium2/src").exists()
+            )

@@ -149,9 +149,11 @@ language data, sources, the Microsoft app-local CRT, and 55 selected native
 payload hashes. The PE import/delay-import audit closes over those exact
 extracted files. Safe pack assembly, exact language-data selection, a
 schema-checked Windows pack manifest, and relocatable OCRmyPDF launcher source
-have landed; both Python locks resolve for the Windows x86_64 target. Target-
-native launcher compilation/runtime assembly, dependency compliance, copied-
-out OCR, and installed x86_64 acceptance remain release gates.
+have landed. Both Python locks materialize a post-prune 123-file x86_64 PE
+graph, and the transactional target-only builder owns frozen installation,
+runtime/component/file manifests, copied-location OCR and sidecar smokes, and
+long-path I/O. Target-native execution, dependency compliance, and installed
+x86_64 acceptance remain release gates.
 Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding

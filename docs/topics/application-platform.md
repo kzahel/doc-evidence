@@ -379,8 +379,24 @@ expected five tools, three languages, two support files, 51 DLL records, and
 56 x86_64 PE records, using an existing x86_64 executable only in the launcher
 slot because the MSVC launcher build is target-native. Locked dry runs also
 resolve 20 production and 27 baseline Python distributions for CPython 3.12 on
-Windows x86_64. Neither exercise is presented as target-native runtime or OCR
-acceptance.
+Windows x86_64. The locks were subsequently materialized for the target and,
+after applying the runtime pruning contract, their standalone Python plus
+baseline pack form a closed 123-file PE graph. Two hashed pikepdf private DLL
+imports resolve outside ordinary loader roots; the target-native import and OCR
+smokes remain mandatory rather than treating static uniqueness as execution
+proof.
+
+The transactional Windows builder now owns standalone archive extraction with
+case-collision/link rejection, frozen production and baseline installation,
+project installation, GUI/test/installer pruning, exact pypdfium2 license
+selection, package/component/file manifests, schema and target validation, and
+rollback. It audits every staged PE as x86_64 and records its bounded loader,
+package-private, or Windows-system closure. Before publication, a copied
+runtime must execute all five tools, a real English/German OCR round trip, the
+authenticated sidecar handshake and parent-EOF shutdown, and an actual path
+longer than 260 characters. These gates are implemented but have not yet run
+on the Windows target, so no target-native runtime or OCR acceptance is
+claimed.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original

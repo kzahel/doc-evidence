@@ -340,11 +340,13 @@ manifest and dependency-free PE import/delay-import audit have landed, with 55
 selected native payload hashes. The exact Microsoft app-local CRT input closes
 that flat native dependency graph. Safe exact pack assembly, corrected archive-
 bound language hashes, the Windows pack manifest, and the relocatable OCRmyPDF
-launcher source have landed; target-native compilation remains open. Microsoft
-redistribution review, third-party Windows dependency compliance, target-native
-assembly, copied-out OCR, and native Windows x86_64 installed-artifact
-acceptance remain release-blocking. Do not touch signing credentials,
-repository/release setup, notarization, updater setup, tags, or
+launcher source have landed. Exact Windows wheels form a closed 123-file PE
+graph after pruning. The transactional target-only runtime builder and copied-
+location OCR, sidecar, and long-path gates are implemented but have not run on
+Windows. Microsoft redistribution review, third-party Windows dependency
+compliance, target-native assembly/execution, and native Windows x86_64
+installed-artifact acceptance remain release-blocking. Do not touch signing
+credentials, repository/release setup, notarization, updater setup, tags, or
 publication without explicit maintainer authorization. Heavy extractor packs
 and alternative release channels remain outside it.
 
