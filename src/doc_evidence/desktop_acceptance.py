@@ -526,6 +526,27 @@ def run_acceptance(
             ):
                 raise TypeError("desktop document contract is invalid")
             document_id = document["document_id"]
+            if (
+                not isinstance(document.get("page_count"), int)
+                or document["page_count"] < 1
+            ):
+                raise RuntimeError(
+                    "desktop inventory did not produce renderable PDF metadata: "
+                    + json.dumps(
+                        {
+                            key: document.get(key)
+                            for key in (
+                                "media_type",
+                                "page_count",
+                                "inventory_status",
+                                "extraction_status",
+                                "warnings",
+                            )
+                        },
+                        ensure_ascii=True,
+                        sort_keys=True,
+                    )
+                )
             encoded_document = urllib.parse.quote(document_id, safe="")
             rendered = first.bytes_request(
                 f"/api/v1/libraries/{encoded_library}/documents/"
