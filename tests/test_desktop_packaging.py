@@ -13,16 +13,18 @@ from doc_evidence.desktop_packaging import (
     _archive_path,
     _audit_symlinks,
     _dependency_license_files,
+    _excluded_baseline_distributions,
     _files_containing,
+    _included_locked_requirements,
     _installed_homebrew_bottle,
     _load_inputs,
     _python_binary_compliance_record,
-    _python_license_conclusion,
     _python_native_inventory,
     _recover_rust_license_files,
     _requires_corresponding_source,
     _rust_license_expression,
     _spdx_license,
+    _unreconciled_nested_native,
     compliance_root,
     create_unsigned_dmg,
     generate_compliance_preflight,
@@ -61,6 +63,10 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertEqual(
             baseline["python_components"],
             {"ocrmypdf": "17.8.1", "pypdfium2": "5.5.0"},
+        )
+        self.assertEqual(
+            _excluded_baseline_distributions(inputs),
+            {"pi-heif"},
         )
         self.assertEqual(
             set(baseline["tools"]),
@@ -312,20 +318,19 @@ class DesktopPackagingTest(unittest.TestCase):
                     repository=root,
                     output=output,
                 )
-        self.assertEqual(
-            _python_license_conclusion(
-                {"name": "pi_heif", "version": "1.4.0"},
-                {
-                    "python_license_conclusions": {
-                        "pi-heif": {
-                            "version": "1.4.0",
-                            "license_concluded": "BSD-3-Clause AND LGPL-3.0-only",
-                        }
-                    }
-                },
-            ),
-            "BSD-3-Clause AND LGPL-3.0-only",
-        )
+
+    def test_excluded_optional_requirement_is_absent_from_pack_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            requirements = Path(raw) / "requirements.txt"
+            requirements.write_text(
+                "ocrmypdf==17.8.1\npi-heif==1.4.0\npillow==12.3.0\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                _included_locked_requirements(requirements, {"pi-heif"}),
+                ["ocrmypdf==17.8.1", "pillow==12.3.0"],
+            )
 
     def test_python_native_inventory_distinguishes_nested_libraries(self) -> None:
         native = [
@@ -354,6 +359,22 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertFalse(records[0]["wheel_owned"])
         self.assertFalse(records[1]["nested_dependency"])
         self.assertTrue(records[2]["nested_dependency"])
+        self.assertEqual(
+            _unreconciled_nested_native(records, []),
+            [records[2]],
+        )
+        self.assertEqual(
+            _unreconciled_nested_native(
+                records,
+                [{"binary_path": records[2]["path"]}],
+            ),
+            [],
+        )
+        with self.assertRaisesRegex(RuntimeError, "absent from native inventory"):
+            _unreconciled_nested_native(
+                records,
+                [{"binary_path": "python/missing.dylib"}],
+            )
 
     def test_python_binary_compliance_binds_exact_wheel_and_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

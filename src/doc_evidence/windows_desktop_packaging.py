@@ -391,6 +391,31 @@ def _locked_requirements(path: Path) -> list[str]:
     return values
 
 
+def _excluded_baseline_distributions(inputs: Mapping[str, Any]) -> set[str]:
+    values = inputs["baseline_pack"].get("excluded_python_distributions")
+    if not isinstance(values, list) or not values:
+        raise TypeError("excluded Windows baseline Python distributions are invalid")
+    normalized = {
+        str(value).lower().replace("_", "-")
+        for value in values
+        if isinstance(value, str) and value
+    }
+    if len(normalized) != len(values):
+        raise RuntimeError(
+            "excluded Windows baseline Python distributions repeat or are invalid"
+        )
+    return normalized
+
+
+def _included_locked_requirements(requirements: Path, excluded: set[str]) -> list[str]:
+    included = []
+    for value in _locked_requirements(requirements):
+        name = value.split("==", 1)[0].lower().replace("_", "-")
+        if name not in excluded:
+            included.append(value)
+    return included
+
+
 def stage_python_dependencies(
     repository: Path,
     python_root: Path,
@@ -456,9 +481,22 @@ def stage_python_dependencies(
             cwd=repository,
             timeout_seconds=300,
         )
+        excluded = _excluded_baseline_distributions(inputs)
+        _run(
+            [
+                "uv",
+                "pip",
+                "uninstall",
+                "--python",
+                python,
+                *sorted(excluded),
+            ],
+            cwd=repository,
+            timeout_seconds=300,
+        )
     finally:
         requirements.unlink(missing_ok=True)
-    return _locked_requirements(baseline)
+    return _included_locked_requirements(baseline, excluded)
 
 
 def _remove_path(path: Path) -> None:
@@ -1157,7 +1195,7 @@ def write_runtime_manifests(
     forbidden = {
         str(name).lower().replace("_", "-")
         for name in inputs["forbidden_python_distributions"]
-    }
+    } | _excluded_baseline_distributions(inputs)
     package_license_files = baseline_metadata["package_license_files"]
     baseline = inputs["baseline_pack"]
     for package in packages:
@@ -1754,6 +1792,7 @@ def audit_runtime(
     *,
     repository: Path | None = None,
     smoke: bool = False,
+    allow_excluded_for_replacement: bool = False,
 ) -> dict[str, Any]:
     root = runtime_root.resolve()
     repo = (repository or repository_root()).resolve()
@@ -1766,11 +1805,17 @@ def audit_runtime(
         str(name).lower().replace("_", "-")
         for name in inputs["forbidden_python_distributions"]
     }
+    excluded = _excluded_baseline_distributions(inputs)
     included = {str(item["name"]).lower().replace("_", "-") for item in packages}
     unexpected = sorted(forbidden & included)
     if unexpected:
         raise RuntimeError(
             f"development packages entered Windows desktop runtime: {unexpected}"
+        )
+    unexpected_excluded = sorted(excluded & included)
+    if unexpected_excluded and not allow_excluded_for_replacement:
+        raise RuntimeError(
+            f"excluded packages entered Windows desktop runtime: {unexpected_excluded}"
         )
     result = {
         "schema_version": "doc-evidence.desktop-runtime-audit.v1",
@@ -1953,7 +1998,12 @@ def stage_runtime(
     if target.exists():
         if not replace:
             raise RuntimeError(f"Windows runtime staging target exists: {target}")
-        audit_runtime(target, repository=repository, smoke=False)
+        audit_runtime(
+            target,
+            repository=repository,
+            smoke=False,
+            allow_excluded_for_replacement=True,
+        )
         os.replace(target, previous)
     inputs = _load_inputs(repository)
     python_archive = acquire_archive(inputs["python"], cache_directory)

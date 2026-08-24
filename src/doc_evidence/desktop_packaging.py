@@ -364,6 +364,36 @@ def _locked_requirements(path: Path) -> list[str]:
     return values
 
 
+def _excluded_baseline_distributions(inputs: Mapping[str, Any]) -> set[str]:
+    baseline = inputs.get("baseline_pack")
+    values = (
+        baseline.get("excluded_python_distributions")
+        if isinstance(baseline, Mapping)
+        else None
+    )
+    if not isinstance(values, list) or not values:
+        raise TypeError("excluded baseline Python distributions are invalid")
+    normalized = {
+        str(value).lower().replace("_", "-")
+        for value in values
+        if isinstance(value, str) and value
+    }
+    if len(normalized) != len(values):
+        raise RuntimeError(
+            "excluded baseline Python distributions repeat or are invalid"
+        )
+    return normalized
+
+
+def _included_locked_requirements(requirements: Path, excluded: set[str]) -> list[str]:
+    included = []
+    for value in _locked_requirements(requirements):
+        name = value.split("==", 1)[0].lower().replace("_", "-")
+        if name not in excluded:
+            included.append(value)
+    return included
+
+
 def _stage_baseline_python(
     repository: Path,
     python_root: Path,
@@ -391,7 +421,19 @@ def _stage_baseline_python(
         ],
         cwd=repository,
     )
-    return _locked_requirements(requirements)
+    excluded = _excluded_baseline_distributions(inputs)
+    _run(
+        [
+            "uv",
+            "pip",
+            "uninstall",
+            "--python",
+            python_root / "bin" / "python3",
+            *sorted(excluded),
+        ],
+        cwd=repository,
+    )
+    return _included_locked_requirements(requirements, excluded)
 
 
 def _thin_python_native(python_root: Path) -> list[str]:
@@ -1066,7 +1108,7 @@ def _write_manifests(
     forbidden = {
         str(name).lower().replace("_", "-")
         for name in inputs["forbidden_python_distributions"]
-    }
+    } | _excluded_baseline_distributions(inputs)
     package_license_files = baseline_metadata.get("package_license_files")
     if not isinstance(package_license_files, dict):
         raise TypeError("baseline Python license inventory is invalid")
@@ -1257,6 +1299,7 @@ def stage_runtime(
             repository=repository,
             smoke=False,
             require_baseline=False,
+            allow_excluded_for_replacement=True,
         )
         os.replace(target, previous)
     inputs = _load_inputs(repository)
@@ -1688,6 +1731,7 @@ def audit_runtime(
     repository: Path | None = None,
     smoke: bool = False,
     require_baseline: bool = True,
+    allow_excluded_for_replacement: bool = False,
 ) -> dict[str, Any]:
     root = runtime_root.resolve()
     repo = (repository or repository_root()).resolve()
@@ -1699,15 +1743,22 @@ def audit_runtime(
         require_baseline=require_baseline,
     )
     packages = _distribution_inventory(root / "python")
+    inputs = _load_inputs(repo)
     forbidden = {
         str(name).lower().replace("_", "-")
-        for name in _load_inputs(repo)["forbidden_python_distributions"]
+        for name in inputs["forbidden_python_distributions"]
     }
+    excluded = _excluded_baseline_distributions(inputs)
     included = {str(package["name"]).lower().replace("_", "-") for package in packages}
     unexpected = sorted(forbidden & included)
     if unexpected:
         raise RuntimeError(
             f"development packages entered desktop runtime: {unexpected}"
+        )
+    unexpected_excluded = sorted(excluded & included)
+    if unexpected_excluded and not allow_excluded_for_replacement:
+        raise RuntimeError(
+            f"excluded packages entered desktop runtime: {unexpected_excluded}"
         )
     result = {
         "schema_version": "doc-evidence.desktop-runtime-audit.v1",
@@ -2964,6 +3015,24 @@ def _python_native_inventory(
     return records
 
 
+def _unreconciled_nested_native(
+    python_native: Sequence[Mapping[str, Any]],
+    binary_compliance_records: Sequence[Mapping[str, Any]],
+) -> list[Mapping[str, Any]]:
+    reconciled = {str(record["binary_path"]) for record in binary_compliance_records}
+    inventory_paths = {str(record["path"]) for record in python_native}
+    unknown = sorted(reconciled - inventory_paths)
+    if unknown:
+        raise RuntimeError(
+            f"Python binary compliance paths are absent from native inventory: {unknown}"
+        )
+    return [
+        record
+        for record in python_native
+        if record["nested_dependency"] and str(record["path"]) not in reconciled
+    ]
+
+
 def _python_binary_compliance_record(
     component: Mapping[str, Any],
     *,
@@ -3356,18 +3425,22 @@ def generate_compliance_preflight(
             nested_native = [
                 item for item in python_native if item["nested_dependency"]
             ]
-            blockers.extend(
-                [
+            unreconciled_nested_native = _unreconciled_nested_native(
+                python_native,
+                binary_compliance_records,
+            )
+            if unreconciled_nested_native:
+                blockers.append(
                     {
                         "code": "unflattened-python-wheel-native-components",
                         "detail": (
-                            f"{len(nested_native)} nested native libraries across "
+                            f"{len(unreconciled_nested_native)} nested native libraries "
+                            "across "
                             "Python wheels need complete component/source "
                             "reconciliation"
                         ),
-                    },
-                ]
-            )
+                    }
+                )
             if not download_sources:
                 blockers.append(
                     {
@@ -3402,6 +3475,12 @@ def generate_compliance_preflight(
                 "python_native_object_count": len(python_native),
                 "python_wheel_native_object_count": len(wheel_native),
                 "python_nested_native_dependency_count": len(nested_native),
+                "python_reconciled_nested_native_dependency_count": (
+                    len(nested_native) - len(unreconciled_nested_native)
+                ),
+                "python_unreconciled_nested_native_dependency_count": len(
+                    unreconciled_nested_native
+                ),
                 "rust_dependency_count": len(rust_records),
                 "node_dependency_count": len(node_records),
                 "rust_missing_license_text_count": len(missing_rust_licenses),

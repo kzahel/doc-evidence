@@ -19,11 +19,10 @@
       "ocrmypdf": "17.8.1",
       "pypdfium2": "5.5.0"
     },
+    "excluded_python_distributions": [
+      "pi-heif"
+    ],
     "python_license_conclusions": {
-      "pi-heif": {
-        "version": "1.4.0",
-        "license_concluded": "BSD-3-Clause AND LGPL-3.0-only"
-      },
       "pypdfium2": {
         "version": "5.5.0",
         "license_declared": "Apache-2.0 OR BSD-3-Clause",

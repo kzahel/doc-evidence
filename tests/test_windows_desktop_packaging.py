@@ -14,6 +14,8 @@ from unittest.mock import patch
 
 from doc_evidence.windows_desktop_packaging import (
     BUILD_INPUTS_SCHEMA,
+    _excluded_baseline_distributions,
+    _included_locked_requirements,
     _load_inputs,
     _locked_requirements,
     application_executable_path,
@@ -54,6 +56,10 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
         baseline = inputs["baseline_pack"]
         self.assertEqual(baseline["pack_id"], "baseline-windows-x86_64")
         self.assertEqual(
+            _excluded_baseline_distributions(inputs),
+            {"pi-heif"},
+        )
+        self.assertEqual(
             baseline["requirements_sha256"],
             sha256_file(self.root / "desktop/packaging/baseline-requirements.txt"),
         )
@@ -82,6 +88,19 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
                 "tessdata-4.1.0/osd.traineddata",
             },
         )
+
+    def test_excluded_optional_requirement_is_absent_from_pack_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            requirements = Path(raw) / "requirements.txt"
+            requirements.write_text(
+                "ocrmypdf==17.8.1\npi_heif==1.4.0\npillow==12.3.0\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                _included_locked_requirements(requirements, {"pi-heif"}),
+                ["ocrmypdf==17.8.1", "pillow==12.3.0"],
+            )
 
     def test_manifest_rejects_unsafe_or_unresolved_payload_changes(self) -> None:
         document = json.loads(build_inputs_path(self.root).read_text(encoding="utf-8"))

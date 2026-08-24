@@ -307,9 +307,9 @@ all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
 SBOMs. Formula selection is bound to the installed package version, source
 hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
 recipes are reusable from an ignored cache. The preflight remains fail-closed
-for publication on the 32 third-party libraries nested in Python wheels that
-need flattened component/source reconciliation (the other 45 Python native
-objects now have exact top-level ownership). The former 19-crate Rust license-
+for publication on the 29 unreconciled third-party libraries nested in the
+Pillow and pikepdf wheels; the separately reconciled PDFium dylib is not
+counted as unresolved. The former 19-crate Rust license-
 text blocker is closed by a tracked exact-version inventory that binds each
 package's Cargo VCS revision and repository path to hash-pinned upstream or
 SPDX 3.27.0 license texts. Required top-level copyleft/MPL source archives are
@@ -318,10 +318,17 @@ aggregate SPDX already includes all 253 target-resolved Rust dependencies and
 11 conservative production Node dependencies, with 426 available license
 files and exact registry source checksums.
 
-The baseline wheel audit overrides `pi_heif` 1.4.0's wrapper-only BSD package
-metadata with `BSD-3-Clause AND LGPL-3.0-only`, as required by the wheel's own
-bundled notice for libheif/libde265. The exact-version override fails closed on
-dependency drift and keeps both license files in the component manifest.
+The exact `pi_heif` 1.4.0 wheel was removed from both release runtimes after
+the flattening audit proved that it conveys libheif 1.23.0, a version affected
+by upstream security advisory GHSA-xpw3-9rhw-482x. `pi-heif` is discontinued,
+OCRmyPDF treats HEIF conversion as optional, and HEIF input is not a baseline
+release promise. The platform manifests therefore exclude that distribution
+after lock resolution, and runtime manifest generation and audits reject its
+re-entry. The rebuilt macOS tree contains 41 Python distributions, 3,819 files,
+and 109 Mach-O objects at
+`ab987e4fea7573eb31fe03dccd656bdb378e4a3415ea12577f5cc470040fd28e`;
+sidecar and real Ghostscript-free OCR smokes pass without `pi_heif`, libheif,
+or libde265.
 
 The pypdfium2/PDFium aggregate now uses a version- and target-specific SPDX
 `LicenseRef` rather than an invalid comma-separated pseudo-expression. Its

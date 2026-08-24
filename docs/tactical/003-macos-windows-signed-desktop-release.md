@@ -51,10 +51,10 @@ packaging:
   authorization, dual credentials, standalone CPython 3.12.12 runtime,
   Poppler/Tesseract/OCRmyPDF/PDFium baseline pack, final-byte audit, real OCR
   smoke, and unsigned DMG proof have landed.
-- Tactical 002's compliance preflight currently blocks release on a reviewed
-  pypdfium2 SPDX conclusion, 32 nested wheel libraries, and 19 Rust crate
-  license texts. Those are entry work for this tactical, not acceptable
-  release exceptions.
+- Tactical 002's compliance preflight entered this tactical blocked on a
+  reviewed pypdfium2 SPDX conclusion, 32 nested wheel libraries, and 19 Rust
+  crate license texts. The Rust and pypdfium2 classes are now closed; the
+  remaining wheel-native component work is still release-blocking.
 - The repository does not yet have a release remote, tag workflow, updater
   configuration, product-specific updater key/route, or release finalizer.
 - The pinned [Desktop Release Kit](../references.md#desktop-release-kit-cross-platform-release-reference)
@@ -726,6 +726,29 @@ SPDX will include the corresponding extracted-license record after the runtime
 and application are rebuilt. The 32 nested-wheel-native component records
 remain the only one of Tactical 002's three compliance blocker classes still
 open.
+
+Flattening the remaining wheel libraries found a security defect before it
+became release paperwork. The exact `pi_heif` 1.4.0 macOS wheel contains
+libheif 1.23.0, which upstream identifies as affected by
+[GHSA-xpw3-9rhw-482x](https://github.com/strukturag/libheif/security/advisories/GHSA-xpw3-9rhw-482x)
+and fixes in 1.23.1. The upstream `pi-heif` package is discontinued at 1.4.0,
+while OCRmyPDF documents HEIF conversion as an optional feature whose absence
+does not break its PDF pipeline. HEIF input is not part of this tactical's
+baseline promise, so both platform manifests now explicitly exclude
+`pi-heif` after resolving the frozen lock. Runtime manifest generation and
+ordinary audits reject its re-entry on either platform. Only the read-only
+pre-replacement audit accepts that one newly excluded distribution, allowing
+the transactional builder to migrate an older staged tree without weakening
+the new output gate.
+
+The rebuilt macOS runtime contains 41 Python distributions, 3,819 files, and
+109 Mach-O objects at tree
+`ab987e4fea7573eb31fe03dccd656bdb378e4a3415ea12577f5cc470040fd28e`.
+Neither `pi_heif`, libheif, nor libde265 is present. The exact copied-out
+sidecar authentication/parent-EOF smoke and real Ghostscript-free OCR smoke
+pass. This removes two nested libraries; PDFium's separately reconciled dylib
+is no longer counted as unresolved, leaving 29 Pillow/pikepdf native-library
+records to flatten.
 
 ## Falsifiable Stopping Condition
 
