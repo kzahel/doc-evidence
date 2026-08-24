@@ -21,6 +21,7 @@ from doc_evidence.windows_desktop_packaging import (
     application_executable_path,
     audit_flat_pe_closure,
     audit_runtime_pe_closure,
+    authenticode_status,
     baseline_environment,
     build_application,
     build_inputs_path,
@@ -415,6 +416,37 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
 
         which.assert_called_once_with("npm.cmd")
         self.assertEqual(run.call_args.args[0][0], r"C:\Program Files\nodejs\npm.cmd")
+
+    def test_authenticode_path_uses_environment_not_command_interpolation(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=(
+                '{"Status":"NotSigned","StatusMessage":"not signed","Subject":null}'
+            ),
+            stderr="",
+        )
+        with (
+            patch(
+                "doc_evidence.windows_desktop_packaging.shutil.which",
+                return_value=r"C:\Program Files\PowerShell\7\pwsh.exe",
+            ),
+            patch(
+                "doc_evidence.windows_desktop_packaging._run",
+                return_value=completed,
+            ) as run,
+        ):
+            result = authenticode_status(Path(r"C:\candidate with spaces.exe"))
+
+        arguments = run.call_args.args[0]
+        environment = run.call_args.kwargs["environment"]
+        self.assertEqual(result["status"], "NotSigned")
+        self.assertNotIn("candidate with spaces", " ".join(arguments))
+        self.assertEqual(
+            environment["DOC_EVIDENCE_AUTHENTICODE_PATH"],
+            str(Path(r"C:\candidate with spaces.exe").resolve()),
+        )
+        self.assertIn("$env:DOC_EVIDENCE_AUTHENTICODE_PATH", arguments[-1])
 
     def test_windows_tauri_package_is_current_user_nsis(self) -> None:
         config = json.loads(

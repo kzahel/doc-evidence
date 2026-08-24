@@ -1873,7 +1873,8 @@ def authenticode_status(path: Path) -> dict[str, str | None]:
     if powershell is None:
         raise RuntimeError("PowerShell is required for Authenticode audit")
     script = (
-        "$signature = Get-AuthenticodeSignature -LiteralPath $args[0]; "
+        "$signature = Get-AuthenticodeSignature "
+        "-LiteralPath $env:DOC_EVIDENCE_AUTHENTICODE_PATH; "
         "$subject = if ($null -eq $signature.SignerCertificate) {$null} "
         "else {$signature.SignerCertificate.Subject}; "
         "[ordered]@{Status=[string]$signature.Status; "
@@ -1888,8 +1889,11 @@ def authenticode_status(path: Path) -> dict[str, str | None]:
             "-NonInteractive",
             "-Command",
             script,
-            str(path.resolve()),
         ],
+        environment={
+            **os.environ,
+            "DOC_EVIDENCE_AUTHENTICODE_PATH": str(path.resolve()),
+        },
         capture_output=True,
         timeout_seconds=60,
     )
