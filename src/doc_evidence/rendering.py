@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import shutil
 import struct
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
 from doc_evidence.errors import DependencyError, DocEvidenceError
 from doc_evidence.extraction import command_version, run_command
-from doc_evidence.util import atomic_write_json, hash_json, isoformat_z
+from doc_evidence.util import atomic_write_json, hash_file, hash_json, isoformat_z
 
 PAGE_RENDER_SCHEMA_VERSION = 1
 PAGE_RENDER_DPI = 144
@@ -87,22 +88,31 @@ class PageRenderer:
         page_dir.mkdir(parents=True, exist_ok=True)
         stem = output.with_suffix("")
         before = source.stat()
-        result = run_command(
-            [
-                self.executable,
-                "-f",
-                str(page),
-                "-l",
-                str(page),
-                "-singlefile",
-                "-r",
-                str(PAGE_RENDER_DPI),
-                "-png",
-                str(source),
-                str(stem),
-            ],
-            timeout_seconds=self.timeout_seconds,
-        )
+        with tempfile.TemporaryDirectory(prefix="render-source-", dir=page_dir) as raw:
+            render_source = Path(raw) / "source.pdf"
+            with (
+                source.open("rb") as source_stream,
+                render_source.open("xb") as target_stream,
+            ):
+                shutil.copyfileobj(source_stream, target_stream)
+            if hash_file(render_source).content_sha256 != source_sha256:
+                raise DocEvidenceError("source bytes changed while staging page render")
+            result = run_command(
+                [
+                    self.executable,
+                    "-f",
+                    str(page),
+                    "-l",
+                    str(page),
+                    "-singlefile",
+                    "-r",
+                    str(PAGE_RENDER_DPI),
+                    "-png",
+                    str(render_source),
+                    str(stem),
+                ],
+                timeout_seconds=self.timeout_seconds,
+            )
         after = source.stat()
         error: str | None = None
         width = 0
