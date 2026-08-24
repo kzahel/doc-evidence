@@ -635,9 +635,10 @@ The fifth checkpoint begins the Windows runtime and extractor-pack boundary
 with exact, reviewable inputs rather than a target-local package-manager
 installation. The Windows x86_64 build manifest pins CPython 3.12.12 build
 20260114, the locked production requirements, a Poppler 26.02.0 distribution,
-an official Tesseract 5.5.3 installer, the selected English/German/orientation
-data, their source archives, and every one of the 52 selected native payload
-hashes. Poppler's 271-file data tree also has a deterministic tree identity.
+an official Tesseract 5.5.3 installer, the exact Microsoft 14.44 x64 app-local
+CRT payload, the selected English/German/orientation data, their available
+source archives, and every one of the 55 selected native payload hashes.
+Poppler's 271-file data tree also has a deterministic tree identity.
 
 A dependency-free PE parser reads architecture, PE32/PE32+ identity, ordinary
 imports, and delay imports without requiring Visual Studio or LLVM during the
@@ -649,12 +650,15 @@ and the parser also reads the actual pinned Poppler binaries locally.
 This is an input and audit checkpoint, not a staged runtime pass. The two
 upstream Windows distributions bundle many third-party DLLs, so each remains
 `NOASSERTION` with an explicit file-level license/source blocker instead of
-inheriting the Poppler or Tesseract top-level license. Poppler additionally
-imports the app-local MSVC C++ runtime; its exact licensed input and payload
-hashes must be recorded before closure can pass. Target-native dependency
-installation, Python-wheel PE closure, copied-out sidecar/OCR smoke, actual
-greater-than-260-character I/O, and final Windows x86_64 installed acceptance
-remain open.
+inheriting the Poppler or Tesseract top-level license. Poppler's required
+`msvcp140`, `vcruntime140`, and `vcruntime140_1` files now come from a pinned
+Microsoft Visual Studio 17.14/CRT 14.44 VSIX; the latter two exactly match the
+pinned CPython archive. Selecting all 55 declared files from the three real
+archives produces a complete flat PE dependency closure. Microsoft app-local
+redistribution terms remain an explicit compliance blocker rather than an
+assumed license conclusion. Target-native dependency installation,
+Python-wheel PE closure, copied-out sidecar/OCR smoke, actual greater-than-260-
+character I/O, and final Windows x86_64 installed acceptance remain open.
 
 ## Falsifiable Stopping Condition
 

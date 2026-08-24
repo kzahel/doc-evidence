@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
-from collections.abc import Mapping
-from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import urllib.parse
+import urllib.request
+import zipfile
+from collections.abc import Mapping, Sequence
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, inspect_pe
@@ -14,7 +21,7 @@ from doc_evidence.windows_pe import PE_X86_64_MACHINE, inspect_pe
 BUILD_INPUTS_SCHEMA = "doc-evidence.desktop-build-inputs.v1"
 WINDOWS_PLATFORM = "windows"
 WINDOWS_ARCHITECTURE = "x86_64"
-EXPECTED_NATIVE_COMPONENTS = {"poppler", "tesseract"}
+EXPECTED_NATIVE_COMPONENTS = {"msvc-runtime", "poppler", "tesseract"}
 EXPECTED_TOOLS = {"pdfinfo", "pdftoppm", "pdftotext", "tesseract"}
 _HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _NATIVE_SUFFIXES = {".dll", ".exe", ".pyd"}
@@ -34,12 +41,45 @@ def cache_root(root: Path | None = None) -> Path:
     return base / "results" / "desktop" / "cache" / "windows-x86_64"
 
 
+def stage_root(root: Path | None = None) -> Path:
+    base = root or repository_root()
+    return base / "desktop" / "src-tauri" / "resources" / "desktop-runtime"
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def sha256_tree(root: Path) -> str:
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.is_symlink():
+            continue
+        relative = path.relative_to(root).as_posix().encode()
+        digest.update(b"F\0" + relative + b"\0")
+        digest.update(bytes.fromhex(sha256_file(path)))
+    return digest.hexdigest()
+
+
+def _run(
+    arguments: Sequence[str | Path],
+    *,
+    cwd: Path | None = None,
+    capture_output: bool = False,
+    timeout_seconds: float | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(argument) for argument in arguments],
+        cwd=cwd,
+        check=True,
+        text=True,
+        capture_output=capture_output,
+        timeout=timeout_seconds,
+    )
 
 
 def _require_sha256(value: object, purpose: str) -> str:
@@ -164,7 +204,14 @@ def _load_inputs(
         payloads[component_id] = _validate_payload(
             raw.get("payload_sha256"), f"Windows {component_id}"
         )
-        _validate_source_archives(raw.get("source_archives"), f"Windows {component_id}")
+        if component_id == "msvc-runtime":
+            source_url = raw.get("source_url")
+            if not isinstance(source_url, str) or not source_url.startswith("https://"):
+                raise RuntimeError("Windows MSVC runtime source record is invalid")
+        else:
+            _validate_source_archives(
+                raw.get("source_archives"), f"Windows {component_id}"
+            )
 
     tools = baseline.get("tools")
     if not isinstance(tools, Mapping) or set(tools) != EXPECTED_TOOLS:
@@ -204,6 +251,238 @@ def _load_inputs(
             raise RuntimeError(f"Windows system DLL is repeated: {name}")
         folded_system.add(folded)
     return document
+
+
+def archive_path(record: Mapping[str, Any], cache: Path) -> Path:
+    name = _require_name(record.get("cache_name"), "desktop input archive")
+    parsed = urllib.parse.urlparse(str(record.get("url", "")))
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise RuntimeError("desktop input archive URL is invalid")
+    return cache / name
+
+
+def acquire_archive(record: Mapping[str, Any], cache: Path) -> Path:
+    """Acquire one hash-pinned input without accepting a partial download."""
+
+    destination = archive_path(record, cache)
+    expected = _require_sha256(record.get("sha256"), "desktop input archive")
+    cache.mkdir(parents=True, exist_ok=True)
+    if destination.is_file() and sha256_file(destination) == expected:
+        return destination
+    if destination.exists():
+        destination.unlink()
+    partial = destination.with_name(f"{destination.name}.partial")
+    partial.unlink(missing_ok=True)
+    try:
+        with (
+            urllib.request.urlopen(str(record["url"]), timeout=60) as response,
+            partial.open("xb") as output,
+        ):
+            shutil.copyfileobj(response, output)
+        actual = sha256_file(partial)
+        if actual != expected:
+            raise RuntimeError(
+                f"desktop input archive hash mismatch: expected {expected}, "
+                f"got {actual}"
+            )
+        os.replace(partial, destination)
+    finally:
+        partial.unlink(missing_ok=True)
+    return destination
+
+
+def _safe_archive_relative(value: str, purpose: str) -> PurePosixPath:
+    relative = PurePosixPath(value)
+    if relative.is_absolute() or any(
+        part in {"", ".", ".."} for part in relative.parts
+    ):
+        raise RuntimeError(f"{purpose} archive path is unsafe: {value}")
+    return relative
+
+
+def _copy_declared_payloads(
+    source_root: Path,
+    destination: Path,
+    payload_sha256: Mapping[str, str],
+) -> list[Path]:
+    """Copy an exact, flat payload set with Windows collision semantics."""
+
+    destination.mkdir(parents=True, exist_ok=True)
+    existing = {path.name.casefold() for path in destination.iterdir()}
+    copied: list[Path] = []
+    for raw_name, expected in sorted(
+        payload_sha256.items(), key=lambda item: item[0].casefold()
+    ):
+        name = _require_name(raw_name, "native payload")
+        source = source_root / name
+        if not source.is_file() or source.is_symlink():
+            raise RuntimeError(f"declared native payload is missing: {name}")
+        actual = sha256_file(source)
+        if actual != expected:
+            raise RuntimeError(
+                f"declared native payload hash changed: {name}: "
+                f"expected {expected}, got {actual}"
+            )
+        if name.casefold() in existing:
+            raise RuntimeError(f"native payload has a Windows name collision: {name}")
+        target = destination / name
+        shutil.copy2(source, target)
+        existing.add(name.casefold())
+        copied.append(target)
+    return copied
+
+
+def _copy_data_tree(source: Path, destination: Path) -> list[Path]:
+    copied: list[Path] = []
+    if destination.exists():
+        raise RuntimeError(f"native data destination already exists: {destination}")
+    for path in sorted(source.rglob("*")):
+        relative = path.relative_to(source)
+        target = destination / relative
+        if path.is_symlink():
+            raise RuntimeError(f"native data contains a symbolic link: {relative}")
+        if path.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        elif path.is_file():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+            copied.append(target)
+    return copied
+
+
+def extract_flat_zip_component(
+    archive: Path,
+    component: Mapping[str, Any],
+    destination: Path,
+) -> list[Path]:
+    """Extract one exact flat payload from a hash-pinned ZIP/VSIX archive."""
+
+    archive_record = component["archive"]
+    if sha256_file(archive) != archive_record["sha256"]:
+        raise RuntimeError("flat ZIP component archive identity changed")
+    payload = component["payload_sha256"]
+    payload_root = PurePosixPath(str(archive_record["payload_root"]))
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-zip-component-") as raw:
+        extracted = Path(raw)
+        with zipfile.ZipFile(archive) as source:
+            by_name = {item.filename: item for item in source.infolist()}
+            for name in payload:
+                archive_name = (payload_root / name).as_posix()
+                info = by_name.get(archive_name)
+                if (
+                    info is None
+                    or info.is_dir()
+                    or ((info.external_attr >> 16) & 0o170000) == 0o120000
+                ):
+                    raise RuntimeError(f"flat ZIP component payload is invalid: {name}")
+                output = extracted / name
+                with source.open(info) as input_stream, output.open("xb") as target:
+                    shutil.copyfileobj(input_stream, target)
+        return _copy_declared_payloads(extracted, destination, payload)
+
+
+def extract_poppler_component(
+    archive: Path,
+    component: Mapping[str, Any],
+    pack: Path,
+) -> tuple[list[Path], list[Path]]:
+    """Extract only the declared Poppler executable closure and data tree."""
+
+    archive_record = component["archive"]
+    if sha256_file(archive) != archive_record["sha256"]:
+        raise RuntimeError("Poppler archive identity changed")
+    payload = component["payload_sha256"]
+    payload_root = PurePosixPath(str(archive_record["payload_root"]))
+    data_record = component["data_tree"]
+    data_root = PurePosixPath(str(data_record["archive_root"]))
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-poppler-") as raw:
+        extracted = Path(raw)
+        with zipfile.ZipFile(archive) as source:
+            by_name = {item.filename: item for item in source.infolist()}
+            for name in payload:
+                archive_name = (payload_root / name).as_posix()
+                info = by_name.get(archive_name)
+                if (
+                    info is None
+                    or info.is_dir()
+                    or ((info.external_attr >> 16) & 0o170000) == 0o120000
+                ):
+                    raise RuntimeError(f"Poppler archive payload is invalid: {name}")
+                output = extracted / "bin" / name
+                output.parent.mkdir(parents=True, exist_ok=True)
+                with source.open(info) as input_stream, output.open("xb") as target:
+                    shutil.copyfileobj(input_stream, target)
+            data_destination = extracted / "share" / "poppler"
+            for info in source.infolist():
+                archive_relative = _safe_archive_relative(info.filename, "Poppler data")
+                try:
+                    relative = archive_relative.relative_to(data_root)
+                except ValueError:
+                    continue
+                if not relative.parts:
+                    continue
+                output = data_destination.joinpath(*relative.parts)
+                if info.is_dir():
+                    output.mkdir(parents=True, exist_ok=True)
+                    continue
+                if ((info.external_attr >> 16) & 0o170000) == 0o120000:
+                    raise RuntimeError(
+                        f"Poppler data contains a symbolic link: {relative}"
+                    )
+                output.parent.mkdir(parents=True, exist_ok=True)
+                with source.open(info) as input_stream, output.open("xb") as target:
+                    shutil.copyfileobj(input_stream, target)
+        if sha256_tree(data_destination) != data_record["sha256"]:
+            raise RuntimeError("Poppler data tree identity changed")
+        file_count = sum(1 for path in data_destination.rglob("*") if path.is_file())
+        if file_count != data_record["file_count"]:
+            raise RuntimeError("Poppler data tree file count changed")
+        binaries = _copy_declared_payloads(extracted / "bin", pack / "bin", payload)
+        data = _copy_data_tree(data_destination, pack / "share" / "poppler")
+    return binaries, data
+
+
+def extract_tesseract_component(
+    archive: Path,
+    component: Mapping[str, Any],
+    pack: Path,
+    *,
+    seven_zip: str | Path | None = None,
+) -> tuple[list[Path], list[Path]]:
+    """Extract the declared Tesseract closure from its official NSIS asset."""
+
+    archive_record = component["archive"]
+    if sha256_file(archive) != archive_record["sha256"]:
+        raise RuntimeError("Tesseract archive identity changed")
+    executable = Path(seven_zip) if seven_zip is not None else None
+    if executable is None:
+        found = shutil.which("7z")
+        if found is None:
+            raise RuntimeError("7-Zip is required to extract the Tesseract installer")
+        executable = Path(found)
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-tesseract-") as raw:
+        extracted = Path(raw)
+        _run(
+            [executable, "x", "-y", f"-o{extracted}", archive],
+            capture_output=True,
+            timeout_seconds=180,
+        )
+        binaries = _copy_declared_payloads(
+            extracted, pack / "bin", component["payload_sha256"]
+        )
+        support: list[Path] = []
+        for raw_path, expected in sorted(component["support_data"].items()):
+            relative = _safe_archive_relative(raw_path, "Tesseract support")
+            source = extracted.joinpath(*relative.parts)
+            if not source.is_file() or sha256_file(source) != expected:
+                raise RuntimeError(
+                    f"Tesseract support file identity changed: {raw_path}"
+                )
+            target = pack.joinpath(*relative.parts)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            support.append(target)
+    return binaries, support
 
 
 def _is_windows_api_set(name: str) -> bool:

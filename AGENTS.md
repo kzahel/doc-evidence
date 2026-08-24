@@ -336,10 +336,11 @@ cleanup and x86_64-emulated Rust process-tree tests. Python-owned Windows path
 identity, fixed-drive admission, and reparse/offline traversal policy also pass
 target-native tests; actual greater-than-260-character I/O remains bound to the
 standalone runtime and installed-app gate. The exact Windows runtime/pack input
-manifest and dependency-free PE import/delay-import audit have landed, with 52
-selected native payload hashes. App-local MSVC provenance, third-party Windows
-dependency compliance, target-native assembly, copied-out OCR, and native
-Windows x86_64 installed-artifact acceptance remain release-blocking. Do not
+manifest and dependency-free PE import/delay-import audit have landed, with 55
+selected native payload hashes. The exact Microsoft app-local CRT input closes
+that flat native dependency graph; Microsoft redistribution review and third-
+party Windows dependency compliance, target-native assembly, copied-out OCR,
+and native Windows x86_64 installed-artifact acceptance remain release-blocking. Do not
 touch signing
 credentials, repository/release setup, notarization, updater setup, tags, or
 publication without explicit maintainer authorization. Heavy extractor packs

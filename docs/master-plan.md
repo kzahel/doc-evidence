@@ -145,10 +145,10 @@ policy are implemented and pass target-native tests on that available testbed.
 Greater-than-260-character I/O remains bound to the forthcoming standalone
 runtime and installed-app acceptance.
 The exact Windows input manifest now pins the runtime, native distributions,
-language data, sources, and 52 selected native payload hashes, and a PE import/
-delay-import closure audit is implemented. Target-native assembly, app-local
-MSVC provenance, dependency compliance, copied-out OCR, and installed x86_64
-acceptance remain release gates.
+language data, sources, the Microsoft app-local CRT, and 55 selected native
+payload hashes. The PE import/delay-import audit closes over those exact
+extracted files. Target-native assembly, dependency compliance, copied-out
+OCR, and installed x86_64 acceptance remain release gates.
 Heavy extractors and downloads/plugins remain later scope.
 
 ### Phase 3 — Candidate understanding

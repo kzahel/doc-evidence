@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import subprocess
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,7 +14,12 @@ from doc_evidence.windows_desktop_packaging import (
     _load_inputs,
     audit_flat_pe_closure,
     build_inputs_path,
+    extract_flat_zip_component,
+    extract_poppler_component,
+    extract_tesseract_component,
     repository_root,
+    sha256_file,
+    sha256_tree,
 )
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, PortableExecutable
 
@@ -42,7 +50,7 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
                 name: len(value["payload_sha256"])
                 for name, value in baseline["native_components"].items()
             },
-            {"poppler": 18, "tesseract": 34},
+            {"msvc-runtime": 3, "poppler": 18, "tesseract": 34},
         )
         self.assertTrue(
             all(
@@ -120,3 +128,106 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
                 self.assertRaisesRegex(RuntimeError, "developer-only.dll"),
             ):
                 audit_flat_pe_closure(root, system_dlls=["KERNEL32.dll"])
+
+    def test_poppler_extraction_selects_exact_payload_and_data_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            data = root / "data"
+            data.mkdir()
+            (data / "COPYING").write_bytes(b"license")
+            archive = root / "poppler.zip"
+            with zipfile.ZipFile(archive, "w") as output:
+                output.writestr("poppler/Library/bin/pdfinfo.exe", b"binary")
+                output.writestr("poppler/share/poppler/COPYING", b"license")
+            component = {
+                "archive": {
+                    "sha256": sha256_file(archive),
+                    "payload_root": "poppler/Library/bin",
+                },
+                "payload_sha256": {
+                    "pdfinfo.exe": hashlib.sha256(b"binary").hexdigest()
+                },
+                "data_tree": {
+                    "archive_root": "poppler/share/poppler",
+                    "sha256": sha256_tree(data),
+                    "file_count": 1,
+                },
+            }
+            pack = root / "pack"
+
+            binaries, data_files = extract_poppler_component(archive, component, pack)
+
+            self.assertEqual([path.name for path in binaries], ["pdfinfo.exe"])
+            self.assertEqual([path.name for path in data_files], ["COPYING"])
+            self.assertEqual((pack / "bin" / "pdfinfo.exe").read_bytes(), b"binary")
+
+    def test_flat_zip_extraction_rejects_collisions_and_selects_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            archive = root / "component.vsix"
+            with zipfile.ZipFile(archive, "w") as output:
+                output.writestr("payload/msvcp140.dll", b"runtime")
+                output.writestr("payload/unused.dll", b"unused")
+            component = {
+                "archive": {
+                    "sha256": sha256_file(archive),
+                    "payload_root": "payload",
+                },
+                "payload_sha256": {
+                    "msvcp140.dll": hashlib.sha256(b"runtime").hexdigest()
+                },
+            }
+            destination = root / "bin"
+
+            files = extract_flat_zip_component(archive, component, destination)
+
+            self.assertEqual([path.name for path in files], ["msvcp140.dll"])
+            self.assertFalse((destination / "unused.dll").exists())
+            with self.assertRaisesRegex(RuntimeError, "collision"):
+                extract_flat_zip_component(archive, component, destination)
+
+    def test_tesseract_extraction_uses_argument_safe_7zip_and_exact_files(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            archive = root / "installer.exe"
+            archive.write_bytes(b"installer")
+            component = {
+                "archive": {"sha256": sha256_file(archive)},
+                "payload_sha256": {
+                    "tesseract.exe": hashlib.sha256(b"binary").hexdigest()
+                },
+                "support_data": {
+                    "tessdata/configs/txt": hashlib.sha256(b"config").hexdigest()
+                },
+            }
+
+            def extract(
+                arguments: list[str | Path], **_: object
+            ) -> subprocess.CompletedProcess[str]:
+                output = Path(
+                    next(
+                        str(item)[2:]
+                        for item in arguments
+                        if str(item).startswith("-o")
+                    )
+                )
+                (output / "tesseract.exe").write_bytes(b"binary")
+                support = output / "tessdata" / "configs" / "txt"
+                support.parent.mkdir(parents=True)
+                support.write_bytes(b"config")
+                return subprocess.CompletedProcess([str(item) for item in arguments], 0)
+
+            with patch(
+                "doc_evidence.windows_desktop_packaging._run", side_effect=extract
+            ) as run:
+                binaries, support = extract_tesseract_component(
+                    archive,
+                    component,
+                    root / "pack",
+                    seven_zip=root / "7z.exe",
+                )
+
+            arguments = run.call_args.args[0]
+            self.assertEqual(arguments[:3], [root / "7z.exe", "x", "-y"])
+            self.assertEqual([path.name for path in binaries], ["tesseract.exe"])
+            self.assertEqual([path.name for path in support], ["txt"])
