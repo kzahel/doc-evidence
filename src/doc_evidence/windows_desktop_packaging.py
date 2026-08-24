@@ -2000,7 +2000,7 @@ def build_application(*, root: Path | None = None) -> Path:
         ],
         cwd=repository,
         environment=environment,
-        timeout_seconds=1800,
+        timeout_seconds=3600,
     )
     installer = nsis_installer_path(repository)
     audit_unsigned_installer(installer, repository=repository)
