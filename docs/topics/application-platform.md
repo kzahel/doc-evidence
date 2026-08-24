@@ -326,9 +326,18 @@ release promise. The platform manifests therefore exclude that distribution
 after lock resolution, and runtime manifest generation and audits reject its
 re-entry. The rebuilt macOS tree contains 41 Python distributions, 3,819 files,
 and 109 Mach-O objects at
-`ab987e4fea7573eb31fe03dccd656bdb378e4a3415ea12577f5cc470040fd28e`;
+`23adac429b1b7a5ae1dc943b8c8c53c3b5ad7f36001e2be8e8a55a50b59531b4`;
 sidecar and real Ghostscript-free OCR smokes pass without `pi_heif`, libheif,
 or libde265.
+
+Explicit runtime replacement validates the old runtime against its own exact
+manifest but does not require it to match a newly rebuilt current frontend;
+otherwise frontend drift would make the transactional repair unreachable.
+The new tree and all ordinary audits still require the current frontend hash.
+The resulting unsigned application contains 3,823 files at tree
+`42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
+and passes final application, embedded runtime, sidecar, OCR, and expected-
+unsigned checks.
 
 The pypdfium2/PDFium aggregate now uses a version- and target-specific SPDX
 `LicenseRef` rather than an invalid comma-separated pseudo-expression. Its

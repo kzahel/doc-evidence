@@ -1300,6 +1300,7 @@ def stage_runtime(
             smoke=False,
             require_baseline=False,
             allow_excluded_for_replacement=True,
+            require_current_frontend=False,
         )
         os.replace(target, previous)
     inputs = _load_inputs(repository)
@@ -1422,6 +1423,7 @@ def _validate_bundle_manifest(
     repository: Path,
     *,
     require_baseline: bool = True,
+    require_current_frontend: bool = True,
 ) -> dict[str, Any]:
     manifest = json.loads(
         (runtime_root / "bundle-manifest.json").read_text(encoding="utf-8")
@@ -1438,7 +1440,9 @@ def _validate_bundle_manifest(
     jsonschema.Draft202012Validator(
         schema, format_checker=jsonschema.FormatChecker()
     ).validate(manifest)
-    if manifest["frontend_sha256"] != sha256_tree(repository / "web" / "dist"):
+    if require_current_frontend and manifest["frontend_sha256"] != sha256_tree(
+        repository / "web" / "dist"
+    ):
         raise RuntimeError("staged frontend identity changed")
     runtime_manifest = runtime_root / "runtime-manifest.json"
     if manifest["runtime_manifest_sha256"] != sha256_file(runtime_manifest):
@@ -1732,6 +1736,7 @@ def audit_runtime(
     smoke: bool = False,
     require_baseline: bool = True,
     allow_excluded_for_replacement: bool = False,
+    require_current_frontend: bool = True,
 ) -> dict[str, Any]:
     root = runtime_root.resolve()
     repo = (repository or repository_root()).resolve()
@@ -1741,6 +1746,7 @@ def audit_runtime(
         root,
         repo,
         require_baseline=require_baseline,
+        require_current_frontend=require_current_frontend,
     )
     packages = _distribution_inventory(root / "python")
     inputs = _load_inputs(repo)

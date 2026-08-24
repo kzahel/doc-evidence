@@ -743,12 +743,25 @@ the new output gate.
 
 The rebuilt macOS runtime contains 41 Python distributions, 3,819 files, and
 109 Mach-O objects at tree
-`ab987e4fea7573eb31fe03dccd656bdb378e4a3415ea12577f5cc470040fd28e`.
+`23adac429b1b7a5ae1dc943b8c8c53c3b5ad7f36001e2be8e8a55a50b59531b4`.
 Neither `pi_heif`, libheif, nor libde265 is present. The exact copied-out
 sidecar authentication/parent-EOF smoke and real Ghostscript-free OCR smoke
 pass. This removes two nested libraries; PDFium's separately reconciled dylib
 is no longer counted as unresolved, leaving 29 Pillow/pikepdf native-library
 records to flatten.
+
+The first app rebuild usefully exercised another transactional edge: the
+frontend production build changed `web/dist` after the previous runtime was
+staged, so the old runtime's current-checkout identity check prevented the
+explicit replacement that was needed to repair it. Pre-replacement audits on
+both platforms now skip only the current frontend comparison while still
+checking the old tree's schema, internal manifest hashes, complete file
+inventory, target, pack, native closure, and forbidden development packages.
+Every new staged tree and ordinary audit still requires the exact current
+frontend identity. After restaging, the unsigned 3,823-file application at
+tree `42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
+passed its final application audit, including the embedded runtime smokes and
+the expected unsigned-signature check.
 
 ## Falsifiable Stopping Condition
 

@@ -1380,7 +1380,12 @@ def write_runtime_manifests(
     _write_json(runtime_root / "bundle-manifest.json", bundle_manifest)
 
 
-def validate_bundle_manifest(runtime_root: Path, repository: Path) -> dict[str, Any]:
+def validate_bundle_manifest(
+    runtime_root: Path,
+    repository: Path,
+    *,
+    require_current_frontend: bool = True,
+) -> dict[str, Any]:
     """Validate target identity plus the exact current runtime file inventory."""
 
     manifest_path = runtime_root / "bundle-manifest.json"
@@ -1402,7 +1407,9 @@ def validate_bundle_manifest(runtime_root: Path, repository: Path) -> dict[str, 
         WINDOWS_ARCHITECTURE,
     ):
         raise RuntimeError("Windows bundle manifest target is incompatible")
-    if manifest["frontend_sha256"] != sha256_tree(repository / "web" / "dist"):
+    if require_current_frontend and manifest["frontend_sha256"] != sha256_tree(
+        repository / "web" / "dist"
+    ):
         raise RuntimeError("staged Windows frontend identity changed")
     runtime_manifest = runtime_root / "runtime-manifest.json"
     if manifest["runtime_manifest_sha256"] != sha256_file(runtime_manifest):
@@ -1793,13 +1800,18 @@ def audit_runtime(
     repository: Path | None = None,
     smoke: bool = False,
     allow_excluded_for_replacement: bool = False,
+    require_current_frontend: bool = True,
 ) -> dict[str, Any]:
     root = runtime_root.resolve()
     repo = (repository or repository_root()).resolve()
     if not root.is_dir():
         raise RuntimeError(f"Windows desktop runtime does not exist: {root}")
     inputs = _load_inputs(repo)
-    manifest = validate_bundle_manifest(root, repo)
+    manifest = validate_bundle_manifest(
+        root,
+        repo,
+        require_current_frontend=require_current_frontend,
+    )
     packages = distribution_inventory(root / "python")
     forbidden = {
         str(name).lower().replace("_", "-")
@@ -2003,6 +2015,7 @@ def stage_runtime(
             repository=repository,
             smoke=False,
             allow_excluded_for_replacement=True,
+            require_current_frontend=False,
         )
         os.replace(target, previous)
     inputs = _load_inputs(repository)
