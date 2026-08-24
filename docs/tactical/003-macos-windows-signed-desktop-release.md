@@ -53,8 +53,8 @@ packaging:
   smoke, and unsigned DMG proof have landed.
 - Tactical 002's compliance preflight entered this tactical blocked on a
   reviewed pypdfium2 SPDX conclusion, 32 nested wheel libraries, and 19 Rust
-  crate license texts. The Rust and pypdfium2 classes are now closed; the
-  remaining wheel-native component work is still release-blocking.
+  crate license texts. All three classes are now closed, and the full macOS
+  exact-source preflight reports release-ready with no compliance blockers.
 - The repository does not yet have a release remote, tag workflow, updater
   configuration, product-specific updater key/route, or release finalizer.
 - The pinned [Desktop Release Kit](../references.md#desktop-release-kit-cross-platform-release-reference)
@@ -773,16 +773,28 @@ repeated, unowned, or drifted paths or evidence. The aggregate SPDX represents
 the nested packages as children of Pillow rather than attributing them to the
 wrapper's MIT-CMU license.
 
-The current preflight contains 69 top-level components, 14 flattened Pillow
-components, 74 Python Mach-O objects, and 253 Rust plus 11 Node dependencies.
-It reconciles 19 of 30 nested libraries: Pillow's 18 and the separately
-reviewed PDFium dylib. Its remaining component blocker is exactly the 11
-pikepdf nested libraries. Historical Homebrew recipe resolution passes, and
-the source pass embeds 33 exact top-level and nested archives totaling
-213,737,447 bytes. The blocked preflight archive is 212,583,988 bytes with
-SHA-256
-`8384f744109c2b010e35c3e2d5f9125af36258a504817a32beec0f8daad0b4c0`;
-its only blocker is the 11-library pikepdf component/source reconciliation.
+The pikepdf sub-boundary closes the final macOS component blocker without
+trusting its incomplete tagged wheel notice as an inventory. The exact
+10.11.0 macOS arm64 wheel conveys 11 dylibs represented by 10 components:
+qpdf, GnuTLS and its transitive closure, and libjpeg-turbo. Each record binds
+the parent wheel, exact final dylib hash, tagged pikepdf build recipe where it
+provides version evidence, reviewed binary-version evidence, a conservative
+SPDX conclusion, and a hash-pinned source archive. The verifier also
+reproduces the one permitted staging transform for four wheel members:
+Homebrew's build prefix is replaced with the neutral equal-length prefix and
+the modified Mach-O is ad-hoc signed before its bytes are compared.
+
+The full preflight now contains 69 top-level components, 24 flattened Pillow/
+pikepdf components, 74 Python Mach-O objects, and 253 Rust plus 11 Node
+dependencies. It reconciles all 30 nested libraries, resolves all 24 exact
+historical Homebrew formula recipes, and embeds 43 exact source archives
+totaling 290,777,483 bytes. It reports `passed`, `release_ready: true`, and no
+blockers. The 287,122,122-byte preflight archive has SHA-256
+`e0de8d6babd75946d4ebea0a6d7d5e82714353a08e4da7d6ed7ca421bde96873`
+and is bound to application tree
+`42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`
+and bundle manifest
+`b815834985bbe3b8fab7b6ffed17955431484ccd0d5ee276e60cddb49ae9e647`.
 
 ## Falsifiable Stopping Condition
 

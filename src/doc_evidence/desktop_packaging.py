@@ -482,6 +482,21 @@ def _neutralize_native_build_prefix(path: Path) -> bool:
     return True
 
 
+def _staged_wheel_native_bytes(member: str, content: bytes) -> bytes:
+    if HOMEBREW_BUILD_PREFIX not in content:
+        return content
+    with tempfile.TemporaryDirectory(prefix="doc-evidence-wheel-native-") as raw:
+        candidate = Path(raw) / Path(member).name
+        candidate.write_bytes(content)
+        candidate.chmod(0o755)
+        _neutralize_native_build_prefix(candidate)
+        _run(
+            ["codesign", "--force", "--sign", "-", candidate],
+            capture_output=True,
+        )
+        return candidate.read_bytes()
+
+
 def _homebrew_formula(path: Path) -> str | None:
     parts = path.resolve().parts
     if "Cellar" not in parts:
@@ -3208,8 +3223,12 @@ def _wheel_native_component_inventory(
                     )
                 member = path.removeprefix(site_prefix)
                 installed = runtime / path
-                if not installed.is_file() or installed.read_bytes() != archive.read(
-                    member
+                staged_wheel_bytes = _staged_wheel_native_bytes(
+                    member, archive.read(member)
+                )
+                if (
+                    not installed.is_file()
+                    or installed.read_bytes() != staged_wheel_bytes
                 ):
                     raise RuntimeError(f"macOS wheel-native bytes drifted: {path}")
                 flattened_paths.add(path)
@@ -3249,6 +3268,18 @@ def _wheel_native_component_inventory(
                 ):
                     raise RuntimeError(
                         f"macOS wheel-native SBOM evidence drifted: {component_id}"
+                    )
+            elif kind == "reviewed-binary-version":
+                method = evidence_record.get("method")
+                detail = evidence_record.get("detail")
+                if (
+                    not isinstance(method, str)
+                    or not method
+                    or not isinstance(detail, str)
+                    or version not in detail
+                ):
+                    raise RuntimeError(
+                        f"macOS wheel-native reviewed evidence drifted: {component_id}"
                     )
             else:
                 raise RuntimeError(

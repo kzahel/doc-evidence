@@ -301,22 +301,22 @@ and detaches it. The current 73,268,724-byte unsigned image contains the exact
 current `1d9a9996...` application tree and is validation evidence, not a
 release artifact.
 
-The first compliance preflight accounts for 70 top-level staged components,
-all 3,835 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
-24 exact historical Homebrew formula revisions, and five embedded Python-wheel
-SBOMs. Formula selection is bound to the installed package version, source
-hash, bottle hash, architecture/OS tag, and historical formula bytes; verified
-recipes are reusable from an ignored cache. The preflight remains fail-closed
-for publication on the 11 unreconciled third-party libraries nested in the
-pikepdf wheel; the separately reconciled PDFium dylib and 18 Pillow dylibs are
-not counted as unresolved. The former 19-crate Rust license-
-text blocker is closed by a tracked exact-version inventory that binds each
-package's Cargo VCS revision and repository path to hash-pinned upstream or
-SPDX 3.27.0 license texts. Required top-level copyleft/MPL source archives are
-now hash-verified and embedded. The
-aggregate SPDX already includes all 253 target-resolved Rust dependencies and
-11 conservative production Node dependencies, with 426 available license
-files and exact registry source checksums.
+The current compliance preflight accounts for 69 top-level staged components,
+all 3,818 runtime manifest files, 24 exact Homebrew source/bottle SPDX records,
+24 exact historical Homebrew formula revisions, five embedded Python-wheel
+SBOMs, and 24 flattened components from the Pillow and pikepdf wheels. Formula
+selection is bound to the installed package version, source hash, bottle hash,
+architecture/OS tag, and historical formula bytes; verified recipes are
+reusable from an ignored cache. All 30 nested Python native libraries are now
+reconciled: PDFium is covered by its target-specific composite record, while
+Pillow's 18 and pikepdf's 11 dylibs are bound to exact parent-wheel bytes,
+final staged hashes, reviewed version evidence, SPDX conclusions, and source
+archives. The former 19-crate Rust license-text blocker is closed by a tracked
+exact-version inventory that binds each package's Cargo VCS revision and
+repository path to hash-pinned upstream or SPDX 3.27.0 license texts. The
+aggregate SPDX includes all 253 target-resolved Rust dependencies and 11
+conservative production Node dependencies, with 426 available license files
+and exact registry source checksums.
 
 The exact `pi_heif` 1.4.0 wheel was removed from both release runtimes after
 the flattening audit proved that it conveys libheif 1.23.0, a version affected
@@ -343,14 +343,24 @@ Pillow's 18 nested dylibs are flattened into 14 source components. The record
 binds the exact 12.3.0 macOS arm64 wheel and every conveyed dylib hash to the
 tagged Pillow build-version input, tagged wheel-build script, embedded
 CycloneDX SBOM where that SBOM names the component, reviewed SPDX conclusion,
-and a hash-pinned upstream source archive. The preflight compares the wheel,
-installed SBOM, build evidence, manifest owner, and installed bytes before
-adding each nested SPDX package. The current preflight accounts for 74 Python
-Mach-O objects, 30 nested libraries, 19 reconciled nested libraries (Pillow's
-18 plus PDFium), and 11 still-unreconciled pikepdf libraries. The exact-source
-pass embeds 33 archives totaling 213,737,447 bytes after historical Homebrew
-formula resolution; the 212,583,988-byte preflight archive is blocked only on
-those 11 pikepdf libraries.
+and a hash-pinned upstream source archive. Pikepdf's 11 nested dylibs are
+flattened into 10 components under the exact 10.11.0 macOS arm64 wheel. The
+tagged pikepdf notice names only pikepdf, qpdf, and libjpeg, so the verifier
+does not treat that incomplete notice as the dependency closure; it instead
+binds each actual dylib to the parent wheel, tagged build recipe, reviewed
+binary-version evidence, final installed hash, license conclusion, and exact
+source. Four pikepdf members retain Homebrew paths in their wheel bytes; the
+preflight reproduces exactly the staging transform that replaces the prefix
+and ad-hoc signs the modified Mach-O before comparing final bytes.
+
+The full exact-source pass now reports `passed` and `release_ready: true` with
+no blockers. It accounts for 74 Python Mach-O objects, reconciles all 30 nested
+libraries, and embeds 43 source archives totaling 290,777,483 bytes after
+historical Homebrew formula resolution. The resulting 287,122,122-byte
+preflight archive has SHA-256
+`e0de8d6babd75946d4ebea0a6d7d5e82714353a08e4da7d6ed7ca421bde96873`
+and remains bound to application tree
+`42f35959eb4b24c63835ef9f08a328f36f85a78a3cf362d9acc606890a8c194e`.
 
 The pypdfium2/PDFium aggregate now uses a version- and target-specific SPDX
 `LicenseRef` rather than an invalid comma-separated pseudo-expression. Its

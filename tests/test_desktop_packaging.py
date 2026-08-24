@@ -77,7 +77,7 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertEqual(set(baseline["language_data"]), {"eng", "deu", "osd"})
         self.assertEqual(set(baseline["support_data"]), {"configs/hocr", "configs/txt"})
 
-    def test_pillow_native_inventory_is_exact_and_source_bound(self) -> None:
+    def test_wheel_native_inventory_is_exact_and_source_bound(self) -> None:
         document = json.loads(
             wheel_native_components_path(self.root).read_text(encoding="utf-8")
         )
@@ -85,14 +85,14 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertEqual(document["schema_version"], WHEEL_NATIVE_COMPONENTS_SCHEMA)
         self.assertEqual(
             [(item["component_id"], item["version"]) for item in document["wheels"]],
-            [("python-pillow", "12.3.0")],
+            [("python-pillow", "12.3.0"), ("python-pikepdf", "10.11.0")],
         )
         components = document["components"]
-        self.assertEqual(len(components), 14)
-        self.assertEqual(sum(len(item["paths"]) for item in components), 18)
+        self.assertEqual(len(components), 24)
+        self.assertEqual(sum(len(item["paths"]) for item in components), 29)
         self.assertEqual(
             {item["parent_component_id"] for item in components},
-            {"python-pillow"},
+            {"python-pillow", "python-pikepdf"},
         )
         self.assertTrue(
             all(

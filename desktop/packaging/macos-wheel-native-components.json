@@ -12,6 +12,18 @@
       "cache_name": "pillow-wheel-build-12.3.0.sh",
       "url": "https://raw.githubusercontent.com/python-pillow/Pillow/12.3.0/.github/workflows/wheels-dependencies.sh",
       "sha256": "62c923ff840790cb4f6e27c96437a7541124a5aee3445f29136358bffd988f8a"
+    },
+    {
+      "evidence_id": "pikepdf-build-10.11.0",
+      "cache_name": "pikepdf-build-10.11.0.toml",
+      "url": "https://raw.githubusercontent.com/pikepdf/pikepdf/v10.11.0/pyproject.toml",
+      "sha256": "d6bb37961ac8ae6668bbfa4a9377fd7cb648d56378d4367eba0f79152161bca9"
+    },
+    {
+      "evidence_id": "pikepdf-wheel-notice-10.11.0",
+      "cache_name": "pikepdf-wheel-notice-10.11.0.txt",
+      "url": "https://raw.githubusercontent.com/pikepdf/pikepdf/v10.11.0/licenses-for-wheels.txt",
+      "sha256": "46978bad58f50c6037aa223958f539efbe2a87fa6cfb6f9d5119a5263db8e07b"
     }
   ],
   "wheels": [
@@ -29,6 +41,22 @@
           "sha256": "40fa909b0f23405a7b97a6d91671a639a40acea7671b04387da22ba3e9fca50a"
         }
       ]
+    },
+    {
+      "component_id": "python-pikepdf",
+      "name": "pikepdf",
+      "version": "10.11.0",
+      "cache_name": "pikepdf-10.11.0-cp312-cp312-macosx_14_0_arm64.whl",
+      "url": "https://files.pythonhosted.org/packages/5f/ff/ddfa7fbe048064805228de88d71c73e643020ff1134003ea78b3781a7b5b/pikepdf-10.11.0-cp312-cp312-macosx_14_0_arm64.whl",
+      "sha256": "ff3bb790373f8799a33f4c36ec955074d34e9b163652dc837263970a93a46152",
+      "installed_evidence": [
+        {
+          "member": "pikepdf-10.11.0.dist-info/licenses/LICENSE.txt",
+          "runtime_path": "python/lib/python3.12/site-packages/pikepdf-10.11.0.dist-info/licenses/LICENSE.txt",
+          "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+        }
+      ],
+      "upstream_notice_mismatch": "The tagged wheel notice identifies pikepdf, qpdf, and libjpeg but omits the Homebrew transitive dylibs actually present in this exact wheel; this inventory records the final bytes instead."
     }
   ],
   "components": [
@@ -445,6 +473,270 @@
         {
           "path": "python/lib/python3.12/site-packages/PIL/.dylibs/libz.1.3.1.zlib-ng.dylib",
           "sha256": "39ffbe6a87460a579cf414c3ee668e449b32c2cdc2cc0b64921d53fd59cb56ed"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-gmp",
+      "parent_component_id": "python-pikepdf",
+      "name": "GMP",
+      "version": "6.3.0",
+      "license_concluded": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "source": {
+        "cache_name": "gmp-6.3.0.tar.xz",
+        "url": "https://ftpmirror.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz",
+        "sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "ctypes __gmp_version",
+          "detail": "The exact dylib reports GMP 6.3.0."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libgmp.10.dylib",
+          "sha256": "19f6f1e985dbfd2a883e85fb7115d90e6b66217d2b4e2e984b4bd72d9aa61753"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-gnutls",
+      "parent_component_id": "python-pikepdf",
+      "name": "GnuTLS",
+      "version": "3.8.13",
+      "license_concluded": "LGPL-2.1-or-later AND GPL-3.0-only",
+      "source": {
+        "cache_name": "gnutls-3.8.13.tar.xz",
+        "url": "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.13.tar.xz",
+        "sha256": "ffed8ec1bf09c2426d4f14aae377de4753b53e537d685e604e99a8b16ca9c97e"
+      },
+      "evidence": [
+        {
+          "kind": "build-script-contains",
+          "evidence_id": "pikepdf-build-10.11.0",
+          "text": "brew install gnutls little-cms2 mupdf wget"
+        },
+        {
+          "kind": "reviewed-binary-version",
+          "method": "ctypes gnutls_check_version",
+          "detail": "The exact dylib reports GnuTLS 3.8.13 and retains its normalized Homebrew Cellar version."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libgnutls.30.dylib",
+          "sha256": "c5cdfe4dba31d4874a49e4dd56a192ceab237ca009f221d0d13e423e62a897ea"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-nettle",
+      "parent_component_id": "python-pikepdf",
+      "name": "Nettle",
+      "version": "4.0",
+      "license_concluded": "GPL-2.0-or-later OR LGPL-3.0-or-later",
+      "source": {
+        "cache_name": "nettle-4.0.tar.gz",
+        "url": "https://ftpmirror.gnu.org/gnu/nettle/nettle-4.0.tar.gz",
+        "sha256": "3addbc00da01846b232fb3bc453538ea5468da43033f21bb345cb1e9073f5094"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "ctypes nettle_version_major and nettle_version_minor",
+          "detail": "The exact Nettle/Hogweed dylibs report Nettle 4.0."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libhogweed.7.0.dylib",
+          "sha256": "4200e92053a48be2c6254de5688ff172d3d0334ad06c923fb98be08368f529a1"
+        },
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libnettle.9.0.dylib",
+          "sha256": "cad1a160bdb59d8b415569b1f0c88acac9b72335c3679cd3c4daafdfd219d4ec"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-libidn2",
+      "parent_component_id": "python-pikepdf",
+      "name": "libidn2",
+      "version": "2.3.8",
+      "license_concluded": "(GPL-2.0-or-later OR LGPL-3.0-or-later) AND (Unicode-TOU AND Unicode-DFS-2016) AND GPL-3.0-or-later AND LGPL-2.1-or-later AND FSFAP-no-warranty-disclaimer",
+      "source": {
+        "cache_name": "libidn2-2.3.8.tar.gz",
+        "url": "https://ftpmirror.gnu.org/gnu/libidn/libidn2-2.3.8.tar.gz",
+        "sha256": "f557911bf6171621e1f72ff35f5b1825bb35b52ed45325dcdee931e5d3c0787a"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "ctypes idn2_check_version",
+          "detail": "The exact dylib reports libidn2 2.3.8."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libidn2.0.dylib",
+          "sha256": "d3cdc858c4a4ea2f7f0da12e9b1aab0d76f0960286c7cc7b421ece9d41693995"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-gettext",
+      "parent_component_id": "python-pikepdf",
+      "name": "GNU gettext",
+      "version": "1.0",
+      "license_concluded": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+      "source": {
+        "cache_name": "gettext-1.0.tar.gz",
+        "url": "https://ftpmirror.gnu.org/gnu/gettext/gettext-1.0.tar.gz",
+        "sha256": "85d99b79c981a404874c02e0342176cf75c7698e2b51fe41031cf6526d974f1a"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "normalized Homebrew Cellar path and libintl version",
+          "detail": "The exact dylib retains the gettext 1.0 Cellar identity."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libintl.8.dylib",
+          "sha256": "eacd91174d1536fe6b9e43a6c9ece972cc91431547a7f41114fca516b9dbe80e"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-libjpeg-turbo",
+      "parent_component_id": "python-pikepdf",
+      "name": "libjpeg-turbo",
+      "version": "3.2.0",
+      "license_concluded": "IJG AND Zlib AND BSD-3-Clause",
+      "source": {
+        "cache_name": "libjpeg-turbo-3.2.0.tar.gz",
+        "url": "https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.0/libjpeg-turbo-3.2.0.tar.gz",
+        "sha256": "6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "embedded libjpeg-turbo version string",
+          "detail": "The exact dylib reports libjpeg-turbo 3.2.0."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libjpeg.8.3.2.dylib",
+          "sha256": "cff69fa6c5c483b6845d178e7d74a37d50a7a4a61b09047dcb6063512d5a8761"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-p11-kit",
+      "parent_component_id": "python-pikepdf",
+      "name": "p11-kit",
+      "version": "0.26.2",
+      "license_concluded": "BSD-3-Clause",
+      "source": {
+        "cache_name": "p11-kit-0.26.2.tar.xz",
+        "url": "https://github.com/p11-glue/p11-kit/releases/download/0.26.2/p11-kit-0.26.2.tar.xz",
+        "sha256": "09fd9f44da4813a3141e73d5e7cf7008e5660d0405f13d56c15e1da9dcecf828"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "normalized Homebrew Cellar path",
+          "detail": "The exact dylib retains the p11-kit 0.26.2 Cellar identity."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libp11-kit.0.dylib",
+          "sha256": "708eed0ae6d5861897fc710150e2da8c9219d3ff3b6e9f3f120501276f0126a8"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-qpdf",
+      "parent_component_id": "python-pikepdf",
+      "name": "qpdf",
+      "version": "12.3.2",
+      "license_concluded": "Apache-2.0",
+      "source": {
+        "cache_name": "qpdf-12.3.2.tar.gz",
+        "url": "https://github.com/qpdf/qpdf/releases/download/v12.3.2/qpdf-12.3.2.tar.gz",
+        "sha256": "6cba2f9f2cd887d905faeb99e0e51a307b217920d1bbf3e9cfbb2e8178a2deda"
+      },
+      "evidence": [
+        {
+          "kind": "build-script-contains",
+          "evidence_id": "pikepdf-build-10.11.0",
+          "text": "QPDF_VERSION = \"12.3.2\""
+        },
+        {
+          "kind": "reviewed-binary-version",
+          "method": "ctypes qpdf_get_qpdf_version",
+          "detail": "The exact dylib reports qpdf 12.3.2."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libqpdf.30.3.2.dylib",
+          "sha256": "542674a181b630166ad59ad704303ca35e0292ec3facc414de3be914735ee972"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-libtasn1",
+      "parent_component_id": "python-pikepdf",
+      "name": "libtasn1",
+      "version": "4.21.0",
+      "license_concluded": "LGPL-2.1-or-later",
+      "source": {
+        "cache_name": "libtasn1-4.21.0.tar.gz",
+        "url": "https://ftpmirror.gnu.org/gnu/libtasn1/libtasn1-4.21.0.tar.gz",
+        "sha256": "1d8a444a223cc5464240777346e125de51d8e6abf0b8bac742ac84609167dc87"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "ctypes asn1_check_version",
+          "detail": "The exact dylib reports libtasn1 4.21.0."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libtasn1.6.dylib",
+          "sha256": "33607672541bc4141690315650b4dff758f905ff57e784e7d6ac9fa7cb3ab187"
+        }
+      ]
+    },
+    {
+      "component_id": "python-pikepdf-native-libunistring",
+      "parent_component_id": "python-pikepdf",
+      "name": "libunistring",
+      "version": "1.4.2",
+      "license_concluded": "GPL-2.0-or-later OR LGPL-3.0-or-later",
+      "source": {
+        "cache_name": "libunistring-1.4.2.tar.gz",
+        "url": "https://ftpmirror.gnu.org/gnu/libunistring/libunistring-1.4.2.tar.gz",
+        "sha256": "e82664b170064e62331962126b259d452d53b227bb4a93ab20040d846fec01d8"
+      },
+      "evidence": [
+        {
+          "kind": "reviewed-binary-version",
+          "method": "Homebrew dependency closure, ABI, and exact dylib hash",
+          "detail": "The reviewed GnuTLS closure identifies libunistring 1.4.2 for this exact dylib hash."
+        }
+      ],
+      "paths": [
+        {
+          "path": "python/lib/python3.12/site-packages/pikepdf/.dylibs/libunistring.5.dylib",
+          "sha256": "cb747c61e4ea94711c1ae694b5a5f14d7310b4865fe6bc964a2961fa7c720370"
         }
       ]
     }
