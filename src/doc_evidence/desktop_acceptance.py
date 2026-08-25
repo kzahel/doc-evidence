@@ -353,7 +353,7 @@ class Sidecar:
             method=method,
         )
         try:
-            with urllib.request.urlopen(request, timeout=60) as response:
+            with urllib.request.urlopen(request, timeout=180) as response:
                 payload = response.read(MAX_RESPONSE_BYTES + 1)
         except urllib.error.HTTPError as error:
             detail = error.read(8_192).decode("utf-8", errors="replace")
