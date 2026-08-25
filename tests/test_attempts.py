@@ -459,6 +459,22 @@ class AttemptSupervisorTest(unittest.TestCase):
 
 
 class ExtractorRegistryTest(unittest.TestCase):
+    def test_shared_dependency_versions_are_probed_once(self) -> None:
+        registry = ExtractorRegistry()
+        with (
+            patch(
+                "doc_evidence.extractor_registry.DependencySpec.resolve",
+                return_value=Path("/resolved/tool"),
+            ),
+            patch(
+                "doc_evidence.extractor_registry.command_version",
+                return_value="tool 1.0",
+            ) as version,
+        ):
+            registry.capabilities()
+
+        self.assertEqual(version.call_count, 6)
+
     def test_registry_validates_media_settings_and_dependency_capabilities(
         self,
     ) -> None:

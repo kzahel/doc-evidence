@@ -237,6 +237,40 @@ class ExtractorRegistry:
         if len(self._specs) != len(specs):
             raise ValueError("extractor registry repeats an identifier")
         self._capabilities: dict[str, ExtractorCapability] = {}
+        self._dependency_capabilities: dict[DependencySpec, DependencyCapability] = {}
+
+    def _dependency_capability(
+        self, dependency: DependencySpec
+    ) -> DependencyCapability:
+        cached = self._dependency_capabilities.get(dependency)
+        if cached is not None:
+            return cached
+        executable = dependency.resolve()
+        if executable is None:
+            capability = DependencyCapability(
+                name=dependency.name,
+                available=False,
+                version=None,
+                reason=f"{dependency.name} is not installed",
+            )
+        else:
+            version_executable = (
+                executable.parent / dependency.version_sibling
+                if dependency.version_sibling is not None
+                else executable
+            )
+            version = command_version(
+                [str(version_executable), *dependency.version_arguments],
+                timeout_seconds=120,
+            )
+            capability = DependencyCapability(
+                name=dependency.name,
+                available=True,
+                version=version,
+                reason=None,
+            )
+        self._dependency_capabilities[dependency] = capability
+        return capability
 
     def spec(self, extractor_id: str) -> ExtractorSpec:
         try:
@@ -249,36 +283,9 @@ class ExtractorRegistry:
         if cached is not None:
             return cached
         spec = self.spec(extractor_id)
-        dependencies: list[DependencyCapability] = []
-        for dependency in spec.dependencies:
-            executable = dependency.resolve()
-            if executable is None:
-                dependencies.append(
-                    DependencyCapability(
-                        name=dependency.name,
-                        available=False,
-                        version=None,
-                        reason=f"{dependency.name} is not installed",
-                    )
-                )
-                continue
-            version_executable = (
-                executable.parent / dependency.version_sibling
-                if dependency.version_sibling is not None
-                else executable
-            )
-            version = command_version(
-                [str(version_executable), *dependency.version_arguments],
-                timeout_seconds=120,
-            )
-            dependencies.append(
-                DependencyCapability(
-                    name=dependency.name,
-                    available=True,
-                    version=version,
-                    reason=None,
-                )
-            )
+        dependencies = [
+            self._dependency_capability(dependency) for dependency in spec.dependencies
+        ]
         capability = ExtractorCapability(spec, tuple(dependencies))
         self._capabilities[extractor_id] = capability
         return capability
