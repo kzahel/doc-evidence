@@ -8,6 +8,7 @@ from doc_evidence.extraction import (
     ExtractionResult,
     command_version,
     descriptor_identity,
+    installed_distribution_version,
     load_cached_result,
     pages_from_text,
     resolve_executable,
@@ -44,7 +45,8 @@ class OcrMyPdfExtractor:
             "0",
         ]
         self.descriptor = {
-            "ocrmypdf_version": command_version([self.ocrmypdf, "--version"]),
+            "ocrmypdf_version": installed_distribution_version("ocrmypdf")
+            or command_version([self.ocrmypdf, "--version"]),
             "tesseract_version": command_version([self.tesseract, "--version"]),
             "pdftotext_version": command_version([self.pdftotext, "-v"]),
             "languages": list(self.languages),

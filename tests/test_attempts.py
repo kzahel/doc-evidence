@@ -470,10 +470,21 @@ class ExtractorRegistryTest(unittest.TestCase):
                 "doc_evidence.extractor_registry.command_version",
                 return_value="tool 1.0",
             ) as version,
+            patch(
+                "doc_evidence.extractor_registry.installed_distribution_version",
+                return_value="distribution 2.0",
+            ) as distribution_version,
         ):
-            registry.capabilities()
+            capabilities = registry.capabilities()
 
-        self.assertEqual(version.call_count, 6)
+        self.assertEqual(version.call_count, 5)
+        distribution_version.assert_called_once_with("ocrmypdf")
+        ocr = next(
+            item
+            for item in capabilities
+            if item.spec.extractor_id == "ocrmypdf-tesseract"
+        )
+        self.assertEqual(ocr.dependencies[0].version, "distribution 2.0")
 
     def test_registry_validates_media_settings_and_dependency_capabilities(
         self,

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from doc_evidence.errors import DependencyError, RequestError
-from doc_evidence.extraction import command_version
+from doc_evidence.extraction import command_version, installed_distribution_version
 
 ResourceClass = Literal["light", "ocr", "model_heavy"]
 
@@ -21,6 +21,7 @@ class DependencySpec:
     version_arguments: tuple[str, ...]
     repo_relative: str | None = None
     version_sibling: str | None = None
+    version_distribution: str | None = None
 
     def resolve(self) -> Path | None:
         if self.repo_relative is not None:
@@ -158,7 +159,12 @@ DEFAULT_EXTRACTORS = (
         category="ocr_preprocessing",
         supported_media_types=("application/pdf",),
         dependencies=(
-            DependencySpec("ocrmypdf", "ocrmypdf", ("--version",)),
+            DependencySpec(
+                "ocrmypdf",
+                "ocrmypdf",
+                ("--version",),
+                version_distribution="ocrmypdf",
+            ),
             DependencySpec("tesseract", "tesseract", ("--version",)),
             DependencySpec("pdfinfo", "pdfinfo", ("-v",)),
             DependencySpec("pdftotext", "pdftotext", ("-v",)),
@@ -259,10 +265,16 @@ class ExtractorRegistry:
                 if dependency.version_sibling is not None
                 else executable
             )
-            version = command_version(
-                [str(version_executable), *dependency.version_arguments],
-                timeout_seconds=120,
+            version = (
+                installed_distribution_version(dependency.version_distribution)
+                if dependency.version_distribution is not None
+                else None
             )
+            if version is None:
+                version = command_version(
+                    [str(version_executable), *dependency.version_arguments],
+                    timeout_seconds=120,
+                )
             capability = DependencyCapability(
                 name=dependency.name,
                 available=True,

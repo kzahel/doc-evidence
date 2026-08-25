@@ -9,6 +9,7 @@ import signal
 import subprocess
 import time
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
 
@@ -93,6 +94,15 @@ def command_version(command: list[str], timeout_seconds: int = 60) -> str:
     result = run_command(command, timeout_seconds=timeout_seconds)
     combined = (result.stdout + "\n" + result.stderr).strip()
     return combined.splitlines()[0] if combined else "unknown"
+
+
+def installed_distribution_version(distribution: str) -> str | None:
+    """Return local Python package metadata without launching a console shim."""
+
+    try:
+        return version(distribution)
+    except PackageNotFoundError:
+        return None
 
 
 def run_command(
