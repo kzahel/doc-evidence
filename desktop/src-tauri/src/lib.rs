@@ -295,6 +295,8 @@ fn token() -> Result<String, String> {
 #[cfg(windows)]
 pub fn run_sidecar_launcher_if_requested() -> Option<i32> {
     use std::ffi::OsStr;
+    use std::os::windows::process::CommandExt;
+    use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
 
     let mut arguments = env::args_os().skip(1);
     if arguments.next().as_deref() != Some(OsStr::new(SIDECAR_LAUNCHER_FLAG)) {
@@ -307,12 +309,14 @@ pub fn run_sidecar_launcher_if_requested() -> Option<i32> {
     if std::io::stdin().read_exact(&mut gate).is_err() || gate != *b"G" {
         return Some(125);
     }
-    let status = Command::new(python)
+    let mut command = Command::new(python);
+    command
         .args(arguments)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .status();
+        .creation_flags(CREATE_NO_WINDOW);
+    let status = command.status();
     Some(status.ok().and_then(|value| value.code()).unwrap_or(125))
 }
 
