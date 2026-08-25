@@ -30,6 +30,7 @@ ATTEMPT_SCHEMA_VERSION = 1
 WORKER_PROTOCOL_VERSION = 2
 DEFAULT_LOG_LIMIT_BYTES = 1_000_000
 DEFAULT_MINIMUM_FREE_BYTES = 64 * 1024 * 1024
+DEFAULT_WORKER_LAUNCH_TIMEOUT_SECONDS = 30.0
 WINDOWS_WORKER_LAUNCH_FAILED_EXIT = 125
 
 AttemptOutcome = Literal[
@@ -326,6 +327,7 @@ class AttemptSupervisor:
         minimum_free_bytes: int = DEFAULT_MINIMUM_FREE_BYTES,
         cancellation_grace_seconds: float = 5.0,
         heartbeat_seconds: float = 1.0,
+        worker_launch_timeout_seconds: float = DEFAULT_WORKER_LAUNCH_TIMEOUT_SECONDS,
     ):
         self.worker_command = worker_command or (
             sys.executable,
@@ -336,6 +338,9 @@ class AttemptSupervisor:
         self.minimum_free_bytes = minimum_free_bytes
         self.cancellation_grace_seconds = cancellation_grace_seconds
         self.heartbeat_seconds = heartbeat_seconds
+        if worker_launch_timeout_seconds <= 0:
+            raise ValueError("worker launch timeout must be positive")
+        self.worker_launch_timeout_seconds = worker_launch_timeout_seconds
 
     def execute(
         self,
@@ -533,6 +538,15 @@ class AttemptSupervisor:
             now = time.monotonic()
             if worker_pid is None and os.name == "nt":
                 worker_pid = _read_worker_pid(worker_pid_path)
+                if now - started >= self.worker_launch_timeout_seconds:
+                    outcome = "failed"
+                    failure_class = "worker_launch_failed"
+                    message = (
+                        "Windows worker launcher did not report a worker process "
+                        f"within {self.worker_launch_timeout_seconds:g} seconds"
+                    )
+                    _signal_tree(process, force=False, windows_job=windows_job)
+                    break
             if cancel is not None and cancel.is_set():
                 outcome = "cancelled"
                 failure_class = "cancelled"

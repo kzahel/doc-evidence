@@ -90,6 +90,10 @@ class AttemptSupervisorTest(unittest.TestCase):
             **values,  # type: ignore[arg-type]
         )
 
+    def test_worker_launch_timeout_must_be_positive(self) -> None:
+        with self.assertRaisesRegex(ValueError, "launch timeout"):
+            self.supervisor(worker_launch_timeout_seconds=0)
+
     def test_atomic_publication_concurrent_win_and_nondeterminism(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
