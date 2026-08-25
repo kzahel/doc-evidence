@@ -21,6 +21,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,6 +36,54 @@ DESKTOP_PROTOCOL = "doc-evidence.desktop.v1"
 Platform = Literal["macos", "windows"]
 TERMINAL_JOB_STATES = frozenset({"succeeded", "failed", "cancelled", "interrupted"})
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+MAX_SIDECAR_LOG_CHARACTERS = 1024 * 1024
+
+
+class _BoundedTextCapture:
+    def __init__(
+        self,
+        stream: Any,
+        *,
+        name: str,
+        maximum_characters: int = MAX_SIDECAR_LOG_CHARACTERS,
+    ) -> None:
+        self.stream = stream
+        self.maximum_characters = maximum_characters
+        self._chunks: deque[str] = deque()
+        self._characters = 0
+        self._error: BaseException | None = None
+        self._thread = threading.Thread(
+            target=self._drain,
+            name=name,
+            daemon=True,
+        )
+
+    def _drain(self) -> None:
+        try:
+            while chunk := self.stream.read(4096):
+                self._chunks.append(chunk)
+                self._characters += len(chunk)
+                while self._characters > self.maximum_characters:
+                    overflow = self._characters - self.maximum_characters
+                    first = self._chunks[0]
+                    if len(first) <= overflow:
+                        self._characters -= len(self._chunks.popleft())
+                    else:
+                        self._chunks[0] = first[overflow:]
+                        self._characters -= overflow
+        except BaseException as error:  # noqa: BLE001 - returned to test driver
+            self._error = error
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def finish(self) -> str:
+        self._thread.join(timeout=5)
+        if self._thread.is_alive():
+            raise RuntimeError("desktop sidecar log drain did not finish")
+        if self._error is not None:
+            raise RuntimeError("desktop sidecar log drain failed") from self._error
+        return "".join(self._chunks)
 
 
 def _sha256(path: Path) -> str:
@@ -233,6 +282,8 @@ class Sidecar:
     control_token: str
     origin: str
     ready_line: str
+    stdout_capture: _BoundedTextCapture
+    stderr_capture: _BoundedTextCapture
 
     @classmethod
     def start(
@@ -290,6 +341,16 @@ class Sidecar:
                 or ready["port"] < 1
             ):
                 raise RuntimeError("desktop sidecar ready record is incompatible")
+            stdout_capture = _BoundedTextCapture(
+                process.stdout,
+                name="desktop-stdout-drain",
+            )
+            stderr_capture = _BoundedTextCapture(
+                process.stderr,
+                name="desktop-stderr-drain",
+            )
+            stdout_capture.start()
+            stderr_capture.start()
             return cls(
                 process=process,
                 base_url=f"http://127.0.0.1:{ready['port']}",
@@ -297,6 +358,8 @@ class Sidecar:
                 control_token=control_token,
                 origin=origin,
                 ready_line=ready_line,
+                stdout_capture=stdout_capture,
+                stderr_capture=stderr_capture,
             )
         except Exception:
             process.kill()
@@ -318,10 +381,8 @@ class Sidecar:
             raise RuntimeError(
                 "desktop sidecar did not stop within its bound"
             ) from error
-        assert self.process.stdout is not None
-        assert self.process.stderr is not None
-        stdout = self.process.stdout.read()
-        stderr = self.process.stderr.read()
+        stdout = self.stdout_capture.finish()
+        stderr = self.stderr_capture.finish()
         if (
             self.runtime_token in self.ready_line + stdout + stderr
             or self.control_token in (self.ready_line + stdout + stderr)
@@ -353,7 +414,7 @@ class Sidecar:
             method=method,
         )
         try:
-            with urllib.request.urlopen(request, timeout=180) as response:
+            with urllib.request.urlopen(request, timeout=60) as response:
                 payload = response.read(MAX_RESPONSE_BYTES + 1)
         except urllib.error.HTTPError as error:
             detail = error.read(8_192).decode("utf-8", errors="replace")

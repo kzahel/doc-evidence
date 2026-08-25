@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import io
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from doc_evidence.desktop_acceptance import (
+    _BoundedTextCapture,
     _collection_hashes,
     _long_fixture_path,
     _runtime_environment,
@@ -16,6 +18,17 @@ from doc_evidence.desktop_acceptance import (
 
 
 class DesktopAcceptanceFixtureTest(unittest.TestCase):
+    def test_sidecar_log_capture_drains_and_retains_a_bounded_tail(self) -> None:
+        capture = _BoundedTextCapture(
+            io.StringIO("discarded-prefix-" + "retained-tail"),
+            name="test-sidecar-drain",
+            maximum_characters=len("retained-tail"),
+        )
+
+        capture.start()
+
+        self.assertEqual(capture.finish(), "retained-tail")
+
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
