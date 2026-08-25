@@ -512,10 +512,16 @@ The core recovery invariant is:
   environments; CPU count alone does not establish safe model concurrency.
 - Tactical 003 now implements Windows kill-on-close Job Objects for both the
   Tauri sidecar tree and each Python attempt tree, with gated launch preventing
-  descendants from escaping before assignment. The available Windows ARM64
-  guest passes target-native Python cleanup and x86_64-emulated Rust tests; the
-  exact installed Windows x86_64 candidate and crash/restart matrix remain
-  release-blocking.
+  descendants from escaping before assignment. The Python launcher now writes
+  a bounded readiness record before waiting for the supervisor gate; the
+  supervisor assigns it to the Job Object before opening that gate, then bounds
+  both launcher readiness and worker-PID publication at 30 seconds. A launch
+  failure retains the transient `worker_launch_failed` classification so the
+  existing one-retry policy remains authoritative. The available Windows ARM64
+  guest passes target-native Python cleanup, direct packaged OCR, and
+  x86_64-emulated Rust tests, but nested x86_64 process startup under ARM
+  emulation remains unreliable. Native Windows x86_64 installed acceptance and
+  the crash/restart matrix remain release-blocking.
 - Tactical 002's Python sidecar shuts down its manager/schedulers on parent
   EOF, and the Tauri shell now closes that parent channel, waits up to the
   existing scheduler cleanup envelope, then applies a bounded kill. The

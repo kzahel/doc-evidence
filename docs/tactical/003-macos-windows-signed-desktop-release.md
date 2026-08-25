@@ -937,6 +937,56 @@ finalizer logic only: it does not create a remote, choose an updater route or
 key, add credentials, publish a workflow, or claim that updater integration is
 complete.
 
+The shared packaged-runtime corrections were then carried through a fresh
+macOS arm64 build. The current application contains 3,825 files and
+190,854,648 bytes at tree
+`1cd69a4a8af70ca37ebf494cea549b6d9a36d69d688d0c46a5daaf6823cb4fb2`;
+its runtime tree is
+`3f0a27c7515e50112dbbf9dcd44e37e30a39faba117070ad5ab605ed0f472fd2`.
+Bundle manifest
+`021ddcfcf19ebf02d2122861e7c9dbd526bc5dde66fb61fea28e8d28fe817cd7`
+binds the updated Python package while the unchanged baseline-pack manifest is
+`88b8e8741b6d8ad867b6189c9d40612be26fc0faac23c56d6bd9352a10cff58c`.
+Final application and embedded-runtime review, 109-object Mach-O dependency
+inspection, strict deep ad-hoc verification, sidecar/OCR smokes, and the full
+packaged workflow all pass. The workflow completed both inventories, executed
+real OCR, rendered a PNG, found the expected text, survived normal and forced
+sidecar restarts, and left both synthetic source files byte-identical.
+
+The first real Windows runtime and NSIS pass ran in an isolated Machine
+Control Windows ARM64 guest under x86_64 emulation. The staged runtime's native
+closure, bundle and pack audits, copied-out tools, long-path operations, and
+final unsigned installer audit passed. Installed acceptance proved inventory
+and PNG rendering from a greater-than-440-character Unicode source alias. A
+capability request then isolated an intermittent hang in the generated
+`ocrmypdf.exe --version` shim; runtime capability discovery now obtains the
+installed distribution version through Python package metadata without
+launching the shim.
+
+The same guest showed that nested packaged worker creation is not a reliable
+performance or compatibility oracle under ARM x64 emulation. The launcher now
+reports readiness before waiting for its Job Object release gate, and the
+supervisor bounds both launcher readiness and worker-PID publication at 30
+seconds while preserving the transient launch classification and one retry. A
+retained exact request invoked directly outside the nested sidecar tree
+completed real OCR in about 53 seconds from the long Unicode path and produced
+the planned normalized staged run. This proves the packaged OCR adapter and
+path boundary on this guest, but does not substitute for the tactical's native
+Windows x86_64 installed-workflow gate.
+
+The intermediate installed UI reached the real empty-home product screen and
+was accessible as `Doc Evidence · Local evidence workspace`. Native capture
+then exposed a release-facing defect: starting the console-subsystem Python
+child without creation flags opened a visible Windows Terminal over the
+product. The Windows launcher now applies `CREATE_NO_WINDOW`. Because this fix
+and the later launcher handshake postdated that installer, the artifact was
+rejected as an intermediate candidate rather than promoted by documentation.
+Its first silent uninstall preserved both an application-data marker and an
+external source marker. It left 233 post-install diagnostic files, principally
+Python bytecode plus a deliberately generated synthetic path; only that exact
+disposable remainder was removed before a clean reinstall. A current-HEAD
+rebuild and clean installed UI/uninstall pass remain required.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

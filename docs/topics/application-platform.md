@@ -498,6 +498,29 @@ checksum output omits signature assets. The remote workflow, product updater
 key and route, installed client surface, signing, and publication remain open
 and separately authorized boundaries.
 
+The current-HEAD macOS arm64 application has now been rebuilt after the shared
+packaged-runtime fixes. Its 3,825 files occupy 190,854,648 bytes at tree
+`1cd69a4a8af70ca37ebf494cea549b6d9a36d69d688d0c46a5daaf6823cb4fb2`;
+the embedded runtime tree is
+`3f0a27c7515e50112dbbf9dcd44e37e30a39faba117070ad5ab605ed0f472fd2`.
+Strict deep ad-hoc verification, final application/runtime/native-dependency
+review, sidecar and OCR smokes, and the complete packaged two-library workflow
+pass. The workflow performed two inventories, one executed OCR run, PNG page
+rendering, searchable text, normal and forced-sidecar restart, and unchanged
+source-byte verification.
+
+The first installed Windows x86_64-emulation candidate proved the per-user
+NSIS layout, manifest-bound runtime, greater-than-260-character Unicode source
+inventory, page rendering, and uninstall preservation of application data and
+external source collections. It also exposed two bounded product issues before
+release: an OCRmyPDF version probe could hang by launching the command shim,
+and the console-subsystem Python child opened a visible Windows Terminal. The
+runtime now reads the installed distribution version without executing that
+shim, and the Rust launcher starts Python with `CREATE_NO_WINDOW`. That
+intermediate installer is explicitly not a final candidate; a current-HEAD
+runtime and installer rebuild must contain both corrections before its UI and
+uninstall evidence can close.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;
