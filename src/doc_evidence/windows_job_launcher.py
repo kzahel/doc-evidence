@@ -12,17 +12,21 @@ from pathlib import Path
 def run(
     *,
     gate: Path,
+    ready_file: Path,
     pid_file: Path,
     command: tuple[str, ...],
     timeout_seconds: float = 30.0,
 ) -> int:
     if (
         not gate.is_absolute()
+        or not ready_file.is_absolute()
         or not pid_file.is_absolute()
+        or gate.parent != ready_file.parent
         or gate.parent != pid_file.parent
         or not command
     ):
         raise ValueError("Windows worker-launch gate is invalid")
+    ready_file.write_text("ready\n", encoding="ascii")
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
         if gate.is_file():
@@ -37,12 +41,14 @@ def run(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("gate", type=Path)
+    parser.add_argument("ready_file", type=Path)
     parser.add_argument("pid_file", type=Path)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     try:
         return run(
             gate=args.gate,
+            ready_file=args.ready_file,
             pid_file=args.pid_file,
             command=tuple(args.command),
         )

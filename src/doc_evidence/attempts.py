@@ -318,6 +318,21 @@ def _read_worker_pid(path: Path) -> int | None:
     return value if value > 0 else None
 
 
+def _wait_for_launcher_ready(
+    process: subprocess.Popen[bytes],
+    ready_path: Path,
+    timeout_seconds: float,
+) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if ready_path.is_file():
+            return True
+        if process.poll() is not None:
+            return False
+        time.sleep(0.01)
+    return False
+
+
 class AttemptSupervisor:
     def __init__(
         self,
@@ -390,6 +405,7 @@ class AttemptSupervisor:
         ]
         windows_job: WindowsJob | None = None
         gate_path = attempt_dir / "worker-launch.gate"
+        launcher_ready_path = attempt_dir / "worker-launcher.ready"
         worker_pid_path = attempt_dir / "worker.pid"
         process: subprocess.Popen[bytes] | None = None
         windows_job_assigned = False
@@ -403,6 +419,7 @@ class AttemptSupervisor:
                     "-m",
                     "doc_evidence.windows_job_launcher",
                     str(gate_path.resolve()),
+                    str(launcher_ready_path.resolve()),
                     str(worker_pid_path.resolve()),
                     *worker_command,
                 ]
@@ -414,6 +431,15 @@ class AttemptSupervisor:
                 creationflags=flags,
             )
             if windows_job is not None:
+                if not _wait_for_launcher_ready(
+                    process,
+                    launcher_ready_path,
+                    self.worker_launch_timeout_seconds,
+                ):
+                    raise OSError(
+                        "Windows worker launcher did not become ready within "
+                        f"{self.worker_launch_timeout_seconds:g} seconds"
+                    )
                 windows_job.assign(process.pid)
                 windows_job_assigned = True
                 atomic_write_json(
