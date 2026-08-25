@@ -358,7 +358,12 @@ def _prune_runtime(python_root: Path) -> None:
     ):
         _remove_path(python_root / relative)
     site_packages = python_root / "lib" / "python3.12" / "site-packages"
-    (site_packages / "doc_evidence" / "desktop_packaging.py").unlink(missing_ok=True)
+    for build_only_module in (
+        "desktop_packaging.py",
+        "windows_desktop_packaging.py",
+        "windows_pe.py",
+    ):
+        (site_packages / "doc_evidence" / build_only_module).unlink(missing_ok=True)
     for candidate in list(site_packages.glob("pip*")):
         _remove_path(candidate)
     for direct_url in site_packages.glob("*.dist-info/direct_url.json"):

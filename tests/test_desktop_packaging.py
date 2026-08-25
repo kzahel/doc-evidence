@@ -19,6 +19,7 @@ from doc_evidence.desktop_packaging import (
     _included_locked_requirements,
     _installed_homebrew_bottle,
     _load_inputs,
+    _prune_runtime,
     _python_binary_compliance_record,
     _python_native_inventory,
     _recover_rust_license_files,
@@ -67,6 +68,30 @@ class DesktopPackagingTest(unittest.TestCase):
             )
             self.assertFalse((context / "build").exists())
             self.assertFalse((context / "src" / "doc_evidence.egg-info").exists())
+
+    def test_runtime_pruning_removes_all_build_only_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            python = Path(raw) / "python"
+            package = python / "lib/python3.12/site-packages/doc_evidence"
+            package.mkdir(parents=True)
+            keep = package / "desktop_sidecar.py"
+            keep.write_text("keep", encoding="utf-8")
+            removed = (
+                package / "desktop_packaging.py",
+                package / "windows_desktop_packaging.py",
+                package / "windows_pe.py",
+            )
+            for path in removed:
+                path.write_text("build only", encoding="utf-8")
+            binaries = python / "bin"
+            binaries.mkdir(parents=True)
+            interpreter = binaries / "python3"
+            interpreter.write_bytes(b"python")
+
+            _prune_runtime(python)
+
+            self.assertTrue(keep.is_file())
+            self.assertFalse(any(path.exists() for path in removed))
 
     def test_build_inputs_pin_exact_standalone_python_archive(self) -> None:
         inputs = _load_inputs(self.root)
