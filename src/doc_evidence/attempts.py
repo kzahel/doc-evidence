@@ -592,11 +592,15 @@ class AttemptSupervisor:
             try:
                 if (
                     os.name == "nt"
-                    and exit_code == WINDOWS_WORKER_LAUNCH_FAILED_EXIT
+                    and (
+                        exit_code == WINDOWS_WORKER_LAUNCH_FAILED_EXIT
+                        or failure_class == "worker_launch_failed"
+                    )
                     and not response_path.exists()
                 ):
-                    failure_class = "worker_launch_failed"
-                    message = "Windows worker launcher could not start the worker"
+                    if failure_class is None:
+                        failure_class = "worker_launch_failed"
+                        message = "Windows worker launcher could not start the worker"
                     raise _HandledWorkerFailureError
                 response = _read_json(response_path)
                 if (
