@@ -987,6 +987,39 @@ Python bytecode plus a deliberately generated synthetic path; only that exact
 disposable remainder was removed before a clean reinstall. A current-HEAD
 rebuild and clean installed UI/uninstall pass remain required.
 
+The final local wrap-up rebuild installs the project into both packaged
+runtimes from a bounded clean source context rather than allowing stale
+setuptools output to participate. On Windows, an intentionally retained stale
+`build/lib/doc_evidence/attempts.py` differed from source while the staged file
+matched source exactly. The rebuilt 75,017,145-byte unsigned NSIS installer has
+SHA-256
+`2ca508ce7fda3c57d5d572de87b12538195d912c59f643d4f30f9b1e75ac8989`;
+its x86_64 application has SHA-256
+`9a3e73966cfd7e652f4d0529085e7d0f1354f14959a38ac49c45ffc2dca15a52`.
+The exact installer audit passes with both files `NotSigned`. The embedded
+3,653-file runtime tree
+`871a6fabf03d5abe9159eaa53d53397f516eb1f6fbbd50e0c39434caabcb441c`
+passes x86_64 PE closure, copied sidecar and baseline OCR smokes, and a
+440-character path round trip. Work deliberately stopped before installing
+these final bytes; the rebuilt UI/no-console and clean-uninstall checks remain
+open, as do native x86_64 workflow acceptance and Windows dependency
+compliance.
+
+The final matching macOS application contains 3,823 files and 190,756,504
+bytes at tree
+`16a46107471031a0f16ccdea9143ab689947dfbbd34329e87004e98080f578af`;
+its runtime tree is
+`6e8774e713bdb921caf601fa85625f2d4f4239148434c1819e57919cee71f3ae`.
+Final review and the complete packaged workflow pass, including two
+inventories, executed OCR, page rendering, search, both restart modes, and
+unchanged sources. The independently mounted 72,555,881-byte unsigned DMG has
+SHA-256
+`a0b65cf9dbcad5b01a4380a1a12076f66e788a0e77a5a7c278132654b2107e0b`.
+The 287,122,508-byte exact-source compliance archive has SHA-256
+`aa8b876e734abf91ad36a5775994a70484d1b7ed0bc0998870fcda3eeedd7105`,
+reconciles all 30 nested libraries and 43 source archives, and reports
+`release_ready: true` with no blockers.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer

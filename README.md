@@ -144,9 +144,9 @@ foundation: thin Tauri shell, separate runtime and host-control credentials,
 native library/collection selection through Python-owned services, standalone
 CPython, a Ghostscript-free Poppler/Tesseract/OCRmyPDF baseline pack, strict
 final-byte audits, a mounted unsigned DMG smoke, and fail-closed compliance
-artifacts. Three compliance classes remain unresolved. No signing credential,
-remote release, updater, notarization, or publication action has been
-performed.
+artifacts. Its exact-source compliance archive is release-ready with no
+blockers. No signing credential, remote release, updater, notarization, or
+publication action has been performed.
 
 The maintainer selected macOS arm64 and Windows x86_64 together for the first
 signed release, with Linux deferred. Tactical 003 freezes the two-platform
@@ -158,8 +158,9 @@ Windows ARM64, so it supports target-native Windows implementation and
 x86_64-emulation testing while native Windows x86_64 acceptance remains a
 release gate. Exact paired launch contracts, Windows kill-on-close ownership
 for both desktop process boundaries, and the local fixed-drive/reparse/case-
-alias path policy are implemented and pass on that testbed. Actual greater-
-than-260-character I/O remains a standalone-runtime and installed-app gate.
+alias path policy are implemented and pass on that testbed. The assembled
+x86_64 runtime passes copied-location OCR, sidecar, native-dependency, and
+440-character-path audits under emulation.
 The Windows input manifest now pins CPython, Poppler, Tesseract, language data,
 sources, and all 55 selected native payload hashes; a local PE import-table
 audit closes across their exact extracted bytes. The pack assembler now safely
@@ -169,9 +170,11 @@ tracked relocatable OCRmyPDF launcher source. The production and baseline
 Python locks resolve and their selected Windows wheels close a 123-file PE
 graph after deterministic pruning. A transactional target-only runtime builder
 now owns frozen installation, component/file manifests, copied-location OCR
-and sidecar smokes, and long-path I/O. Target-native execution of those gates,
-third-party license/source and Microsoft redistribution review, and installed-
-application acceptance remain open. A Windows-specific Tauri overlay now
+and sidecar smokes, and long-path I/O. The final local unsigned NSIS artifact
+passes exact installer, application, runtime, PE, and unsigned Authenticode
+audits. Native x86_64 installed-workflow acceptance and the Windows dependency
+license/source and Microsoft redistribution reviews remain open. A Windows-
+specific Tauri overlay now
 freezes the unsigned candidate as a current-user English NSIS installer with
 an embedded visible WebView2 bootstrapper and downgrades disabled; exact app,
 installer-name, PE, hash, and unsigned Authenticode audits are implemented for

@@ -341,13 +341,16 @@ selected native payload hashes. The exact Microsoft app-local CRT input closes
 that flat native dependency graph. Safe exact pack assembly, corrected archive-
 bound language hashes, the Windows pack manifest, and the relocatable OCRmyPDF
 launcher source have landed. Exact Windows wheels form a closed 123-file PE
-graph after pruning. The transactional target-only runtime builder and copied-
-location OCR, sidecar, and long-path gates are implemented but have not run on
-Windows. The current-user NSIS overlay and exact unsigned app/installer audits
-have also landed without executing a target build. Microsoft redistribution
-review, third-party Windows dependency compliance, target-native assembly/
-execution, and native Windows x86_64 installed-artifact acceptance remain
-release-blocking. Do not touch signing
+graph after pruning. The transactional Windows runtime passes copied-location
+OCR, sidecar, native PE closure, and 440-character-path gates under x86_64
+emulation. The final local unsigned NSIS installer passes exact application,
+runtime, installer, and Authenticode audits. Work stopped before installing
+those final rebuilt bytes, so exact no-console UI and clean-uninstall evidence
+remain open. Microsoft redistribution review, third-party Windows dependency
+compliance, and native Windows x86_64 installed-workflow acceptance remain
+release-blocking. The matching macOS app, complete packaged workflow, mounted
+DMG, and exact-source compliance preflight pass with no compliance blockers.
+Do not touch signing
 credentials, repository/release setup, notarization, updater setup, tags, or
 publication without explicit maintainer authorization. Heavy extractor packs
 and alternative release channels remain outside it.

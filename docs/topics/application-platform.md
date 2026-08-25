@@ -2,7 +2,7 @@
 
 Topic: application-platform
 
-**Last updated:** 2026-08-24
+**Last updated:** 2026-08-25
 
 **Status:** Tactical 000 implemented and validated. Tactical 001 implementation
 is complete; automated, isolated-browser, and authorized private-library gates
@@ -520,6 +520,31 @@ shim, and the Rust launcher starts Python with `CREATE_NO_WINDOW`. That
 intermediate installer is explicitly not a final candidate; a current-HEAD
 runtime and installer rebuild must contain both corrections before its UI and
 uninstall evidence can close.
+
+The clean-source rebuild closes the packaged-source ambiguity that followed
+that intermediate candidate. Staging now installs from a bounded temporary
+copy of the tracked project inputs, so an intentionally stale `build/lib`
+cannot win over `src/`; the final staged `attempts.py` hash matches source
+while the retained stale file differs. The exact unsigned Windows installer is
+75,017,145 bytes at SHA-256
+`2ca508ce7fda3c57d5d572de87b12538195d912c59f643d4f30f9b1e75ac8989`.
+Its exact installer/application/runtime audit passes, both PE files report
+`NotSigned`, and the 3,653-file runtime tree is
+`871a6fabf03d5abe9159eaa53d53397f516eb1f6fbbd50e0c39434caabcb441c`.
+The copied runtime passes sidecar, baseline OCR, native closure, and
+440-character-path smokes. Work stopped before installing this rebuilt
+candidate, so the visible-console fix and clean uninstall are not yet proven
+from these exact installer bytes. Native Windows x86_64 acceptance and the
+three declared Windows dependency-compliance reviews remain release blockers.
+
+The matching final local macOS proof contains 3,823 files at application tree
+`16a46107471031a0f16ccdea9143ab689947dfbbd34329e87004e98080f578af`
+and runtime tree
+`6e8774e713bdb921caf601fa85625f2d4f4239148434c1819e57919cee71f3ae`.
+The complete packaged workflow and mounted-DMG review pass. The 72,555,881-byte
+unsigned DMG has SHA-256
+`a0b65cf9dbcad5b01a4380a1a12076f66e788a0e77a5a7c278132654b2107e0b`;
+the exact-source compliance preflight remains release-ready with no blockers.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
