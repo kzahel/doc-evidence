@@ -468,9 +468,7 @@ def stage_python_dependencies(
                 cwd=repository,
                 timeout_seconds=600,
             )
-        with tempfile.TemporaryDirectory(
-            prefix="doc-evidence-project-source-", dir=python_root.parent
-        ) as raw:
+        with tempfile.TemporaryDirectory(prefix="doc-evidence-project-source-") as raw:
             project = copy_clean_project_source(repository, Path(raw) / "project")
             _run(
                 [
