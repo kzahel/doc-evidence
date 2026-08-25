@@ -92,7 +92,8 @@ def path_identity(
     """Return a comparison-only identity without changing the display alias."""
 
     if _path_kind(kind) == "windows":
-        normalized = ntpath.normcase(ntpath.normpath(os.fspath(path)))
+        ordinary = _ordinary_windows_path(os.fspath(path))
+        normalized = ntpath.normcase(ntpath.normpath(ordinary))
         return PureWindowsPath(normalized).parts
     normalized = posixpath.normpath(os.fspath(path))
     return Path(normalized).parts

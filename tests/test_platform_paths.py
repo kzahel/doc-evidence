@@ -67,6 +67,13 @@ class PlatformPathIdentityTest(unittest.TestCase):
         self.assertTrue(
             path_contains(r"c:\evidence", r"C:/Evidence/Résumé", kind="windows")
         )
+        self.assertTrue(
+            same_path(
+                r"\\?\C:\Evidence\Résumé\2024",
+                left,
+                kind="windows",
+            )
+        )
 
     def test_windows_identity_does_not_confuse_prefixes_or_drives(self) -> None:
         self.assertFalse(

@@ -142,7 +142,7 @@ def prepare_inventory(
         }
     )
     run_id = f"{compact_timestamp()}-{run_key[:12]}"
-    config.store.mkdir(parents=True, exist_ok=True)
+    config.filesystem_store.mkdir(parents=True, exist_ok=True)
     database = ensure_library_database(
         config,
         library_id=library_id,
@@ -514,7 +514,7 @@ def _execute_inventory_unchecked(
             _build_document(
                 content_sha256,
                 sources,
-                config.store,
+                config.filesystem_store,
                 poppler,
                 config.extraction.normalized_text_duplicates,
             )
@@ -546,7 +546,7 @@ def _execute_inventory_unchecked(
     summary["fingerprint_cache_hits"] = fingerprint_cache_hits
     summary["full_hash_verification"] = full_hash_verification
 
-    manifest_dir = config.store / "manifests" / run_id
+    manifest_dir = config.filesystem_store / "manifests" / run_id
     manifest_path = manifest_dir / "manifest.jsonl"
     manifest_text = "".join(
         json.dumps(document.manifest_value(), ensure_ascii=False, sort_keys=True) + "\n"
@@ -582,11 +582,18 @@ def _execute_inventory_unchecked(
     atomic_write_json(manifest_dir / "duplicates.json", duplicate_report)
     atomic_write_text(manifest_dir / "errors.jsonl", errors_text)
     atomic_write_json(manifest_dir / "discovery-warnings.json", discovery_warnings)
-    atomic_write_text(config.store / "manifests" / "latest.jsonl", manifest_text)
-    atomic_write_json(config.store / "manifests" / "latest-run.json", run_record)
-    atomic_write_json(config.store / "manifests" / "latest-summary.json", summary)
+    atomic_write_text(
+        config.filesystem_store / "manifests" / "latest.jsonl", manifest_text
+    )
     atomic_write_json(
-        config.store / "manifests" / "latest-duplicates.json", duplicate_report
+        config.filesystem_store / "manifests" / "latest-run.json", run_record
+    )
+    atomic_write_json(
+        config.filesystem_store / "manifests" / "latest-summary.json", summary
+    )
+    atomic_write_json(
+        config.filesystem_store / "manifests" / "latest-duplicates.json",
+        duplicate_report,
     )
 
     catalog_path = database.path

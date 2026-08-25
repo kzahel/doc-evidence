@@ -97,7 +97,7 @@ def load_suite(path: Path) -> tuple[dict[str, Any], str]:
 
 
 def _load_manifest(config: AppConfig) -> dict[str, dict[str, Any]]:
-    path = config.store / "manifests" / "latest.jsonl"
+    path = config.filesystem_store / "manifests" / "latest.jsonl"
     if not path.is_file():
         raise BenchmarkError(
             "no latest inventory manifest; run doc-evidence inventory first"
@@ -135,7 +135,7 @@ def _poppler_result(config: AppConfig, record: dict[str, Any]) -> ExtractionResu
     raw_artifact = record.get("extraction_artifact_path")
     if not raw_artifact:
         raise BenchmarkError(f"no Poppler artifact for {record['document_id']}")
-    run_dir = config.store / raw_artifact
+    run_dir = config.filesystem_store / raw_artifact
     try:
         run = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
         text = (run_dir / "text.txt").read_text(encoding="utf-8")
@@ -410,7 +410,9 @@ def run_benchmark(config: AppConfig, suite_path: Path) -> BenchmarkResult:
     suite, suite_hash = load_suite(suite_path)
     manifest = _load_manifest(config)
     run_id = f"{compact_timestamp()}-{suite_hash[:12]}"
-    run_dir = config.store / "benchmarks" / suite["suite_id"] / "runs" / run_id
+    run_dir = (
+        config.filesystem_store / "benchmarks" / suite["suite_id"] / "runs" / run_id
+    )
     render_dir = run_dir / "renders"
     engine_ids = list(suite["extractors"])
     engines = _extractors(engine_ids, config.languages)
@@ -428,7 +430,7 @@ def run_benchmark(config: AppConfig, suite_path: Path) -> BenchmarkResult:
                 f"benchmark document is not a PDF: {case['document_id']}"
             )
         source = _resolve_source(config, record)
-        blob_dir = config.store / record["artifact_path"]
+        blob_dir = config.filesystem_store / record["artifact_path"]
         selected_ids = case.get("extractors", engine_ids)
         results: dict[str, ExtractionResult] = {}
         for identifier in selected_ids:
@@ -437,7 +439,10 @@ def run_benchmark(config: AppConfig, suite_path: Path) -> BenchmarkResult:
                     _poppler_result(config, record)
                     if identifier == "poppler"
                     else engines[identifier].extract(
-                        source, blob_dir, record["content_sha256"], config.store
+                        source,
+                        blob_dir,
+                        record["content_sha256"],
+                        config.filesystem_store,
                     )
                 )
             except (
@@ -585,14 +590,18 @@ def run_benchmark(config: AppConfig, suite_path: Path) -> BenchmarkResult:
     atomic_write_json(run_dir / "report.json", report)
     atomic_write_json(run_dir / "review-template.json", template)
     atomic_write_text(run_dir / "review.html", _review_html(report, template, run_dir))
-    pointer_dir = config.store / "benchmarks" / suite["suite_id"]
+    pointer_dir = config.filesystem_store / "benchmarks" / suite["suite_id"]
     atomic_write_json(
         pointer_dir / "latest-run.json",
         {
             "benchmark_run_id": run_id,
-            "run_dir": run_dir.relative_to(config.store).as_posix(),
-            "report": (run_dir / "report.json").relative_to(config.store).as_posix(),
-            "review": (run_dir / "review.html").relative_to(config.store).as_posix(),
+            "run_dir": run_dir.relative_to(config.filesystem_store).as_posix(),
+            "report": (run_dir / "report.json")
+            .relative_to(config.filesystem_store)
+            .as_posix(),
+            "review": (run_dir / "review.html")
+            .relative_to(config.filesystem_store)
+            .as_posix(),
         },
     )
     return BenchmarkResult(

@@ -180,7 +180,7 @@ class LocalExtractionJobs:
         prepared: PreparedExtraction,
     ) -> CachedResult | None:
         run_dir = (
-            self.config.store
+            self.config.filesystem_store
             / "blobs"
             / source.content_sha256[:2]
             / source.content_sha256
@@ -198,7 +198,7 @@ class LocalExtractionJobs:
                 run_key=prepared.run_key,
             )
             self.database.register_run_sidecars(
-                store=self.config.store,
+                store=self.config.filesystem_store,
                 content_sha256=source.content_sha256,
                 expected_run_id=prepared.run_id,
             )
@@ -206,7 +206,7 @@ class LocalExtractionJobs:
             return None
         return CachedResult(
             run_id=prepared.run_id,
-            artifact_path=run_dir.relative_to(self.config.store).as_posix(),
+            artifact_path=run_dir.relative_to(self.config.filesystem_store).as_posix(),
         )
 
     @staticmethod
@@ -366,7 +366,7 @@ class LocalExtractionJobs:
             deterministic=bool(payload["deterministic"]),
         )
         blob_dir = (
-            self.config.store
+            self.config.filesystem_store
             / "blobs"
             / source.content_sha256[:2]
             / source.content_sha256
@@ -380,7 +380,7 @@ class LocalExtractionJobs:
             source_sha256=source.content_sha256,
             expected_size_bytes=source.size_bytes,
             expected_modified_ns=source.modified_ns,
-            store_root=self.config.store,
+            store_root=self.config.filesystem_store,
             blob_dir=blob_dir,
             extraction_config_hash=self.config.extraction_config_hash,
             fresh_verification=job.execution_mode == "fresh_verification",
@@ -410,7 +410,7 @@ class LocalExtractionJobs:
             try:
                 assert result.run_id is not None
                 self.database.register_run_sidecars(
-                    store=self.config.store,
+                    store=self.config.filesystem_store,
                     content_sha256=source.content_sha256,
                     expected_run_id=result.run_id,
                 )
@@ -622,7 +622,7 @@ class LocalExtractionJobs:
                 / "attempts"
                 / attempt_id
             ).as_posix()
-        root = self.config.store.resolve()
+        root = self.config.filesystem_store.resolve()
         attempt_dir = (root / relative).resolve()
         if not attempt_dir.is_relative_to(root):
             raise CatalogError("attempt diagnostics path escaped the artifact store")
@@ -697,7 +697,7 @@ class LocalExtractionJobs:
             and job.run_key is not None
         ):
             raise RequestError("job does not have a repairable catalog projection")
-        root = self.config.store.resolve()
+        root = self.config.filesystem_store.resolve()
         assert job.extractor_id is not None
         assert job.content_sha256 is not None
         run_dir = (root / job.result_artifact_path).resolve()
@@ -710,7 +710,7 @@ class LocalExtractionJobs:
             run_key=job.run_key,
         )
         self.database.register_run_sidecars(
-            store=self.config.store,
+            store=self.config.filesystem_store,
             content_sha256=job.content_sha256,
             expected_run_id=job.result_run_id,
         )
@@ -1046,7 +1046,7 @@ class LocalExtractionJobs:
                 continue
             if job.run_key is not None:
                 run_dir = (
-                    self.config.store
+                    self.config.filesystem_store
                     / "blobs"
                     / job.content_sha256[:2]
                     / job.content_sha256
@@ -1084,11 +1084,13 @@ class LocalExtractionJobs:
                         )
                         continue
                     run_id = str(job.execution["run_id"])
-                    artifact_path = run_dir.relative_to(self.config.store).as_posix()
+                    artifact_path = run_dir.relative_to(
+                        self.config.filesystem_store
+                    ).as_posix()
                     projection_failure: str | None = None
                     try:
                         self.database.register_run_sidecars(
-                            store=self.config.store,
+                            store=self.config.filesystem_store,
                             content_sha256=job.content_sha256,
                             expected_run_id=run_id,
                         )
@@ -1144,7 +1146,7 @@ class LocalExtractionJobs:
                     )
                 )
                 continue
-            run_dir = self.config.store / job.result_artifact_path
+            run_dir = self.config.filesystem_store / job.result_artifact_path
             try:
                 validate_run(
                     run_dir,
@@ -1169,7 +1171,7 @@ class LocalExtractionJobs:
         ):
             return False
         attempt_dir = (
-            self.config.store
+            self.config.filesystem_store
             / "blobs"
             / job.content_sha256[:2]
             / job.content_sha256
@@ -1197,7 +1199,7 @@ class LocalExtractionJobs:
         """Recover process groups even when a crash preceded the SQLite PID update."""
 
         groups: set[int] = set()
-        root = self.config.store.resolve()
+        root = self.config.filesystem_store.resolve()
         for job in self.repository.active_jobs():
             if job.active_attempt_id is None or job.content_sha256 is None:
                 continue

@@ -110,7 +110,7 @@ class LibraryScheduler:
         self.lease_stale_seconds = lease_stale_seconds
         self.instance_id = str(uuid.uuid4())
         self.process_lock = LibraryProcessLock(
-            application.config.store / ".doc-evidence-scheduler.lock"
+            application.config.filesystem_store / ".doc-evidence-scheduler.lock"
         )
         self._stop = threading.Event()
         self._state_lock = threading.Lock()

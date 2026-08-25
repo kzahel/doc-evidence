@@ -1081,7 +1081,7 @@ class LibraryDatabase:
                     )
                 _register_run_sidecars(
                     connection,
-                    store=config.store,
+                    store=config.filesystem_store,
                     content_sha256=document.content_sha256,
                 )
             for kind, groups in (
@@ -1278,7 +1278,7 @@ def _import_legacy_catalog(
             )
             _register_run_sidecars(
                 target,
-                store=config.store,
+                store=config.filesystem_store,
                 content_sha256=content_sha256,
             )
         for row in source.execute("SELECT * FROM sources"):

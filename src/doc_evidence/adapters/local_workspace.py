@@ -48,7 +48,7 @@ class LocalWorkspace:
         self.library_name = (
             library_name or config.path.parent.name or "Document Library"
         )
-        self.store = config.store.resolve()
+        self.store = config.filesystem_store.resolve()
         self.catalog_path = ensure_library_database(
             config,
             library_id=self.library_id,

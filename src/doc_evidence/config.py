@@ -69,6 +69,12 @@ class AppConfig:
     config_hash: str
     extraction_config_hash: str
 
+    @property
+    def filesystem_store(self) -> Path:
+        """Return the store form used for Python-owned filesystem access."""
+
+        return extended_length_path(self.store)
+
     def select_collections(
         self, requested: list[str] | tuple[str, ...]
     ) -> tuple[CollectionConfig, ...]:
@@ -219,7 +225,7 @@ def load_config(path: str | Path) -> AppConfig:
         path=config_path,
         schema_version=raw["schema_version"],
         collections=tuple(collections),
-        store=extended_length_path(display_store),
+        store=display_store,
         languages=tuple(raw.get("languages", [])),
         extraction=extraction,
         search=search,
