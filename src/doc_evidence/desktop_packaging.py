@@ -258,6 +258,30 @@ def _extract_python(archive: Path, destination: Path) -> Path:
     return python_root
 
 
+def copy_clean_project_source(root: Path, destination: Path) -> Path:
+    """Copy only declared project build inputs into a fresh source tree."""
+
+    if destination.exists():
+        raise RuntimeError(f"project build context already exists: {destination}")
+    destination.mkdir(parents=True)
+    for relative in ("LICENSE", "README.md", "pyproject.toml"):
+        source = root / relative
+        if not source.is_file() or source.is_symlink():
+            raise RuntimeError(f"project build input is invalid: {relative}")
+        shutil.copy2(source, destination / relative)
+    package = root / "src" / "doc_evidence"
+    if not package.is_dir() or package.is_symlink():
+        raise RuntimeError("project package source is invalid")
+    for source in package.rglob("*"):
+        if source.is_symlink():
+            raise RuntimeError(
+                f"project package source contains a symbolic link: "
+                f"{source.relative_to(package)}"
+            )
+    shutil.copytree(package, destination / "src" / "doc_evidence")
+    return destination
+
+
 def _stage_dependencies(root: Path, python_root: Path) -> None:
     requirements = python_root.parent / ".desktop-requirements.txt"
     _run(
@@ -295,21 +319,25 @@ def _stage_dependencies(root: Path, python_root: Path) -> None:
         ],
         cwd=root,
     )
-    _run(
-        [
-            "uv",
-            "pip",
-            "install",
-            "--python",
-            python,
-            "--no-deps",
-            "--reinstall",
-            "--link-mode",
-            "copy",
-            root,
-        ],
-        cwd=root,
-    )
+    with tempfile.TemporaryDirectory(
+        prefix="doc-evidence-project-source-", dir=python_root.parent
+    ) as raw:
+        project = copy_clean_project_source(root, Path(raw) / "project")
+        _run(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--python",
+                python,
+                "--no-deps",
+                "--reinstall",
+                "--link-mode",
+                "copy",
+                project,
+            ],
+            cwd=project,
+        )
     requirements.unlink()
 
 

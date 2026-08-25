@@ -33,6 +33,7 @@ from doc_evidence.contracts.desktop import (
     WINDOWS_DESKTOP_ORIGIN,
 )
 from doc_evidence.desktop_pack import load_baseline_pack
+from doc_evidence.desktop_packaging import copy_clean_project_source
 from doc_evidence.platform_paths import long_path_temporary_directory
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, inspect_pe
 
@@ -467,22 +468,26 @@ def stage_python_dependencies(
                 cwd=repository,
                 timeout_seconds=600,
             )
-        _run(
-            [
-                "uv",
-                "pip",
-                "install",
-                "--python",
-                python,
-                "--no-deps",
-                "--reinstall",
-                "--link-mode",
-                "copy",
-                repository,
-            ],
-            cwd=repository,
-            timeout_seconds=300,
-        )
+        with tempfile.TemporaryDirectory(
+            prefix="doc-evidence-project-source-", dir=python_root.parent
+        ) as raw:
+            project = copy_clean_project_source(repository, Path(raw) / "project")
+            _run(
+                [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--python",
+                    python,
+                    "--no-deps",
+                    "--reinstall",
+                    "--link-mode",
+                    "copy",
+                    project,
+                ],
+                cwd=project,
+                timeout_seconds=300,
+            )
         excluded = _excluded_baseline_distributions(inputs)
         _run(
             [

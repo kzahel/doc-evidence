@@ -27,6 +27,7 @@ from doc_evidence.desktop_packaging import (
     _spdx_license,
     _unreconciled_nested_native,
     compliance_root,
+    copy_clean_project_source,
     create_unsigned_dmg,
     generate_compliance_preflight,
     repository_root,
@@ -40,6 +41,32 @@ from doc_evidence.desktop_packaging import (
 class DesktopPackagingTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = repository_root()
+
+    def test_project_install_context_excludes_stale_build_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "source"
+            for name in ("LICENSE", "README.md", "pyproject.toml"):
+                (source / name).parent.mkdir(parents=True, exist_ok=True)
+                (source / name).write_text(name, encoding="utf-8")
+            package = source / "src" / "doc_evidence"
+            package.mkdir(parents=True)
+            (package / "current.py").write_text("current", encoding="utf-8")
+            stale = source / "build" / "lib" / "doc_evidence" / "current.py"
+            stale.parent.mkdir(parents=True)
+            stale.write_text("stale", encoding="utf-8")
+            egg_info = source / "src" / "doc_evidence.egg-info" / "PKG-INFO"
+            egg_info.parent.mkdir()
+            egg_info.write_text("stale metadata", encoding="utf-8")
+
+            context = copy_clean_project_source(source, root / "context")
+
+            self.assertEqual(
+                (context / "src" / "doc_evidence" / "current.py").read_text(),
+                "current",
+            )
+            self.assertFalse((context / "build").exists())
+            self.assertFalse((context / "src" / "doc_evidence.egg-info").exists())
 
     def test_build_inputs_pin_exact_standalone_python_archive(self) -> None:
         inputs = _load_inputs(self.root)
