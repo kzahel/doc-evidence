@@ -255,6 +255,24 @@ jobs:
             --target ${{ matrix.target }}
             --bundles ${{ matrix.bundles }}
             --config src-tauri/tauri.release.conf.json
+      - name: Notarize and staple macOS disk image
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          dmg=$(find "desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          xcrun notarytool submit "$dmg" \
+            --key "$APPLE_API_KEY_PATH" \
+            --key-id "$APPLE_API_KEY" \
+            --issuer "$APPLE_API_ISSUER" \
+            --wait
+          xcrun stapler staple "$dmg"
+          xcrun stapler validate "$dmg"
+          if [[ "$GITHUB_REF" == refs/tags/desktop-v* ]]; then
+            gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Audit exact signed macOS artifacts
         if: matrix.platform == 'macos'
         shell: bash
