@@ -17,9 +17,11 @@ env:
 
 jobs:
   source-checks:
-    runs-on: ubuntu-22.04
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
+      - name: Install test dependencies
+        run: brew install poppler
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -60,14 +62,20 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: desktop/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            desktop/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri -> target
-      - run: npm ci --ignore-scripts --prefix desktop
+      - name: Build native frontend input
+        run: |
+          npm ci --ignore-scripts --prefix web
+          npm ci --ignore-scripts --prefix desktop
+          npm --prefix web run build
       - name: Check native shell
         run: |
           cargo fmt --manifest-path desktop/src-tauri/Cargo.toml --all -- --check
