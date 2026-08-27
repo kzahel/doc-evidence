@@ -536,7 +536,7 @@ class DesktopPackagingTest(unittest.TestCase):
             self.assertEqual(record["license_declared"], "MIT")
             self.assertEqual(record["binary_sha256"], binary_hash)
             self.assertEqual(record["installed_binary_sha256"], binary_hash)
-            self.assertEqual(record["binary_binding"], "exact-wheel-bytes")
+            self.assertEqual(record["binary_binding"], "exact-source-bytes")
             self.assertEqual(
                 record["license_files"],
                 [f"python/lib/python3.12/site-packages/{license_member}"],

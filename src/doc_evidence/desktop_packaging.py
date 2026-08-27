@@ -3266,6 +3266,7 @@ def _wheel_native_component_inventory(
     python_native: Sequence[Mapping[str, Any]],
     binary_compliance_records: Sequence[Mapping[str, Any]],
     runtime_components: Sequence[Mapping[str, Any]],
+    signed: bool = False,
 ) -> tuple[list[dict[str, Any]], list[Mapping[str, Any]]]:
     document = json.loads(
         wheel_native_components_path(repository).read_text(encoding="utf-8")
@@ -3325,11 +3326,17 @@ def _wheel_native_component_inventory(
                 runtime_path = str(evidence.get("runtime_path", ""))
                 expected = str(evidence.get("sha256", ""))
                 installed = runtime / runtime_path
+                source_bytes = source.read(member)
                 if (
                     not _is_lower_hex(expected, 64)
                     or not installed.is_file()
-                    or sha256_file(installed) != expected
-                    or hashlib.sha256(source.read(member)).hexdigest() != expected
+                    or hashlib.sha256(source_bytes).hexdigest() != expected
+                    or _artifact_source_binding(
+                        source_bytes,
+                        installed.read_bytes(),
+                        signed=signed,
+                    )
+                    is None
                 ):
                     raise RuntimeError(
                         f"macOS installed wheel evidence drifted: {component_id}"
@@ -3385,7 +3392,6 @@ def _wheel_native_component_inventory(
                     or path in flattened_paths
                     or native is None
                     or native.get("component_id") != parent_id
-                    or native.get("sha256") != expected
                     or not _is_lower_hex(expected, 64)
                 ):
                     raise RuntimeError(
@@ -3396,13 +3402,36 @@ def _wheel_native_component_inventory(
                 staged_wheel_bytes = _staged_wheel_native_bytes(
                     member, archive.read(member)
                 )
+                actual_bytes = installed.read_bytes() if installed.is_file() else None
+                installed_sha256 = (
+                    hashlib.sha256(actual_bytes).hexdigest()
+                    if actual_bytes is not None
+                    else None
+                )
+                binding = (
+                    _artifact_source_binding(
+                        staged_wheel_bytes,
+                        actual_bytes,
+                        signed=signed,
+                    )
+                    if actual_bytes is not None
+                    else None
+                )
                 if (
-                    not installed.is_file()
-                    or installed.read_bytes() != staged_wheel_bytes
+                    hashlib.sha256(staged_wheel_bytes).hexdigest() != expected
+                    or native.get("sha256") != installed_sha256
+                    or binding is None
                 ):
                     raise RuntimeError(f"macOS wheel-native bytes drifted: {path}")
                 flattened_paths.add(path)
-                normalized_paths.append({"path": path, "sha256": expected})
+                normalized_paths.append(
+                    {
+                        "path": path,
+                        "sha256": expected,
+                        "installed_sha256": installed_sha256,
+                        "binding": binding,
+                    }
+                )
 
         for evidence_record in evidence:
             if not isinstance(evidence_record, Mapping):
@@ -3541,6 +3570,20 @@ def _macho_signing_only_difference(unsigned: bytes, signed: bytes) -> bool:
     )
 
 
+def _artifact_source_binding(
+    expected: bytes, actual: bytes, *, signed: bool
+) -> str | None:
+    if actual == expected:
+        return "exact-source-bytes"
+    if signed:
+        try:
+            if _macho_signing_only_difference(expected, actual):
+                return "apple-code-signature-envelope"
+        except RuntimeError:
+            pass
+    return None
+
+
 def _python_binary_compliance_record(
     component: Mapping[str, Any],
     *,
@@ -3616,7 +3659,7 @@ def _python_binary_compliance_record(
             raise RuntimeError(f"Python binary payload hash drifted: {normalized}")
         selected = [binary_member, *names]
         installed = []
-        binary_binding = "exact-wheel-bytes"
+        binary_binding = "exact-source-bytes"
         for member in selected:
             relative = Path(member)
             if relative.is_absolute() or ".." in relative.parts:
@@ -3624,18 +3667,21 @@ def _python_binary_compliance_record(
             target = runtime / site_prefix / relative
             expected_bytes = archive.read(member)
             actual_bytes = target.read_bytes() if target.is_file() else None
-            if (
-                member == binary_member
-                and signed
-                and actual_bytes is not None
-                and actual_bytes != expected_bytes
-                and _macho_signing_only_difference(expected_bytes, actual_bytes)
-            ):
-                binary_binding = "apple-code-signature-envelope"
-            elif actual_bytes != expected_bytes:
+            binding = (
+                _artifact_source_binding(
+                    expected_bytes,
+                    actual_bytes,
+                    signed=signed,
+                )
+                if actual_bytes is not None
+                else None
+            )
+            if binding is None:
                 raise RuntimeError(
                     f"Python binary wheel bytes drifted: {normalized} {member}"
                 )
+            if member == binary_member:
+                binary_binding = binding
             installed.append((site_prefix / relative).as_posix())
     binary_path = (site_prefix / binary_member).as_posix()
     installed_binary_sha256 = sha256_file(runtime / binary_path)
@@ -3847,6 +3893,7 @@ def generate_compliance_preflight(
                     python_native=python_native,
                     binary_compliance_records=binary_compliance_records,
                     runtime_components=components,
+                    signed=signed,
                 )
             )
             _write_json(
