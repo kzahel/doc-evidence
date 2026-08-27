@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import signal
+import subprocess
 import sys
 import tempfile
 import threading
@@ -12,13 +13,14 @@ import time
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from doc_evidence.attempts import (
     AttemptPlan,
     AttemptRetention,
     AttemptSupervisor,
     _cleanup_lingering_process_group,
+    _start_attempt_process,
     validate_run,
 )
 from doc_evidence.errors import RequestError
@@ -104,6 +106,23 @@ class AttemptSupervisorTest(unittest.TestCase):
     def test_worker_launch_timeout_must_be_positive(self) -> None:
         with self.assertRaisesRegex(ValueError, "launch timeout"):
             self.supervisor(worker_launch_timeout_seconds=0)
+
+    def test_worker_process_does_not_inherit_parent_stdin(self) -> None:
+        expected = MagicMock()
+        with patch(
+            "doc_evidence.attempts.subprocess.Popen", return_value=expected
+        ) as popen:
+            actual = _start_attempt_process(("python", "worker"), creationflags=17)
+
+        self.assertIs(actual, expected)
+        popen.assert_called_once_with(
+            ("python", "worker"),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=os.name == "posix",
+            creationflags=17,
+        )
 
     def test_atomic_publication_concurrent_win_and_nondeterminism(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

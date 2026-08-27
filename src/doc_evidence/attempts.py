@@ -10,7 +10,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -336,6 +336,21 @@ def _wait_for_launcher_ready(
     return False
 
 
+def _start_attempt_process(
+    worker_command: Sequence[str], *, creationflags: int
+) -> subprocess.Popen[bytes]:
+    # The desktop sidecar dedicates stdin to its parent-EOF watcher. A Windows
+    # child inheriting that actively-read pipe can stall before Python starts.
+    return subprocess.Popen(
+        worker_command,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=os.name == "posix",
+        creationflags=creationflags,
+    )
+
+
 class AttemptSupervisor:
     def __init__(
         self,
@@ -426,11 +441,8 @@ class AttemptSupervisor:
                     str(worker_pid_path.resolve()),
                     *worker_command,
                 ]
-            process = subprocess.Popen(
+            process = _start_attempt_process(
                 worker_command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                start_new_session=os.name == "posix",
                 creationflags=flags,
             )
             if windows_job is not None:
