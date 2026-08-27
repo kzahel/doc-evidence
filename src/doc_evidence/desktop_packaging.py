@@ -14,6 +14,7 @@ import secrets
 import select
 import shutil
 import stat
+import struct
 import subprocess
 import tarfile
 import tempfile
@@ -3469,12 +3470,84 @@ def _wheel_native_component_inventory(
     return records, unresolved
 
 
+def _normalized_macho_signing_payload(data: bytes) -> tuple[bytes, int]:
+    """Remove only Mach-O fields Apple code signing is allowed to rewrite."""
+
+    header_size = 32
+    if len(data) < header_size or data[:4] != b"\xcf\xfa\xed\xfe":
+        raise RuntimeError("signed Python binary is not thin little-endian Mach-O 64")
+    _, _, _, _, command_count, command_bytes, _, _ = struct.unpack_from(
+        "<IiiIIIII", data
+    )
+    command_end = header_size + command_bytes
+    if command_count > 4096 or command_end > len(data):
+        raise RuntimeError("signed Python binary has an invalid Mach-O command table")
+    normalized = bytearray(data)
+    offset = header_size
+    linkedit_offsets: list[tuple[int, int, int, int]] = []
+    signature_offsets: list[tuple[int, int, int]] = []
+    for _ in range(command_count):
+        if offset + 8 > command_end:
+            raise RuntimeError("signed Python binary has a truncated Mach-O command")
+        command, size = struct.unpack_from("<II", data, offset)
+        if size < 8 or offset + size > command_end:
+            raise RuntimeError("signed Python binary has an invalid Mach-O command")
+        if command == 0x19 and size >= 72:
+            segment = data[offset + 8 : offset + 24].split(b"\0", 1)[0]
+            if segment == b"__LINKEDIT":
+                file_offset, file_size = struct.unpack_from("<QQ", data, offset + 40)
+                linkedit_offsets.append(
+                    (offset + 32, offset + 48, file_offset, file_size)
+                )
+        elif command == 0x1D and size == 16:
+            signature_offset, signature_size = struct.unpack_from(
+                "<II", data, offset + 8
+            )
+            signature_offsets.append((offset + 8, signature_offset, signature_size))
+        offset += size
+    if (
+        offset != command_end
+        or len(linkedit_offsets) != 1
+        or len(signature_offsets) != 1
+    ):
+        raise RuntimeError(
+            "signed Python binary has an ambiguous Mach-O signature boundary"
+        )
+    vmsize_offset, filesize_offset, linkedit_offset, linkedit_size = linkedit_offsets[0]
+    signature_field, signature_offset, signature_size = signature_offsets[0]
+    if (
+        signature_offset < command_end
+        or signature_offset + signature_size != len(data)
+        or linkedit_offset + linkedit_size != len(data)
+        or linkedit_offset > signature_offset
+    ):
+        raise RuntimeError(
+            "signed Python binary has an invalid Mach-O signature extent"
+        )
+    normalized[vmsize_offset : vmsize_offset + 8] = b"\0" * 8
+    normalized[filesize_offset : filesize_offset + 8] = b"\0" * 8
+    normalized[signature_field : signature_field + 8] = b"\0" * 8
+    return bytes(normalized[:signature_offset]), signature_offset
+
+
+def _macho_signing_only_difference(unsigned: bytes, signed: bytes) -> bool:
+    unsigned_payload, unsigned_signature_offset = _normalized_macho_signing_payload(
+        unsigned
+    )
+    signed_payload, signed_signature_offset = _normalized_macho_signing_payload(signed)
+    return (
+        unsigned_signature_offset == signed_signature_offset
+        and unsigned_payload == signed_payload
+    )
+
+
 def _python_binary_compliance_record(
     component: Mapping[str, Any],
     *,
     inputs: Mapping[str, Any],
     runtime: Path,
     cache: Path,
+    signed: bool = False,
 ) -> dict[str, Any] | None:
     baseline = inputs.get("baseline_pack")
     overrides = (
@@ -3538,21 +3611,34 @@ def _python_binary_compliance_record(
             raise RuntimeError(
                 f"Python binary wheel license inventory is empty: {normalized}"
             )
+        wheel_binary = archive.read(binary_member)
+        if hashlib.sha256(wheel_binary).hexdigest() != binary_sha256:
+            raise RuntimeError(f"Python binary payload hash drifted: {normalized}")
         selected = [binary_member, *names]
         installed = []
+        binary_binding = "exact-wheel-bytes"
         for member in selected:
             relative = Path(member)
             if relative.is_absolute() or ".." in relative.parts:
                 raise RuntimeError(f"Python binary wheel path is unsafe: {normalized}")
             target = runtime / site_prefix / relative
-            if not target.is_file() or target.read_bytes() != archive.read(member):
+            expected_bytes = archive.read(member)
+            actual_bytes = target.read_bytes() if target.is_file() else None
+            if (
+                member == binary_member
+                and signed
+                and actual_bytes is not None
+                and actual_bytes != expected_bytes
+                and _macho_signing_only_difference(expected_bytes, actual_bytes)
+            ):
+                binary_binding = "apple-code-signature-envelope"
+            elif actual_bytes != expected_bytes:
                 raise RuntimeError(
                     f"Python binary wheel bytes drifted: {normalized} {member}"
                 )
             installed.append((site_prefix / relative).as_posix())
     binary_path = (site_prefix / binary_member).as_posix()
-    if sha256_file(runtime / binary_path) != binary_sha256:
-        raise RuntimeError(f"Python binary payload hash drifted: {normalized}")
+    installed_binary_sha256 = sha256_file(runtime / binary_path)
     license_paths = installed[1:]
     return {
         "component_id": str(component["component_id"]),
@@ -3564,6 +3650,8 @@ def _python_binary_compliance_record(
         "wheel_sha256": wheel_sha256,
         "binary_path": binary_path,
         "binary_sha256": binary_sha256,
+        "installed_binary_sha256": installed_binary_sha256,
+        "binary_binding": binary_binding,
         "license_files": license_paths,
         "extracted_licensing_info": {
             "licenseId": concluded,
@@ -3665,6 +3753,7 @@ def generate_compliance_preflight(
                     inputs=inputs,
                     runtime=runtime,
                     cache=repo / "results" / "desktop" / "cache" / "wheels",
+                    signed=signed,
                 )
                 if binary_compliance is not None:
                     binary_compliance_records.append(binary_compliance)

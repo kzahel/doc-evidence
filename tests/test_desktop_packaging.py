@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import struct
 import tempfile
 import unittest
 import zipfile
@@ -20,6 +21,7 @@ from doc_evidence.desktop_packaging import (
     _included_locked_requirements,
     _installed_homebrew_bottle,
     _load_inputs,
+    _macho_signing_only_difference,
     _prune_runtime,
     _python_binary_compliance_record,
     _python_native_inventory,
@@ -533,6 +535,8 @@ class DesktopPackagingTest(unittest.TestCase):
             assert record is not None
             self.assertEqual(record["license_declared"], "MIT")
             self.assertEqual(record["binary_sha256"], binary_hash)
+            self.assertEqual(record["installed_binary_sha256"], binary_hash)
+            self.assertEqual(record["binary_binding"], "exact-wheel-bytes")
             self.assertEqual(
                 record["license_files"],
                 [f"python/lib/python3.12/site-packages/{license_member}"],
@@ -545,6 +549,47 @@ class DesktopPackagingTest(unittest.TestCase):
                     runtime=runtime,
                     cache=cache,
                 )
+
+    def test_macho_compliance_accepts_only_a_code_signature_envelope(self) -> None:
+        signature_offset = 256
+
+        def macho(*, signature_size: int, marker: bytes) -> bytes:
+            header = struct.pack(
+                "<IiiIIIII",
+                0xFEEDFACF,
+                0x0100000C,
+                0,
+                6,
+                2,
+                88,
+                0,
+                0,
+            )
+            segment = struct.pack(
+                "<II16sQQQQiiII",
+                0x19,
+                72,
+                b"__LINKEDIT\0\0\0\0\0\0",
+                0x1000,
+                signature_offset + signature_size,
+                0,
+                signature_offset + signature_size,
+                7,
+                1,
+                0,
+                0,
+            )
+            signature = struct.pack("<IIII", 0x1D, 16, signature_offset, signature_size)
+            payload = (header + segment + signature).ljust(signature_offset, b"P")
+            return payload + marker * signature_size
+
+        unsigned = macho(signature_size=32, marker=b"U")
+        signed = macho(signature_size=64, marker=b"S")
+        self.assertTrue(_macho_signing_only_difference(unsigned, signed))
+
+        tampered = bytearray(signed)
+        tampered[200] ^= 1
+        self.assertFalse(_macho_signing_only_difference(unsigned, bytes(tampered)))
 
 
 if __name__ == "__main__":
