@@ -2009,7 +2009,7 @@ def audit_unsigned_installer(
             r"(?:^|,)\s*CN=Kyle Graehl(?:,|$)", signature["subject"] or ""
         ):
             raise RuntimeError(
-                "signed Windows NSIS candidate has unexpected trust state"
+                f"signed Windows NSIS candidate has unexpected trust state: {signature}"
             )
     elif signature["status"] != "NotSigned" or signature["subject"] is not None:
         raise RuntimeError("unsigned Windows NSIS candidate has unexpected trust state")
@@ -2024,7 +2024,10 @@ def audit_unsigned_installer(
         if app_signature["status"] != "Valid" or not re.search(
             r"(?:^|,)\s*CN=Kyle Graehl(?:,|$)", app_signature["subject"] or ""
         ):
-            raise RuntimeError("signed Windows application has unexpected trust state")
+            raise RuntimeError(
+                "signed Windows application has unexpected trust state: "
+                f"{app_signature}"
+            )
     elif app_signature["status"] != "NotSigned" or app_signature["subject"] is not None:
         raise RuntimeError("unsigned Windows application has unexpected trust state")
     runtime_audit = audit_runtime(stage_root(repo), repository=repo, smoke=True)
