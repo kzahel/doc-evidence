@@ -37,6 +37,7 @@ from doc_evidence.windows_desktop_packaging import (
     repository_root,
     sha256_file,
     sha256_tree,
+    smoke_sidecar,
     stage_pypdfium2_licenses,
 )
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, PortableExecutable
@@ -71,6 +72,38 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
             process.wait(timeout=5)
             if process.stdout is not None:
                 process.stdout.close()
+
+    def test_sidecar_smoke_waits_for_early_exit_diagnostics(self) -> None:
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import sys, time; sys.stdout.close(); "
+                    "time.sleep(0.05); sys.stderr.write('startup failed')"
+                ),
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        with (
+            tempfile.TemporaryDirectory() as raw,
+            patch(
+                "doc_evidence.windows_desktop_packaging.subprocess.Popen",
+                return_value=process,
+            ),
+            patch(
+                "doc_evidence.windows_desktop_packaging.baseline_environment",
+                return_value={},
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                "exit code 0; stderr: startup failed",
+            ),
+        ):
+            smoke_sidecar(Path(raw))
 
     def test_baseline_environment_supplies_isolated_windows_home(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

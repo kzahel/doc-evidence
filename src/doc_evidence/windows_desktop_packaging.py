@@ -1714,9 +1714,7 @@ def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
             try:
                 ready_line = _read_ready_line(process, timeout_seconds=30)
             except RuntimeError as error:
-                return_code = process.poll()
-                if return_code is None:
-                    raise
+                return_code = process.wait(timeout=5)
                 stderr = process.stderr.read()[-4000:]
                 raise RuntimeError(
                     f"{error}; exit code {return_code}; stderr: {stderr}"
