@@ -1,0 +1,9 @@
+{
+  "id": "doc-evidence",
+  "displayName": "Doc Evidence",
+  "hostnames": ["updates.graehlarts.com"],
+  "pathPrefix": "/doc-evidence",
+  "githubRepo": "kzahel/doc-evidence",
+  "tagPrefix": "desktop-v",
+  "tauriUpdates": true
+}
