@@ -37,19 +37,19 @@
       "pdfinfo": {
         "formula": "poppler",
         "version": "26.08.0",
-        "input_sha256": "8a48bb18e99c8f1add637ffae1d860c3cdabe11f4f1672f3c1b5ef4c3e6e8461",
+        "input_sha256": "23cc8f9bbe0a10109967b5811cb9a94d194b11380b43a40eac7089e676a98d83",
         "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
       },
       "pdftotext": {
         "formula": "poppler",
         "version": "26.08.0",
-        "input_sha256": "52cb759b328134d667e0e9ba9142e952811473fba6caa3a053ff1e2605512fd9",
+        "input_sha256": "e8fb86921c589674ee6ba880594e9dd3dba4d471d2b7c7fdb00eac55975db25a",
         "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
       },
       "pdftoppm": {
         "formula": "poppler",
         "version": "26.08.0",
-        "input_sha256": "d0d0c2542dda1ab8e3e424e98b575b039295c4748f18405f220d17028264e147",
+        "input_sha256": "ab4c415cb29a229b039221de9af5a4ba539acc1aebd3a3a0a6dd677d11093c8e",
         "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
       },
       "tesseract": {
