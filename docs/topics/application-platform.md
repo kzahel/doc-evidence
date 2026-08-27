@@ -498,6 +498,37 @@ checksum output omits signature assets. The remote workflow, product updater
 key and route, installed client surface, signing, and publication remain open
 and separately authorized boundaries.
 
+On 2026-08-27 the maintainer authorized the public repository, signing-secret
+provisioning, signed draft builds, release tags, and the bounded Graehl Arts
+product/download page. Version `0.5.0` now synchronizes Python, React, Tauri,
+and Cargo. The thin shell installs the Tauri updater with a product-specific
+public key and anonymous random per-install update ID; React consumes a narrow
+platform-neutral update runtime, while Tauri imports remain isolated to the
+desktop adapter. Startup, daily, and explicit manual checks follow the shared
+desktop update contract, and automatic failures remain non-blocking.
+
+The first local Developer ID preparation signed all 109 nested Mach-O objects
+before outer bundle sealing, then deterministically rebound the extractor-pack
+and desktop-bundle manifests to those signed bytes. The signed runtime tree is
+`17b2fe08c8b2ab8b0efc66f45e1603e1f99478a1a415117891615e09cfdb8b90`;
+its pack manifest is
+`4f714ce22f2395bb2c68ca6a97e744d09be6d638a33e30c3932dd23d3606ba77`
+and bundle manifest is
+`0638790d852e5c3431f481e9924c534dbd5ff685d22afc33c8882222b9e67ee2`.
+Baseline OCR and sidecar smokes pass after signing. A local Tauri application
+build then applied the hardened-runtime Developer ID outer seal without
+rewriting any signed runtime or manifest byte; strict deep signature
+verification and the packaged-runtime audit pass. Notarization/stapling and
+the updater archive remain CI draft gates rather than claims from this local
+probe.
+
+The product-owned GitHub workflow now has fail-closed credential gates,
+serialized macOS arm64 and Windows x86_64 signed builds, nested native signing,
+updater metadata, compliance publication, and a draft-only finalizer. The
+workflow deliberately does not make the release public after CI: exact
+installed-artifact acceptance remains required. Its first remote run is the
+next evidence checkpoint.
+
 The current-HEAD macOS arm64 application has now been rebuilt after the shared
 packaged-runtime fixes. Its 3,825 files occupy 190,854,648 bytes at tree
 `1cd69a4a8af70ca37ebf494cea549b6d9a36d69d688d0c46a5daaf6823cb4fb2`;
@@ -577,7 +608,7 @@ record is in
 Complete the explicit maintainer interaction acceptance in
 [Tactical 001](../tactical/001-durable-extraction-jobs.md). Continue the locally
 authorized [Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md)
-with platform-aware desktop contracts and the existing macOS compliance
-blockers, using the restored Windows testbed throughout. Stop before credential
-provisioning, remote/release setup, tagging, signing, or publication without
-separate authorization. Durable review events remain a separate later tactical.
+by running the first signed GitHub draft, resolving target-native failures, and
+testing its exact assets in fresh macOS arm64 and Windows x86_64 workspaces.
+Public release publication still waits for the tactical's complete paired
+acceptance gate. Durable review events remain a separate later tactical.

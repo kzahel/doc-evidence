@@ -1,0 +1,328 @@
+name: Desktop Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "desktop-v*"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  source-checks:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            desktop/package-lock.json
+      - name: Install frontend dependencies
+        run: |
+          npm ci --ignore-scripts --prefix web
+          npm ci --ignore-scripts --prefix desktop
+      - name: Check Python and release contracts
+        run: |
+          uvx ruff format --check src tests
+          uvx ruff check src tests
+          uv run python -m unittest discover -v
+          uvx pyright
+          uv build
+          node --test .github/scripts/*.test.mjs
+      - name: Check frontend
+        run: |
+          npm --prefix web run contracts:check
+          npm --prefix web run typecheck
+          npm --prefix web test
+          npm --prefix web run build
+
+  rust-checks:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri -> target
+      - run: npm ci --ignore-scripts --prefix desktop
+      - name: Check native shell
+        run: |
+          cargo fmt --manifest-path desktop/src-tauri/Cargo.toml --all -- --check
+          cargo clippy --manifest-path desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
+          cargo test --manifest-path desktop/src-tauri/Cargo.toml
+
+  build-desktop:
+    if: startsWith(github.ref, 'refs/tags/desktop-v') || github.event_name == 'workflow_dispatch'
+    needs: [source-checks, rust-checks]
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - platform: macos
+            runner: macos-26
+            target: aarch64-apple-darwin
+            bundles: dmg
+          - platform: windows
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+    runs-on: ${{ matrix.runner }}
+    env:
+      HAS_UPDATER_SIGNING: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD != '' }}
+      HAS_MACOS_SIGNING: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 != '' && secrets.MACOS_CERTIFICATE_PASSWORD != '' && secrets.MACOS_KEYCHAIN_PASSWORD != '' }}
+      HAS_MACOS_NOTARIZATION: ${{ secrets.ASC_API_KEY_P8_BASE64 != '' && secrets.ASC_API_KEY_ID != '' && secrets.ASC_API_ISSUER_ID != '' }}
+      HAS_WINDOWS_SIGNING: ${{ secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Require complete signing credentials
+        shell: bash
+        run: |
+          test "$HAS_UPDATER_SIGNING" = true || { echo "::error::Tauri updater signing credentials are required"; exit 1; }
+          if [ "${{ matrix.platform }}" = macos ]; then
+            test "$HAS_MACOS_SIGNING" = true && test "$HAS_MACOS_NOTARIZATION" = true || {
+              echo "::error::Developer ID and notarization credentials are required"
+              exit 1
+            }
+          else
+            test "$HAS_WINDOWS_SIGNING" = true || { echo "::error::Azure signing credentials are required"; exit 1; }
+          fi
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri -> target
+          key: ${{ matrix.runner }}-${{ matrix.target }}
+      - name: Install application dependencies
+        shell: bash
+        run: |
+          npm ci --ignore-scripts --prefix web
+          npm ci --ignore-scripts --prefix desktop
+          npm --prefix web run build
+      - name: Install exact macOS native inputs
+        if: matrix.platform == 'macos'
+        run: brew install poppler tesseract tesseract-lang
+      - name: Install Windows signing tool
+        if: matrix.platform == 'windows'
+        run: cargo install trusted-signing-cli --locked
+      - name: Set up macOS signing keychain
+        if: matrix.platform == 'macos'
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
+          echo "$MACOS_CERTIFICATE_P12_BASE64" | base64 --decode > certificate.p12
+          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 7200 -u build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security find-identity -v -p codesigning build.keychain
+          rm certificate.p12
+      - name: Set up notarization credentials
+        if: matrix.platform == 'macos'
+        env:
+          ASC_API_KEY_P8_BASE64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+        run: |
+          mkdir -p "$HOME/private_keys"
+          key_path="$HOME/private_keys/AuthKey_${ASC_API_KEY_ID}.p8"
+          echo "$ASC_API_KEY_P8_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          echo "APPLE_API_KEY_PATH=$key_path" >> "$GITHUB_ENV"
+      - name: Set signing environment
+        shell: bash
+        env:
+          UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          UPDATER_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          emit() {
+            {
+              printf '%s<<__DOC_EVIDENCE_EOF__\n' "$1"
+              printf '%s\n' "$2"
+              printf '__DOC_EVIDENCE_EOF__\n'
+            } >> "$GITHUB_ENV"
+          }
+          emit TAURI_SIGNING_PRIVATE_KEY "$UPDATER_KEY"
+          emit TAURI_SIGNING_PRIVATE_KEY_PASSWORD "$UPDATER_PASSWORD"
+          if [ "${{ matrix.platform }}" = macos ]; then
+            echo "APPLE_SIGNING_IDENTITY=Developer ID Application: Kyle Graehl (VD7BYQ6ABM)" >> "$GITHUB_ENV"
+            emit APPLE_API_KEY "$ASC_API_KEY_ID"
+            emit APPLE_API_ISSUER "$ASC_API_ISSUER_ID"
+          fi
+      - name: Check synchronized release version
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        run: node .github/scripts/check-desktop-version.mjs --tag "$GITHUB_REF_NAME"
+        shell: bash
+      - name: Stage and sign macOS runtime
+        if: matrix.platform == 'macos'
+        run: |
+          scripts/build-macos-desktop stage --replace
+          scripts/build-macos-desktop sign-runtime
+      - name: Stage and sign Windows runtime
+        if: matrix.platform == 'windows'
+        shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          scripts/build-windows-desktop stage --replace
+          scripts/build-windows-desktop sign-runtime
+      - name: Extract release notes
+        id: changelog
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#desktop-v}"
+          notes=$(awk "/^## \[$version\]/{found=1; next} /^## \[/{found=0} found" CHANGELOG.md)
+          echo "notes<<__NOTES__" >> "$GITHUB_OUTPUT"
+          echo "$notes" >> "$GITHUB_OUTPUT"
+          echo "__NOTES__" >> "$GITHUB_OUTPUT"
+      - name: Build signed desktop release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        with:
+          projectPath: desktop
+          tauriScript: npm run tauri
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && 'desktop-v__VERSION__' || '' }}
+          releaseName: "Doc Evidence v__VERSION__"
+          releaseBody: ${{ steps.changelog.outputs.notes || 'Signed Doc Evidence desktop candidate.' }}
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: ${{ startsWith(github.ref, 'refs/tags/') }}
+          updaterJsonPreferNsis: true
+          retryAttempts: ${{ matrix.platform == 'macos' && '1' || '0' }}
+          args: >-
+            --target ${{ matrix.target }}
+            --bundles ${{ matrix.bundles }}
+            --config src-tauri/tauri.release.conf.json
+      - name: Audit exact signed macOS artifacts
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          app="desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos/Doc Evidence.app"
+          dmg=$(find "desktop/src-tauri/target/${{ matrix.target }}/release/bundle/dmg" -maxdepth 1 -type f -name '*.dmg' -print -quit)
+          test -d "$app" && test -n "$dmg"
+          scripts/build-macos-desktop review --signed --app "$app"
+          scripts/build-macos-desktop review-dmg --signed --dmg "$dmg"
+          scripts/build-macos-desktop compliance-preflight --signed --resolve-formulas --download-sources --replace --app "$app"
+          if [[ "$GITHUB_REF" == refs/tags/desktop-v* ]]; then
+            version="${GITHUB_REF_NAME#desktop-v}"
+            gh release upload "$GITHUB_REF_NAME" "results/desktop/distribution/Doc-Evidence_${version}_compliance-preflight.tar.gz" --clobber
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Audit exact signed Windows artifacts
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: scripts/build-windows-desktop audit-installer --signed
+      - name: Clean up macOS credentials
+        if: matrix.platform == 'macos' && always()
+        run: |
+          security delete-keychain build.keychain 2>/dev/null || true
+          rm -r "$HOME/private_keys" 2>/dev/null || true
+
+  finalize-draft:
+    if: always() && startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: [source-checks, rust-checks, build-desktop]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Keep failed builds private
+        if: needs.source-checks.result != 'success' || needs.rust-checks.result != 'success' || needs.build-desktop.result != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --draft
+          fi
+          echo "::error::Required jobs failed; the desktop release remains private"
+          exit 1
+      - name: Validate complete signed draft
+        if: needs.source-checks.result == 'success' && needs.rust-checks.result == 'success' && needs.build-desktop.result == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          release_dir="$RUNNER_TEMP/desktop-release"
+          mkdir -p "$release_dir"
+          gh release view "$GITHUB_REF_NAME" --json tagName,isDraft,assets > "$release_dir/release.json"
+          gh release download "$GITHUB_REF_NAME" --pattern latest.json --dir "$release_dir"
+          node .github/scripts/validate-desktop-release.mjs \
+            --release "$release_dir/release.json" \
+            --latest "$release_dir/latest.json" \
+            --tag "$GITHUB_REF_NAME" \
+            --repository "$GITHUB_REPOSITORY"
+          node .github/scripts/write-desktop-checksums.mjs \
+            "$release_dir/release.json" "$release_dir/SHA256SUMS"
+          gh release upload "$GITHUB_REF_NAME" "$release_dir/SHA256SUMS" --clobber
+      - name: Record draft evidence
+        if: needs.source-checks.result == 'success' && needs.rust-checks.result == 'success' && needs.build-desktop.result == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#desktop-v}"
+          notes=$(awk "/^## \[$version\]/{found=1; next} /^## \[/{found=0} found" CHANGELOG.md)
+          {
+            echo "$notes"
+            echo
+            echo "## Automated release evidence"
+            echo
+            echo "- Signed updater metadata validated for macOS arm64 and Windows x86_64."
+            echo "- Developer ID signing, notarization, stapling, and nested Mach-O signatures passed."
+            echo "- Authenticode signatures passed for the Windows runtime, application, and NSIS installer."
+            echo "- Exact dependency compliance evidence and SHA256SUMS are attached."
+            echo "- Workflow: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo
+            echo "The release remains a draft pending exact installed-artifact acceptance."
+          } > "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md" --draft

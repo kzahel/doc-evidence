@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Doc Evidence",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "identifier": "io.github.kzahel.doc-evidence",
   "build": {
     "frontendDist": "../../web/dist"
@@ -25,6 +25,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": false,
     "targets": ["app"],
     "icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"],
     "resources": {
@@ -34,6 +35,14 @@
     "macOS": {
       "minimumSystemVersion": "13.0",
       "hardenedRuntime": false
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://updates.graehlarts.com/doc-evidence/tauri/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkyOUY2OEM2Nzc2NDA2NUYKUldSZkJtUjN4bWlma2h5NXlrWjBzNE9RTHh1eHVyVHhscXU5M1BlVjFBY3dVY1JGZ1ZLOFBBQ3kK"
     }
   }
 }

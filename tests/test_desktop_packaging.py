@@ -220,7 +220,7 @@ class DesktopPackagingTest(unittest.TestCase):
                 / "results"
                 / "desktop"
                 / "distribution"
-                / "Doc-Evidence_0.4.0_aarch64-unsigned.dmg",
+                / "Doc-Evidence_0.5.0_aarch64-unsigned.dmg",
             )
             output.parent.mkdir(parents=True)
             output.write_bytes(b"existing")
@@ -233,7 +233,7 @@ class DesktopPackagingTest(unittest.TestCase):
             output = compliance_root(root)
             self.assertEqual(
                 output.name,
-                "Doc-Evidence_0.4.0_compliance-preflight",
+                "Doc-Evidence_0.5.0_compliance-preflight",
             )
             output.mkdir(parents=True)
             with self.assertRaisesRegex(RuntimeError, "already exists"):

@@ -34,6 +34,7 @@ from doc_evidence.contracts.desktop import (
 )
 from doc_evidence.desktop_pack import load_baseline_pack
 from doc_evidence.desktop_packaging import copy_clean_project_source
+from doc_evidence.desktop_signing import refresh_signed_runtime_manifests
 from doc_evidence.platform_paths import long_path_temporary_directory
 from doc_evidence.windows_pe import PE_X86_64_MACHINE, inspect_pe
 
@@ -1914,12 +1915,69 @@ def authenticode_status(path: Path) -> dict[str, str | None]:
     }
 
 
+def sign_runtime_for_distribution(
+    runtime_root: Path,
+    *,
+    repository: Path | None = None,
+) -> dict[str, Any]:
+    """Authenticode-sign every staged PE and refresh exact manifests."""
+
+    _require_windows_host()
+    root = runtime_root.resolve()
+    repo = (repository or repository_root()).resolve()
+    audit_runtime(root, repository=repo, smoke=False)
+    signer = shutil.which("trusted-signing-cli")
+    if signer is None:
+        raise RuntimeError(
+            "trusted-signing-cli is required for Windows release signing"
+        )
+    native_files = sorted(
+        path
+        for path in root.rglob("*")
+        if path.is_file()
+        and not path.is_symlink()
+        and path.suffix.casefold() in _NATIVE_SUFFIXES
+    )
+    if not native_files:
+        raise RuntimeError("Windows desktop runtime has no PE files to sign")
+    for path in native_files:
+        _run(
+            [
+                signer,
+                "-e",
+                "https://eus.codesigning.azure.net",
+                "-a",
+                "kylegraehl",
+                "-c",
+                "jstorrent-profile",
+                path,
+            ],
+            timeout_seconds=300,
+        )
+    manifests = refresh_signed_runtime_manifests(root)
+    audit = audit_runtime(root, repository=repo, smoke=True)
+    for path in native_files:
+        signature = authenticode_status(path)
+        if signature["status"] != "Valid" or not re.search(
+            r"(?:^|,)\s*CN=Kyle Graehl(?:,|$)", signature["subject"] or ""
+        ):
+            raise RuntimeError(f"nested Authenticode signature is incompatible: {path}")
+    return {
+        "schema_version": "doc-evidence.windows-runtime-signing.v1",
+        "status": "passed",
+        "native_file_count": len(native_files),
+        "manifests": manifests,
+        "runtime": audit,
+    }
+
+
 def audit_unsigned_installer(
     installer: Path,
     *,
     repository: Path | None = None,
+    signed: bool = False,
 ) -> dict[str, Any]:
-    """Audit the exact local NSIS candidate without claiming installed bytes."""
+    """Audit the exact NSIS candidate without claiming installed bytes."""
 
     _require_windows_host()
     repo = (repository or repository_root()).resolve()
@@ -1929,7 +1987,14 @@ def audit_unsigned_installer(
         raise RuntimeError(f"unexpected Windows NSIS candidate: {candidate}")
     pe = inspect_pe(candidate)
     signature = authenticode_status(candidate)
-    if signature["status"] != "NotSigned" or signature["subject"] is not None:
+    if signed:
+        if signature["status"] != "Valid" or not re.search(
+            r"(?:^|,)\s*CN=Kyle Graehl(?:,|$)", signature["subject"] or ""
+        ):
+            raise RuntimeError(
+                "signed Windows NSIS candidate has unexpected trust state"
+            )
+    elif signature["status"] != "NotSigned" or signature["subject"] is not None:
         raise RuntimeError("unsigned Windows NSIS candidate has unexpected trust state")
     application = application_executable_path(repo)
     if not application.is_file():
@@ -1938,7 +2003,12 @@ def audit_unsigned_installer(
     if app_pe.machine != PE_X86_64_MACHINE or app_pe.format != "PE32+":
         raise RuntimeError("Windows desktop application is not x86_64 PE32+")
     app_signature = authenticode_status(application)
-    if app_signature["status"] != "NotSigned" or app_signature["subject"] is not None:
+    if signed:
+        if app_signature["status"] != "Valid" or not re.search(
+            r"(?:^|,)\s*CN=Kyle Graehl(?:,|$)", app_signature["subject"] or ""
+        ):
+            raise RuntimeError("signed Windows application has unexpected trust state")
+    elif app_signature["status"] != "NotSigned" or app_signature["subject"] is not None:
         raise RuntimeError("unsigned Windows application has unexpected trust state")
     runtime_audit = audit_runtime(stage_root(repo), repository=repo, smoke=True)
     return {
@@ -2100,8 +2170,10 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     audit.add_argument("path", nargs="?", type=Path)
     audit.add_argument("--smoke", action="store_true")
     subcommands.add_parser("build")
+    subcommands.add_parser("sign-runtime")
     installer_audit = subcommands.add_parser("audit-installer")
     installer_audit.add_argument("path", nargs="?", type=Path)
+    installer_audit.add_argument("--signed", action="store_true")
     values = parser.parse_args(arguments)
     if values.command == "stage":
         path = stage_runtime(
@@ -2115,9 +2187,22 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     if values.command == "build":
         print(build_application())
         return 0
+    if values.command == "sign-runtime":
+        print(
+            json.dumps(
+                sign_runtime_for_distribution(stage_root()),
+                indent=2,
+            )
+        )
+        return 0
     if values.command == "audit-installer":
         path = values.path or nsis_installer_path()
-        print(json.dumps(audit_unsigned_installer(path), indent=2))
+        print(
+            json.dumps(
+                audit_unsigned_installer(path, signed=bool(values.signed)),
+                indent=2,
+            )
+        )
         return 0
     path = values.path or stage_root()
     print(json.dumps(audit_runtime(path, smoke=values.smoke), indent=2))

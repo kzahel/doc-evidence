@@ -1,10 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Allow the product runtime to observe supervised engine failure",
+  "description": "Allow the product runtime to observe the engine and install signed updates",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-listen",
-    "core:event:allow-unlisten"
+    "core:event:allow-unlisten",
+    "process:allow-restart",
+    "updater:default"
   ]
 }

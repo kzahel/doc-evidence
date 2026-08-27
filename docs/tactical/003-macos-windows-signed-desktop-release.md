@@ -7,8 +7,11 @@ Topic: library-management
 Topic: job-architecture
 
 **Status:** Local implementation and validation authorized on 2026-08-24.
-Credential provisioning, repository creation, signing, tagging, release
-publication, and other external mutations remain separately unauthorized.
+Repository creation and publication, signing-credential provisioning, the
+product release workflow, signed draft builds, release tags, and a bounded
+Graehl Arts product/download page were authorized on 2026-08-27. Public
+release publication remains gated on the exact signed-candidate acceptance
+defined below; authorization to build a draft is not evidence that it passed.
 
 ## Motivation and User-Visible Outcome
 
@@ -38,6 +41,13 @@ The first release matrix is deliberately:
 
 Linux, Intel/universal macOS, Windows arm64, MSI, Microsoft Store, and Mac App
 Store distribution are not first-release targets.
+
+The public distribution surface is a static product page at
+`https://graehlarts.com/doc-evidence/`. It explains the local-first and
+read-only-source boundary, links the public source and release notes, and
+offers only the two supported installer choices above. GitHub Releases owns
+the immutable installer bytes and checksums; the website does not copy release
+artifacts or invent another update channel.
 
 ## Entry Evidence and Dependencies
 
@@ -406,6 +416,26 @@ After explicit authorization for credentials and external setup:
 7. reconcile artifact names, signatures, checksums, SBOM/compliance assets,
    version, and two-target updater metadata; and
 8. stop for explicit maintainer acceptance before making the draft public.
+
+### 11. Publish the Product and Download Page
+
+1. Add a standalone responsive `/doc-evidence/` page to the existing
+   `GraehlArts/graehlarts.github.io` static site without adding a second web
+   framework or hosted product runtime.
+2. Describe the shipped product conservatively: local-first operation,
+   read-only source collections, bundled baseline extraction, supported
+   platforms, and the distinction between machine observations and reviewed
+   evidence.
+3. Link source, Apache-2.0 licensing, release notes, checksums, and the exact
+   GitHub release downloads. Before a public release exists, download controls
+   must say that signed builds are being prepared rather than pointing at a
+   nonexistent or draft asset.
+4. Add Doc Evidence to the Graehl Arts project index and validate the direct
+   route, responsive layout, keyboard focus, metadata, and absence of private
+   case identifiers.
+5. Publish the page through the existing GitHub Pages repository. Expose the
+   final installer links only after the paired signed release leaves draft
+   state; a macOS-only download page is not an acceptable fallback.
 
 Because there is no older signed Doc Evidence release, the first release does
 not fabricate an `N -> N+1` result. The first patch release must exercise a
@@ -1019,6 +1049,39 @@ The 287,122,508-byte exact-source compliance archive has SHA-256
 `aa8b876e734abf91ad36a5775994a70484d1b7ed0bc0998870fcda3eeedd7105`,
 reconciles all 30 nested libraries and 43 source archives, and reports
 `release_ready: true` with no blockers.
+
+On 2026-08-27 the maintainer authorized repository/release setup, use of the
+shared signing credentials, a new per-app updater key, signed draft builds,
+release tags, and a bounded Graehl Arts product/download page. All eleven
+expected GitHub signing-secret names are present; their values remain
+write-only and were not copied into the repository or execution record. The
+application now targets release version `0.5.0`, embeds the matching updater
+public key and product route, carries the Tauri updater/process plugins, and
+exposes update state through a platform-neutral React boundary. The anonymous
+update-check identifier is a random per-install UUID stored in app-owned
+configuration and contains no library, document, account, or device identity.
+
+The first local signed-runtime checkpoint Developer-ID signed all 109 nested
+Mach-O objects, refreshed the exact pack and bundle manifests after those
+signatures changed bytes, and re-ran the full runtime audit. Its runtime tree
+is `17b2fe08c8b2ab8b0efc66f45e1603e1f99478a1a415117891615e09cfdb8b90`;
+pack manifest
+`4f714ce22f2395bb2c68ca6a97e744d09be6d638a33e30c3932dd23d3606ba77`
+and bundle manifest
+`0638790d852e5c3431f481e9924c534dbd5ff685d22afc33c8882222b9e67ee2`
+bind the signed bytes. Real Ghostscript-free OCR and authenticated sidecar
+smokes pass. Tauri then produced a hardened-runtime Developer ID application
+seal without changing the nested runtime or manifest bytes; strict deep
+verification and the packaged runtime audit pass. This local check does not
+claim notarization, stapling, an updater signature, Windows signing, or an
+installed candidate.
+
+The checked-in GitHub workflow follows the pinned release-kit contract with
+Doc Evidence's exact two-target matrix. It fails closed on credentials,
+serializes updater-metadata writers, signs nested native payloads before Tauri,
+adds the exact-source compliance archive, validates the draft and checksums,
+and deliberately stops with the release still private. The first remote build
+and all target-native acceptance evidence remain open.
 
 ## Falsifiable Stopping Condition
 

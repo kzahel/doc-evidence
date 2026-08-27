@@ -26,6 +26,7 @@ use windows_process::KillOnCloseJob;
 
 const DESKTOP_PROTOCOL: &str = "doc-evidence.desktop.v1";
 const APPLICATION_VERSION: &str = env!("CARGO_PKG_VERSION");
+const UPDATE_INSTALLATION_ID_FILE: &str = "update-installation-id";
 const MAX_READY_BYTES: usize = 64 * 1024;
 const MAX_CONTROL_RESPONSE_BYTES: usize = 1024 * 1024;
 const MAX_BUNDLE_MANIFEST_BYTES: u64 = 8 * 1024 * 1024;
@@ -71,6 +72,29 @@ fn build_target() -> DesktopTarget {
     return MACOS_TARGET;
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     return WINDOWS_TARGET;
+}
+
+fn read_valid_update_installation_id(path: &Path) -> Option<String> {
+    let value = fs::read_to_string(path).ok()?;
+    let value = value.trim();
+    uuid::Uuid::parse_str(value).ok()?;
+    Some(value.to_owned())
+}
+
+fn get_or_create_update_installation_id(config_dir: &Path) -> Result<String, String> {
+    let path = config_dir.join(UPDATE_INSTALLATION_ID_FILE);
+    if let Some(value) = read_valid_update_installation_id(&path) {
+        return Ok(value);
+    }
+    fs::create_dir_all(config_dir)
+        .map_err(|error| format!("create update configuration directory: {error}"))?;
+    let value = uuid::Uuid::new_v4().to_string();
+    let temporary = config_dir.join(format!("{UPDATE_INSTALLATION_ID_FILE}.tmp"));
+    fs::write(&temporary, format!("{value}\n"))
+        .map_err(|error| format!("write temporary update installation ID: {error}"))?;
+    fs::rename(&temporary, &path)
+        .map_err(|error| format!("publish update installation ID: {error}"))?;
+    Ok(value)
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -1034,7 +1058,17 @@ pub fn run() {
             }
         }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            let config_dir = app
+                .path()
+                .app_config_dir()
+                .map_err(|error| format!("resolve update configuration directory: {error}"))?;
+            let installation_id = get_or_create_update_installation_id(&config_dir)?;
+            let updater = tauri_plugin_updater::Builder::new()
+                .header("X-CFU-Id", &installation_id)?
+                .build();
+            app.handle().plugin(updater)?;
             let status = Arc::new(RwLock::new(RuntimeStatus::Initializing));
             let result = start_sidecar(app.handle(), Arc::clone(&status));
             let (process, control) = match result {
@@ -1080,6 +1114,30 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn update_installation_id_is_stable_and_valid() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let first = get_or_create_update_installation_id(directory.path())
+            .expect("create update installation ID");
+        let second = get_or_create_update_installation_id(directory.path())
+            .expect("read update installation ID");
+        assert_eq!(first, second);
+        assert!(uuid::Uuid::parse_str(&first).is_ok());
+    }
+
+    #[test]
+    fn malformed_update_installation_id_is_replaced() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        fs::write(
+            directory.path().join(UPDATE_INSTALLATION_ID_FILE),
+            "not-a-uuid\n",
+        )
+        .expect("write malformed update installation ID");
+        let replacement = get_or_create_update_installation_id(directory.path())
+            .expect("replace update installation ID");
+        assert!(uuid::Uuid::parse_str(&replacement).is_ok());
+    }
     use std::io::Cursor;
 
     fn pack(target: DesktopTarget) -> DesktopPackIdentity {

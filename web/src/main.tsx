@@ -7,14 +7,19 @@ import { consumeLaunchToken } from "./api/auth";
 import { createHttpRuntime } from "./api/httpRuntime";
 import { RuntimeProvider } from "./api/RuntimeProvider";
 import { FailureState } from "./components/AsyncState";
+import { DesktopUpdater } from "./components/DesktopUpdater";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import type { DesktopUpdateRuntime } from "./updater/runtime";
 import "./styles/global.css";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("Application root is missing");
 const root = createRoot(container);
 
-function renderApplication(runtime: import("./api/runtime").DocEvidenceRuntime) {
+function renderApplication(
+  runtime: import("./api/runtime").DocEvidenceRuntime,
+  updater: DesktopUpdateRuntime | null = null,
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: 1, staleTime: 15_000 },
@@ -25,6 +30,7 @@ function renderApplication(runtime: import("./api/runtime").DocEvidenceRuntime) 
       <ErrorBoundary>
         <RuntimeProvider runtime={runtime}>
           <QueryClientProvider client={queryClient}>
+            <DesktopUpdater runtime={updater} />
             <App />
           </QueryClientProvider>
         </RuntimeProvider>
@@ -38,7 +44,7 @@ async function bootstrap() {
     if ("__TAURI_INTERNALS__" in window) {
       const { createDesktopRuntime } = await import("./api/desktopRuntime");
       const desktop = await createDesktopRuntime();
-      renderApplication(desktop.runtime);
+      renderApplication(desktop.runtime, desktop.updater);
       await desktop.monitor((message) => {
         root.render(<FailureState title="Desktop engine stopped" error={message} />);
       });

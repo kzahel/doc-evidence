@@ -478,7 +478,7 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
         )
         self.assertEqual(
             nsis_installer_path(self.root).name,
-            "Doc Evidence_0.4.0_x64-setup.exe",
+            "Doc Evidence_0.5.0_x64-setup.exe",
         )
 
     def test_python_extraction_rejects_links_and_windows_collisions(self) -> None:

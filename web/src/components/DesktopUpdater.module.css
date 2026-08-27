@@ -1,0 +1,45 @@
+.checkButton,
+.notice {
+  bottom: 1rem;
+  position: fixed;
+  right: 1rem;
+  z-index: 50;
+}
+
+.checkButton {
+  background: var(--ink);
+  border: 1px solid #ffffff35;
+  box-shadow: 0 0.3rem 1rem #10252f26;
+  color: white;
+  font-size: 0.68rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.notice {
+  align-items: flex-start;
+  background: white;
+  border: 1px solid var(--line);
+  border-left: 0.3rem solid var(--accent);
+  border-radius: 0.45rem;
+  box-shadow: 0 0.5rem 1.5rem #10252f2e;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  gap: 0.55rem;
+  max-width: min(28rem, calc(100vw - 2rem));
+  padding: 0.8rem;
+}
+
+.notice progress {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actions button {
+  font: inherit;
+}

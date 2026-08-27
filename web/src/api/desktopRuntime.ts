@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { relaunch } from "@tauri-apps/plugin-process";
+import {
+  check as checkForTauriUpdate,
+  type DownloadEvent,
+  type Update,
+} from "@tauri-apps/plugin-updater";
 
 import { createHttpRuntime } from "./httpRuntime";
 import type {
@@ -8,6 +14,11 @@ import type {
   NativeCollectionOperation,
   NativeLibraryOperation,
 } from "./runtime";
+import type {
+  DesktopUpdateRuntime,
+  UpdateCheckReason,
+  UpdateDownloadEvent,
+} from "../updater/runtime";
 
 const desktopProtocol = "doc-evidence.desktop.v1";
 const tokenPattern = /^[0-9a-f]{64}$/;
@@ -60,7 +71,42 @@ const tauriBridge: DesktopBridge = {
 
 export interface DesktopRuntimeBootstrap {
   readonly runtime: DocEvidenceRuntime;
+  readonly updater: DesktopUpdateRuntime;
   monitor(onFailure: (message: string) => void): Promise<UnlistenFn>;
+}
+
+function createTauriUpdateRuntime(): DesktopUpdateRuntime {
+  let current: Update | null = null;
+  const close = async () => {
+    const candidate = current;
+    current = null;
+    if (candidate) await candidate.close();
+  };
+  return {
+    async check(reason: UpdateCheckReason) {
+      await close();
+      current = await checkForTauriUpdate({
+        headers: { "X-Check-Reason": reason },
+        timeout: 20_000,
+      });
+      if (!current) return null;
+      return { version: current.version, notes: current.body };
+    },
+    async install(onEvent: (event: UpdateDownloadEvent) => void) {
+      if (!current) throw new Error("No signed update is ready to install.");
+      await current.downloadAndInstall((event: DownloadEvent) => {
+        if (event.event === "Started") {
+          onEvent({ phase: "started", totalBytes: event.data.contentLength });
+        } else if (event.event === "Progress") {
+          onEvent({ phase: "progress", chunkBytes: event.data.chunkLength });
+        } else {
+          onEvent({ phase: "finished" });
+        }
+      });
+    },
+    relaunch,
+    close,
+  };
 }
 
 function validateRuntimeInfo(value: DesktopRuntimeInfo): DesktopRuntimeInfo {
@@ -192,6 +238,7 @@ export async function createDesktopRuntime(
   };
   return {
     runtime,
+    updater: createTauriUpdateRuntime(),
     monitor: (onFailure) =>
       bridge.listen<string>("desktop-runtime-failed", onFailure),
   };

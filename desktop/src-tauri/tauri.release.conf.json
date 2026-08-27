@@ -1,0 +1,13 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "bundle": {
+    "createUpdaterArtifacts": true,
+    "macOS": {
+      "hardenedRuntime": true,
+      "signingIdentity": "Developer ID Application: Kyle Graehl (VD7BYQ6ABM)"
+    },
+    "windows": {
+      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net -a kylegraehl -c jstorrent-profile %1"
+    }
+  }
+}

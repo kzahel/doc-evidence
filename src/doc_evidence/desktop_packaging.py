@@ -38,6 +38,7 @@ from doc_evidence.contracts.desktop import (
     MACOS_DESKTOP_ORIGIN,
 )
 from doc_evidence.desktop_pack import BASELINE_PACK_ENV, load_baseline_pack
+from doc_evidence.desktop_signing import refresh_signed_runtime_manifests
 
 BUNDLE_MANIFEST_SCHEMA = "doc-evidence.desktop-bundle-manifest.v1"
 RUNTIME_MANIFEST_SCHEMA = "doc-evidence.desktop-runtime-manifest.v1"
@@ -1027,7 +1028,7 @@ def _stage_baseline_pack(
             "license_files": [
                 (
                     "python/lib/python3.12/site-packages/"
-                    "doc_evidence-0.4.0.dist-info/licenses/LICENSE"
+                    f"doc_evidence-{__version__}.dist-info/licenses/LICENSE"
                 )
             ],
             "bundled_paths": metadata_paths,
@@ -1281,7 +1282,9 @@ def _write_manifests(
                 next(
                     path
                     for path in file_owners
-                    if path.endswith("doc_evidence-0.4.0.dist-info/licenses/LICENSE")
+                    if path.endswith(
+                        f"doc_evidence-{__version__}.dist-info/licenses/LICENSE"
+                    )
                 )
             ],
             "bundled_paths": ["runtime-manifest.json", "THIRD_PARTY_NOTICES.txt"],
@@ -1845,6 +1848,66 @@ def audit_runtime(
     return result
 
 
+def sign_runtime_for_distribution(
+    runtime_root: Path,
+    *,
+    identity: str,
+    repository: Path | None = None,
+) -> dict[str, Any]:
+    """Developer-ID sign every nested Mach-O and refresh exact manifests."""
+
+    root = runtime_root.resolve()
+    repo = (repository or repository_root()).resolve()
+    if not identity.startswith("Developer ID Application: "):
+        raise RuntimeError("macOS distribution signing identity is incompatible")
+    audit_runtime(root, repository=repo, smoke=False)
+    native_files = sorted(path for path in root.rglob("*") if _is_macho(path))
+    if not native_files:
+        raise RuntimeError("macOS desktop runtime has no native files to sign")
+    for path in native_files:
+        mode = path.stat().st_mode
+        path.chmod(mode | stat.S_IWUSR)
+        try:
+            _run(
+                [
+                    "codesign",
+                    "--force",
+                    "--options",
+                    "runtime",
+                    "--timestamp",
+                    "--sign",
+                    identity,
+                    path,
+                ],
+                capture_output=True,
+                timeout_seconds=120,
+            )
+        finally:
+            path.chmod(mode)
+    manifests = refresh_signed_runtime_manifests(root)
+    audit = audit_runtime(root, repository=repo, smoke=True)
+    for path in native_files:
+        _run(
+            ["codesign", "--verify", "--strict", "--verbose=2", path],
+            capture_output=True,
+        )
+        details = _run(
+            ["codesign", "--display", "--verbose=4", path],
+            capture_output=True,
+        )
+        output = f"{details.stdout}\n{details.stderr}"
+        if "TeamIdentifier=VD7BYQ6ABM" not in output or "Signature=adhoc" in output:
+            raise RuntimeError(f"nested native signature is incompatible: {path}")
+    return {
+        "schema_version": "doc-evidence.macos-runtime-signing.v1",
+        "status": "passed",
+        "identity": identity,
+        "native_file_count": len(native_files),
+        "manifests": manifests,
+        "runtime": audit,
+    }
+
+
 def _files_containing(root: Path, values: Sequence[str]) -> dict[str, list[str]]:
     encoded = {value: value.encode() for value in values}
     hits = {value: [] for value in values}
@@ -1866,6 +1929,7 @@ def audit_application(
     *,
     repository: Path | None = None,
     smoke: bool = True,
+    signed: bool = False,
 ) -> dict[str, Any]:
     bundle = app.resolve()
     repo = (repository or repository_root()).resolve()
@@ -1914,13 +1978,29 @@ def audit_application(
     )
     signature_details = f"{displayed.stdout}\n{displayed.stderr}"
     required_signature_details = (
-        f"Identifier={PRODUCT_IDENTIFIER}",
-        "Signature=adhoc",
-        "TeamIdentifier=not set",
-        "Sealed Resources version=2",
+        (
+            f"Identifier={PRODUCT_IDENTIFIER}",
+            "Authority=Developer ID Application: Kyle Graehl (VD7BYQ6ABM)",
+            "TeamIdentifier=VD7BYQ6ABM",
+            "Sealed Resources version=2",
+        )
+        if signed
+        else (
+            f"Identifier={PRODUCT_IDENTIFIER}",
+            "Signature=adhoc",
+            "TeamIdentifier=not set",
+            "Sealed Resources version=2",
+        )
     )
     if any(value not in signature_details for value in required_signature_details):
-        raise RuntimeError("local desktop proof is not an exact ad-hoc bundle seal")
+        kind = "Developer ID" if signed else "ad-hoc"
+        raise RuntimeError(f"desktop application is not an exact {kind} bundle seal")
+    if signed:
+        _run(
+            ["spctl", "--assess", "--type", "execute", "--verbose=2", bundle],
+            capture_output=True,
+        )
+        _run(["xcrun", "stapler", "validate", bundle], capture_output=True)
     return {
         "schema_version": "doc-evidence.desktop-app-audit.v1",
         "status": "passed",
@@ -1939,7 +2019,7 @@ def audit_application(
         "symlinks": _audit_symlinks(bundle),
         "build_host_path_hits": {},
         "signature": {
-            "status": "ad-hoc-local-proof",
+            "status": "developer-id-notarized" if signed else "ad-hoc-local-proof",
             "strict_verification_exit_code": signature.returncode,
         },
         "runtime": runtime_audit,
@@ -1996,6 +2076,7 @@ def audit_dmg(
     dmg: Path,
     *,
     repository: Path | None = None,
+    signed: bool = False,
 ) -> dict[str, Any]:
     _require_host()
     image = dmg.resolve()
@@ -2034,7 +2115,12 @@ def audit_dmg(
                 or os.readlink(applications) != "/Applications"
             ):
                 raise RuntimeError("desktop disk image lacks its Applications link")
-            app_audit = audit_application(app, repository=repo, smoke=True)
+            app_audit = audit_application(
+                app,
+                repository=repo,
+                smoke=True,
+                signed=signed,
+            )
             app_audit["app"] = f"{PRODUCT_NAME}.app (mounted read-only)"
         finally:
             if attached:
@@ -2057,6 +2143,9 @@ def audit_dmg(
                         detach_error = (forced.stdout + forced.stderr)[-2000:]
         if detach_error is not None:
             raise RuntimeError(f"desktop disk image did not detach: {detach_error}")
+    if signed:
+        _run(["codesign", "--verify", "--verbose=2", image], capture_output=True)
+        _run(["xcrun", "stapler", "validate", image], capture_output=True)
     return {
         "schema_version": "doc-evidence.desktop-dmg-audit.v1",
         "status": "passed",
@@ -3485,6 +3574,7 @@ def generate_compliance_preflight(
     replace: bool = False,
     resolve_formulas: bool = False,
     download_sources: bool = False,
+    signed: bool = False,
 ) -> dict[str, Any]:
     _require_host()
     bundle = app.resolve()
@@ -3493,7 +3583,12 @@ def generate_compliance_preflight(
     archive = output.with_name(f"{output.name}.tar.gz")
     if (output.exists() or archive.exists()) and not replace:
         raise RuntimeError(f"desktop compliance output already exists: {output}")
-    app_audit = audit_application(bundle, repository=repo, smoke=True)
+    app_audit = audit_application(
+        bundle,
+        repository=repo,
+        smoke=True,
+        signed=signed,
+    )
     runtime = bundle / "Contents" / "Resources" / "desktop-runtime"
     manifest_path = runtime / "bundle-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -3898,23 +3993,32 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="operation", required=True)
     stage = subparsers.add_parser("stage")
     stage.add_argument("--replace", action="store_true")
+    sign_runtime = subparsers.add_parser("sign-runtime")
+    sign_runtime.add_argument(
+        "--identity",
+        default=os.environ.get("APPLE_SIGNING_IDENTITY"),
+        required=os.environ.get("APPLE_SIGNING_IDENTITY") is None,
+    )
     subparsers.add_parser("build")
     audit = subparsers.add_parser("audit")
     audit.add_argument("--smoke", action="store_true")
     review = subparsers.add_parser("review")
     review.add_argument("--app", type=Path)
+    review.add_argument("--signed", action="store_true")
     dmg = subparsers.add_parser("dmg")
     dmg.add_argument("--app", type=Path)
     dmg.add_argument("--output", type=Path)
     dmg.add_argument("--replace", action="store_true")
     review_dmg = subparsers.add_parser("review-dmg")
     review_dmg.add_argument("--dmg", type=Path)
+    review_dmg.add_argument("--signed", action="store_true")
     compliance = subparsers.add_parser("compliance-preflight")
     compliance.add_argument("--app", type=Path)
     compliance.add_argument("--output", type=Path)
     compliance.add_argument("--replace", action="store_true")
     compliance.add_argument("--resolve-formulas", action="store_true")
     compliance.add_argument("--download-sources", action="store_true")
+    compliance.add_argument("--signed", action="store_true")
     args = parser.parse_args(arguments)
     repository = repository_root()
     if args.operation == "stage":
@@ -3923,6 +4027,12 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
                 stage_runtime(root=repository, replace=bool(args.replace))
             )
         }
+    elif args.operation == "sign-runtime":
+        result = sign_runtime_for_distribution(
+            stage_root(repository),
+            identity=args.identity,
+            repository=repository,
+        )
     elif args.operation == "build":
         result = {"app": str(build_application(root=repository))}
     elif args.operation == "audit":
@@ -3933,7 +4043,12 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
         )
     elif args.operation == "review":
         app = args.app or application_bundle_path(repository)
-        result = audit_application(app, repository=repository, smoke=True)
+        result = audit_application(
+            app,
+            repository=repository,
+            smoke=True,
+            signed=bool(args.signed),
+        )
     elif args.operation == "dmg":
         result = create_unsigned_dmg(
             args.app or application_bundle_path(repository),
@@ -3945,6 +4060,7 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
         result = audit_dmg(
             args.dmg or unsigned_dmg_path(repository),
             repository=repository,
+            signed=bool(args.signed),
         )
     else:
         result = generate_compliance_preflight(
@@ -3954,6 +4070,7 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
             replace=bool(args.replace),
             resolve_formulas=bool(args.resolve_formulas),
             download_sources=bool(args.download_sources),
+            signed=bool(args.signed),
         )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
