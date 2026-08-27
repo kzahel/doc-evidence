@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import shutil
+import signal
 import sys
 import tempfile
 import threading
@@ -17,6 +18,7 @@ from doc_evidence.attempts import (
     AttemptPlan,
     AttemptRetention,
     AttemptSupervisor,
+    _cleanup_lingering_process_group,
     validate_run,
 )
 from doc_evidence.errors import RequestError
@@ -83,6 +85,15 @@ def _process_alive(process_id: int) -> bool:
 
 
 class AttemptSupervisorTest(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group cleanup")
+    def test_cleanup_ignores_a_reused_protected_process_group(self) -> None:
+        with patch(
+            "doc_evidence.attempts.os.killpg", side_effect=PermissionError
+        ) as killpg:
+            _cleanup_lingering_process_group(12345)
+
+        killpg.assert_called_once_with(12345, signal.SIGTERM)
+
     def supervisor(self, **values: object) -> AttemptSupervisor:
         return AttemptSupervisor(
             worker_command=(sys.executable, str(FAKE_WORKER)),

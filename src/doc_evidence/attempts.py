@@ -306,7 +306,10 @@ def _cleanup_lingering_process_group(process_group_id: int | None) -> None:
         return
     try:
         os.killpg(process_group_id, signal.SIGTERM)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
+        # The original group may already be gone and its numeric ID reused by
+        # a protected process group. Cleanup is best-effort after the owned
+        # launcher has exited; never signal an unrelated replacement group.
         return
 
 

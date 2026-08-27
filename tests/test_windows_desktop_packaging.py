@@ -69,6 +69,8 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
                 _read_ready_line(process, timeout_seconds=5)
         finally:
             process.wait(timeout=5)
+            if process.stdout is not None:
+                process.stdout.close()
 
     def test_baseline_environment_supplies_isolated_windows_home(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
