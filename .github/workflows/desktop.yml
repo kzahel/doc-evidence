@@ -202,6 +202,7 @@ jobs:
             echo "APPLE_SIGNING_IDENTITY=Developer ID Application: Kyle Graehl (VD7BYQ6ABM)" >> "$GITHUB_ENV"
             emit APPLE_API_KEY "$ASC_API_KEY_ID"
             emit APPLE_API_ISSUER "$ASC_API_ISSUER_ID"
+            echo "RUSTFLAGS=--remap-path-prefix=$GITHUB_WORKSPACE=/doc-evidence-source --remap-path-prefix=$HOME=/build-host" >> "$GITHUB_ENV"
           fi
       - name: Check synchronized release version
         if: startsWith(github.ref, 'refs/tags/desktop-v')

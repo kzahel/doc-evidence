@@ -1931,6 +1931,22 @@ def _files_containing(root: Path, values: Sequence[str]) -> dict[str, list[str]]
     return {value: paths for value, paths in hits.items() if paths}
 
 
+def _application_build_host_hits(
+    bundle: Path, repository: Path
+) -> dict[str, list[str]]:
+    hits = _files_containing(bundle, [str(repository), "/opt/homebrew"])
+    home = str(Path.home())
+    runtime_prefix = "Contents/Resources/desktop-runtime/"
+    home_hits = [
+        path
+        for path in _files_containing(bundle, [home]).get(home, [])
+        if not path.startswith(runtime_prefix)
+    ]
+    if home_hits:
+        hits[home] = home_hits
+    return hits
+
+
 def audit_application(
     app: Path,
     *,
@@ -1960,10 +1976,7 @@ def audit_application(
         raise RuntimeError("desktop application executable is missing")
     runtime = bundle / "Contents" / "Resources" / "desktop-runtime"
     runtime_audit = audit_runtime(runtime, repository=repo, smoke=smoke)
-    forbidden_hits = _files_containing(
-        bundle,
-        [str(repo), str(Path.home()), "/opt/homebrew"],
-    )
+    forbidden_hits = _application_build_host_hits(bundle, repo)
     if forbidden_hits:
         raise RuntimeError(
             f"desktop application embeds build-host paths: {forbidden_hits}"
@@ -2041,7 +2054,7 @@ def build_application(*, root: Path | None = None) -> Path:
     environment["RUSTFLAGS"] = " ".join(
         [
             f"--remap-path-prefix={repository}=/doc-evidence-source",
-            f"--remap-path-prefix={Path.home() / '.cargo'}=/cargo",
+            f"--remap-path-prefix={Path.home()}=/build-host",
         ]
     )
     _run(

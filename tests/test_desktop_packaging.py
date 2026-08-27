@@ -11,6 +11,7 @@ from pathlib import Path
 from doc_evidence.desktop_packaging import (
     BUILD_INPUTS_SCHEMA,
     WHEEL_NATIVE_COMPONENTS_SCHEMA,
+    _application_build_host_hits,
     _archive_path,
     _audit_symlinks,
     _dependency_license_files,
@@ -187,6 +188,25 @@ class DesktopPackagingTest(unittest.TestCase):
             self.assertEqual(
                 _files_containing(root, ["/opt/homebrew", "/unseen"]),
                 {"/opt/homebrew": ["payload"]},
+            )
+
+    def test_application_host_scan_exempts_pinned_runtime_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / "Doc Evidence.app"
+            runtime = root / "Contents/Resources/desktop-runtime/python"
+            runtime.mkdir(parents=True)
+            home = str(Path.home())
+            (runtime / "upstream.so").write_bytes(home.encode())
+            repository = Path(raw) / "source"
+
+            self.assertEqual(_application_build_host_hits(root, repository), {})
+
+            executable = root / "Contents/MacOS/doc-evidence-desktop"
+            executable.parent.mkdir(parents=True)
+            executable.write_bytes(home.encode())
+            self.assertEqual(
+                _application_build_host_hits(root, repository),
+                {home: ["Contents/MacOS/doc-evidence-desktop"]},
             )
 
     def test_stage_refuses_to_overwrite_without_explicit_replace(self) -> None:
