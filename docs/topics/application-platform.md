@@ -526,8 +526,24 @@ The product-owned GitHub workflow now has fail-closed credential gates,
 serialized macOS arm64 and Windows x86_64 signed builds, nested native signing,
 updater metadata, compliance publication, and a draft-only finalizer. The
 workflow deliberately does not make the release public after CI: exact
-installed-artifact acceptance remains required. Its first remote run is the
-next evidence checkpoint.
+installed-artifact acceptance remains required.
+
+The clean paired rehearsal is GitHub Actions run
+[`33096065054`](https://github.com/kzahel/doc-evidence/actions/runs/33096065054)
+on commit `9a86512`. Source and Rust checks pass. macOS passes Developer ID
+signing, application and DMG notarization/stapling, exact signed application
+and mounted-DMG review, and the fail-closed compliance preflight. Its
+71,297,020-byte DMG has SHA-256
+`95dde229857eaca955488ae4a23487916a6b9f441e4112681869914097f1e669`;
+the compliance archive reports `release_ready: true`, no blockers, all 30
+nested native dependencies reconciled, and zero missing Rust license texts.
+The same commit's Windows job passes Azure signing, the x86_64 runtime/PE/OCR/
+sidecar/long-path gates, and the exact NSIS audit. Its 76,607,056-byte
+Authenticode-valid installer has SHA-256
+`db798ef2dbb0f3e85d91397ba35d3938f18b5e15ad311be5f409ba34666a8a59`.
+The next release checkpoint is the synchronized private draft and exact
+installed-artifact acceptance in fresh macOS arm64 and native Windows x86_64
+Machine Control workspaces.
 
 The current-HEAD macOS arm64 application has now been rebuilt after the shared
 packaged-runtime fixes. Its 3,825 files occupy 190,854,648 bytes at tree
@@ -608,7 +624,7 @@ record is in
 Complete the explicit maintainer interaction acceptance in
 [Tactical 001](../tactical/001-durable-extraction-jobs.md). Continue the locally
 authorized [Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md)
-by running the first signed GitHub draft, resolving target-native failures, and
-testing its exact assets in fresh macOS arm64 and Windows x86_64 workspaces.
+by producing the synchronized signed GitHub draft and testing its exact assets
+in fresh macOS arm64 and Windows x86_64 workspaces.
 Public release publication still waits for the tactical's complete paired
 acceptance gate. Durable review events remain a separate later tactical.

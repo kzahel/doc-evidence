@@ -1080,8 +1080,31 @@ The checked-in GitHub workflow follows the pinned release-kit contract with
 Doc Evidence's exact two-target matrix. It fails closed on credentials,
 serializes updater-metadata writers, signs nested native payloads before Tauri,
 adds the exact-source compliance archive, validates the draft and checksums,
-and deliberately stops with the release still private. The first remote build
-and all target-native acceptance evidence remain open.
+and deliberately stops with the release still private.
+
+The clean paired GitHub rehearsal on commit `9a86512` is run
+[`33096065054`](https://github.com/kzahel/doc-evidence/actions/runs/33096065054).
+Source and Rust checks pass. The macOS arm64 job Developer-ID signed the
+application and all nested native objects, notarized and stapled both the
+application and DMG, and passed exact application, mounted-DMG, runtime, OCR,
+sidecar, and compliance audits. The 71,297,020-byte DMG has SHA-256
+`95dde229857eaca955488ae4a23487916a6b9f441e4112681869914097f1e669`.
+The 288,278,269-byte compliance archive has SHA-256
+`c8a13b28d031dfd9a320facc2f52b2d3b246c7356d8c8c4fcecf62b04aa3e33a`,
+reconciles all 30 nested native dependencies and 43 source archives, reports
+zero missing Rust license texts, and ends with `release_ready: true` and no
+blockers.
+
+The same-commit Windows x86_64 job signed all declared runtime native payloads
+and the NSIS distribution boundary, then passed exact PE closure, runtime,
+OCR, authenticated-sidecar, long-path, and installer audits. Its
+76,607,056-byte Authenticode-valid NSIS installer has SHA-256
+`db798ef2dbb0f3e85d91397ba35d3938f18b5e15ad311be5f409ba34666a8a59`;
+the 3,654-file runtime tree is
+`6ac8f3bdf72cae3ea06a9ec675049113dc0234b3ed485cd25220e49d2c85ff7c`.
+This closes the pre-tag paired CI rehearsal. The synchronized tag/draft,
+finalizer, and exact signed installed-artifact acceptance in fresh Machine
+Control macOS arm64 and native Windows x86_64 workspaces remain open.
 
 ## Falsifiable Stopping Condition
 
