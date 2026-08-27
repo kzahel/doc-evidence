@@ -1666,8 +1666,12 @@ def _read_ready_line(process: subprocess.Popen[str], *, timeout_seconds: float) 
         raise RuntimeError("Windows desktop sidecar did not become ready") from error
     if not ok:
         raise RuntimeError(f"Windows desktop ready record is unreadable: {value}")
-    if len(value.encode()) > 64 * 1024 or not value.endswith("\n"):
+    if value == "":
+        raise RuntimeError("Windows desktop sidecar exited before its ready record")
+    if len(value.encode()) > 64 * 1024:
         raise RuntimeError("Windows desktop ready record exceeded its bound")
+    if not value.endswith("\n"):
+        raise RuntimeError("Windows desktop ready record was incomplete")
     return value
 
 
@@ -1707,7 +1711,16 @@ def smoke_sidecar(runtime_root: Path) -> dict[str, Any]:
             process.kill()
             raise RuntimeError("Windows desktop smoke pipes are unavailable")
         try:
-            ready_line = _read_ready_line(process, timeout_seconds=30)
+            try:
+                ready_line = _read_ready_line(process, timeout_seconds=30)
+            except RuntimeError as error:
+                return_code = process.poll()
+                if return_code is None:
+                    raise
+                stderr = process.stderr.read()[-4000:]
+                raise RuntimeError(
+                    f"{error}; exit code {return_code}; stderr: {stderr}"
+                ) from error
             ready = json.loads(ready_line)
             expected_pack = load_baseline_pack(
                 runtime_root / "baseline-pack",

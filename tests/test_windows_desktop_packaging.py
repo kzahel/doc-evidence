@@ -5,6 +5,7 @@ import io
 import json
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -18,6 +19,7 @@ from doc_evidence.windows_desktop_packaging import (
     _included_locked_requirements,
     _load_inputs,
     _locked_requirements,
+    _read_ready_line,
     application_executable_path,
     audit_flat_pe_closure,
     audit_runtime_pe_closure,
@@ -55,6 +57,18 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
                 expected.update(hashlib.sha256(content).digest())
 
             self.assertEqual(sha256_tree(root), expected.hexdigest())
+
+    def test_empty_sidecar_output_is_reported_as_early_exit(self) -> None:
+        process = subprocess.Popen(
+            [sys.executable, "-c", "pass"],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            with self.assertRaisesRegex(RuntimeError, "exited before"):
+                _read_ready_line(process, timeout_seconds=5)
+        finally:
+            process.wait(timeout=5)
 
     def test_baseline_environment_supplies_isolated_windows_home(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
