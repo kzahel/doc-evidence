@@ -283,7 +283,7 @@ tracked entry point pins the upstream macOS arm64 CPython 3.12.12
 production dependencies, removes installer and build-only material, records
 component licenses and every staged file, and audits architecture, load paths,
 symlinks, build-host paths, authentication, and parent-EOF shutdown. The pack
-pins OCRmyPDF 17.8.1, PDFium 5.5.0, Poppler 26.03.0, Tesseract 5.5.3,
+pins OCRmyPDF 17.8.1, PDFium 5.5.0, Poppler 26.08.0, Tesseract 5.5.3,
 English/German/orientation data, and the exact small Tesseract renderer
 configurations. All copied native inputs are arm64-only, have bundle-relative
 load paths, and have ambient Homebrew defaults neutralized before nested ad-hoc

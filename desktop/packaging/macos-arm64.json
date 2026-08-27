@@ -13,7 +13,7 @@
   },
   "baseline_pack": {
     "pack_id": "baseline-macos-arm64",
-    "version": "2026.08.1",
+    "version": "2026.08.2",
     "requirements_sha256": "8aae7fe4803b8023ccbfffd35bc4be092e5dc38ad13f1c4fe7cd14637a44baff",
     "python_components": {
       "ocrmypdf": "17.8.1",
@@ -36,20 +36,20 @@
     "tools": {
       "pdfinfo": {
         "formula": "poppler",
-        "version": "26.03.0",
-        "input_sha256": "aca7c31b014695b109454d0f2f917105d8d2fb65984c4a123b8c5fb7792eb887",
+        "version": "26.08.0",
+        "input_sha256": "8a48bb18e99c8f1add637ffae1d860c3cdabe11f4f1672f3c1b5ef4c3e6e8461",
         "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
       },
       "pdftotext": {
         "formula": "poppler",
-        "version": "26.03.0",
-        "input_sha256": "15789c23a95c36f75fe8bbb77ab9834eb03665a4a4eb1fdc5d5922dc9853e498",
+        "version": "26.08.0",
+        "input_sha256": "52cb759b328134d667e0e9ba9142e952811473fba6caa3a053ff1e2605512fd9",
         "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
       },
       "pdftoppm": {
         "formula": "poppler",
-        "version": "26.03.0",
-        "input_sha256": "7d554369712cf165045f5a0e85335a98fe9565364b9465392af142c266075cd0",
+        "version": "26.08.0",
+        "input_sha256": "d0d0c2542dda1ab8e3e424e98b575b039295c4748f18405f220d17028264e147",
         "license_concluded": "GPL-2.0-only OR GPL-3.0-only"
       },
       "tesseract": {
@@ -62,9 +62,9 @@
     "source_archives": [
       {
         "component_id": "homebrew-poppler",
-        "version": "26.03.0",
-        "url": "https://poppler.freedesktop.org/poppler-26.03.0.tar.xz",
-        "sha256": "8b3c5e2a9f2ab4c3ec5029f28af1b433c6b71f0d1e7b3997aa561cf1c0ca4ebe"
+        "version": "26.08.0",
+        "url": "https://poppler.freedesktop.org/poppler-26.08.0.tar.xz",
+        "sha256": "dc906e68cea698109706ac6aa3d2c9d4512fcfcac42d90b8afcda486d1b9abd0"
       },
       {
         "component_id": "homebrew-tesseract",

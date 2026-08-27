@@ -686,10 +686,17 @@ def _stage_native_tools(
         formula = str(raw["formula"])
         record = _homebrew_formula_record(formula)
         if record["version"] != raw["version"]:
-            raise RuntimeError(f"baseline tool version changed: {name}")
+            raise RuntimeError(
+                f"baseline tool version changed: {name}; "
+                f"expected {raw['version']}, got {record['version']}"
+            )
         source = Path(record["prefix"]) / "bin" / name
-        if not source.is_file() or sha256_file(source) != raw["input_sha256"]:
-            raise RuntimeError(f"baseline tool input identity changed: {name}")
+        actual_hash = sha256_file(source) if source.is_file() else "missing"
+        if actual_hash != raw["input_sha256"]:
+            raise RuntimeError(
+                f"baseline tool input identity changed: {name}; "
+                f"expected {raw['input_sha256']}, got {actual_hash}"
+            )
         destination = binaries / name
         shutil.copy2(source.resolve(), destination)
         destination.chmod(destination.stat().st_mode | stat.S_IWUSR | stat.S_IXUSR)
@@ -1580,9 +1587,9 @@ def smoke_baseline_pack(runtime_root: Path) -> dict[str, Any]:
             )
             versions[name] = (result.stdout + result.stderr).splitlines()[0]
         expected_versions = {
-            "pdfinfo": "26.03.0",
-            "pdftotext": "26.03.0",
-            "pdftoppm": "26.03.0",
+            "pdfinfo": "26.08.0",
+            "pdftotext": "26.08.0",
+            "pdftoppm": "26.08.0",
             "tesseract": "5.5.3",
             "ocrmypdf": "17.8.1",
         }

@@ -109,7 +109,7 @@ class DesktopPackagingTest(unittest.TestCase):
         )
         baseline = inputs["baseline_pack"]
         self.assertEqual(baseline["pack_id"], "baseline-macos-arm64")
-        self.assertEqual(baseline["version"], "2026.08.1")
+        self.assertEqual(baseline["version"], "2026.08.2")
         self.assertEqual(
             baseline["requirements_sha256"],
             "8aae7fe4803b8023ccbfffd35bc4be092e5dc38ad13f1c4fe7cd14637a44baff",

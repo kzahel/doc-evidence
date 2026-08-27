@@ -238,7 +238,7 @@ uv sync && npm ci --prefix web && npm run build --prefix web
 On macOS arm64, the current intermediate unsigned desktop proof is built with
 one entry point. `stage` downloads the exact hash-pinned standalone CPython
 input, installs the hash-locked Python baseline, and copies the exact declared
-Poppler 26.03.0 and Tesseract 5.5.3 Homebrew inputs into a self-contained
+Poppler 26.08.0 and Tesseract 5.5.3 Homebrew inputs into a self-contained
 bundle. Repeat staging requires the explicit `--replace` flag.
 
 ```sh
