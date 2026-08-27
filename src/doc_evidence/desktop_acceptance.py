@@ -231,6 +231,7 @@ def _runtime_environment(
             "TEMP": str(temporary),
             "TMP": str(temporary),
             "USERPROFILE": str(user_home),
+            "PROCESSOR_ARCHITECTURE": "AMD64",
         }
         architecture = "x86_64"
     environment = {

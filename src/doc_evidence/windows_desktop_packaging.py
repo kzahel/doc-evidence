@@ -1489,6 +1489,7 @@ def baseline_environment(runtime_root: Path, writable_root: Path) -> dict[str, s
         "USERPROFILE": str(user_home),
         "SystemRoot": system_root,
         "WINDIR": system_root,
+        "PROCESSOR_ARCHITECTURE": "AMD64",
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONNOUSERSITE": "1",
         "PYTHONUTF8": "1",

@@ -420,6 +420,10 @@ fn inherited_environment_names(target: DesktopTarget) -> &'static [&'static str]
     }
 }
 
+fn process_architecture(target: DesktopTarget) -> Option<&'static str> {
+    (target == WINDOWS_TARGET).then_some("AMD64")
+}
+
 fn read_bounded(path: &Path, maximum: u64, label: &str) -> Result<Vec<u8>, String> {
     let metadata = fs::metadata(path).map_err(|_| format!("{label} is missing"))?;
     if !metadata.is_file() || metadata.len() > maximum {
@@ -731,6 +735,9 @@ fn start_sidecar(
         .stderr(Stdio::piped());
     if target == WINDOWS_TARGET {
         command.env("USERPROFILE", writable_user_home);
+    }
+    if let Some(architecture) = process_architecture(target) {
+        command.env("PROCESSOR_ARCHITECTURE", architecture);
     }
     if let Some(value) = env::var_os("DOC_EVIDENCE_HOME") {
         command.env("DOC_EVIDENCE_HOME", value);
@@ -1163,6 +1170,12 @@ mod tests {
         assert!(is_lower_hex_64(&first));
         assert!(is_lower_hex_64(&second));
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn sanitized_windows_runtime_declares_its_process_architecture() {
+        assert_eq!(process_architecture(WINDOWS_TARGET), Some("AMD64"));
+        assert_eq!(process_architecture(MACOS_TARGET), None);
     }
 
     #[test]

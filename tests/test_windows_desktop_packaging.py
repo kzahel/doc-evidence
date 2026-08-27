@@ -114,6 +114,7 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
             self.assertEqual(
                 environment["USERPROFILE"], str(root / "writable" / "user-home")
             )
+            self.assertEqual(environment["PROCESSOR_ARCHITECTURE"], "AMD64")
             self.assertTrue((root / "writable" / "user-home").is_dir())
 
     def test_inputs_pin_exact_runtime_tools_payloads_and_sources(self) -> None:

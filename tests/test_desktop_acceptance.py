@@ -90,6 +90,7 @@ class DesktopAcceptanceFixtureTest(unittest.TestCase):
             )
 
         self.assertEqual(environment["USERPROFILE"], str(writable_root / "user-home"))
+        self.assertEqual(environment["PROCESSOR_ARCHITECTURE"], "AMD64")
         self.assertTrue((writable_root / "user-home").is_dir())
 
     def test_acceptance_rejects_an_unpacked_interpreter(self) -> None:
