@@ -148,7 +148,9 @@ jobs:
           npm --prefix web run build
       - name: Install exact macOS native inputs
         if: matrix.platform == 'macos'
-        run: brew install poppler tesseract tesseract-lang
+        run: |
+          brew update
+          brew install poppler tesseract tesseract-lang
       - name: Install Windows signing tool
         if: matrix.platform == 'windows'
         run: cargo install trusted-signing-cli --version 0.11.0 --locked
