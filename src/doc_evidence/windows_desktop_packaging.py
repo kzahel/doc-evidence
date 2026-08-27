@@ -1994,7 +1994,14 @@ def audit_unsigned_installer(
     repository: Path | None = None,
     signed: bool = False,
 ) -> dict[str, Any]:
-    """Audit the exact NSIS candidate without claiming installed bytes."""
+    """Audit the exact NSIS candidate without claiming installed bytes.
+
+    Tauri patches and signs the main Windows executable immediately before it
+    is embedded in each bundle, then deliberately restores the original
+    unpatched build output.  The release-tree executable inspected here is
+    therefore build input, not the application contained by the NSIS
+    candidate.  Its installed signature remains an installed-artifact gate.
+    """
 
     _require_windows_host()
     repo = (repository or repository_root()).resolve()
@@ -2020,15 +2027,9 @@ def audit_unsigned_installer(
     if app_pe.machine != PE_X86_64_MACHINE or app_pe.format != "PE32+":
         raise RuntimeError("Windows desktop application is not x86_64 PE32+")
     app_signature = authenticode_status(application)
-    if signed:
-        if app_signature["status"] != "Valid" or not re.search(
-            r"(?:^|,)\s*CN=Kyle Graehl(?:,|$)", app_signature["subject"] or ""
-        ):
-            raise RuntimeError(
-                "signed Windows application has unexpected trust state: "
-                f"{app_signature}"
-            )
-    elif app_signature["status"] != "NotSigned" or app_signature["subject"] is not None:
+    if not signed and (
+        app_signature["status"] != "NotSigned" or app_signature["subject"] is not None
+    ):
         raise RuntimeError("unsigned Windows application has unexpected trust state")
     runtime_audit = audit_runtime(stage_root(repo), repository=repo, smoke=True)
     return {
@@ -2046,8 +2047,9 @@ def audit_unsigned_installer(
             "pe_format": pe.format,
             "authenticode": signature,
         },
-        "application": {
+        "application_build_input": {
             "path": str(application),
+            "role": "tauri-restored-unpatched-build-input",
             "bytes": application.stat().st_size,
             "sha256": sha256_file(application),
             "pe_machine": "x86_64",

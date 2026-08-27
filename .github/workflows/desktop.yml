@@ -347,7 +347,7 @@ jobs:
             echo
             echo "- Signed updater metadata validated for macOS arm64 and Windows x86_64."
             echo "- Developer ID signing, notarization, stapling, and nested Mach-O signatures passed."
-            echo "- Authenticode signatures passed for the Windows runtime, application, and NSIS installer."
+            echo "- Authenticode signatures passed for the Windows runtime and NSIS installer; the installed application remains an acceptance gate."
             echo "- Exact dependency compliance evidence and SHA256SUMS are attached."
             echo "- Workflow: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo "- Commit: \`${GITHUB_SHA}\`"

@@ -23,6 +23,7 @@ from doc_evidence.windows_desktop_packaging import (
     application_executable_path,
     audit_flat_pe_closure,
     audit_runtime_pe_closure,
+    audit_unsigned_installer,
     authenticode_status,
     baseline_environment,
     build_application,
@@ -497,6 +498,64 @@ class WindowsDesktopPackagingTest(unittest.TestCase):
             str(Path(r"C:\candidate with spaces.exe").resolve()),
         )
         self.assertIn("$env:DOC_EVIDENCE_AUTHENTICODE_PATH", arguments[-1])
+
+    def test_signed_installer_does_not_misclassify_tauri_restored_input(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            installer = nsis_installer_path(root)
+            application = application_executable_path(root)
+            installer.parent.mkdir(parents=True)
+            application.parent.mkdir(parents=True, exist_ok=True)
+            installer.write_bytes(b"signed installer")
+            application.write_bytes(b"restored unsigned build input")
+            pe = PortableExecutable(
+                machine=PE_X86_64_MACHINE,
+                format="PE32+",
+                imports=(),
+                delay_imports=(),
+            )
+            with (
+                patch("doc_evidence.windows_desktop_packaging._require_windows_host"),
+                patch(
+                    "doc_evidence.windows_desktop_packaging.inspect_pe",
+                    return_value=pe,
+                ),
+                patch(
+                    "doc_evidence.windows_desktop_packaging.authenticode_status",
+                    side_effect=(
+                        {
+                            "status": "Valid",
+                            "status_message": "valid",
+                            "subject": "CN=Kyle Graehl",
+                        },
+                        {
+                            "status": "NotSigned",
+                            "status_message": "not signed",
+                            "subject": None,
+                        },
+                    ),
+                ),
+                patch(
+                    "doc_evidence.windows_desktop_packaging.audit_runtime",
+                    return_value={"status": "passed"},
+                ),
+            ):
+                result = audit_unsigned_installer(
+                    installer,
+                    repository=root,
+                    signed=True,
+                )
+
+        self.assertEqual(result["installer"]["authenticode"]["status"], "Valid")
+        self.assertEqual(
+            result["application_build_input"]["role"],
+            "tauri-restored-unpatched-build-input",
+        )
+        self.assertEqual(
+            result["application_build_input"]["authenticode"]["status"],
+            "NotSigned",
+        )
+        self.assertNotIn("application", result)
 
     def test_windows_tauri_package_is_current_user_nsis(self) -> None:
         config = json.loads(
