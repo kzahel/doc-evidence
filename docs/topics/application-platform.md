@@ -593,6 +593,44 @@ unsigned DMG has SHA-256
 `a0b65cf9dbcad5b01a4380a1a12076f66e788a0e77a5a7c278132654b2107e0b`;
 the exact-source compliance preflight remains release-ready with no blockers.
 
+The first immutable signed tag, `desktop-v0.5.0`, reached a paired private
+draft and passed exact macOS installed acceptance. Native Windows x86_64
+installation and signature checks passed, but the installed packaged workflow
+exposed a worker-start stall and rejected the candidate. Diagnosis showed that
+the Windows attempt launcher inherited the sidecar's parent-EOF standard-input
+pipe. Commit `16cc407` closes worker input with `DEVNULL`, adds a focused
+regression test, and adds the complete signed Windows runtime workflow to CI.
+The rejected `0.5.0` draft remains private and its tag was not moved.
+
+The replacement immutable tag `desktop-v0.5.1` at `4b5c217` is a complete
+private draft from GitHub Actions run
+[`33106766732`](https://github.com/kzahel/doc-evidence/actions/runs/33106766732).
+Two macOS retries failed closed on rotating upstream corresponding-source HTTP
+502 responses; the third retrieved all 43 archives and passed. The final
+71,298,391-byte DMG has SHA-256
+`b8448329850420176f90a3f37c06f5730da086064f05f8e619b0ea1473cf24f4`.
+The 288,278,260-byte compliance archive has SHA-256
+`d2d7fc369c2d677939841bd0f369fe38ee9d3b2e5de3bfc4ffb03a04430da28d`
+and is release-ready with all 30 nested native dependencies and 43 source
+archives reconciled. The 76,599,144-byte Windows installer has SHA-256
+`a2d3d678015066785d7592ea7e2fdfb35a60adb1fb3870da5643cb1b5a62866a`.
+The normalized updater manifest contains exactly `darwin-aarch64` and
+`windows-x86_64`, and downloaded `SHA256SUMS` verified every listed artifact.
+
+Exact `0.5.1` installed acceptance now passes in fresh macOS arm64 and native
+Windows x86_64 Machine Control workspaces. Both platforms complete inventory,
+executed OCR, PNG rendering, search, normal and forced restart, and unchanged-
+source checks from packaged runtimes. macOS passes Gatekeeper, copy-out byte
+identity, strict deep signing, native UI, and single-instance checks. Windows
+verifies 120 installed native signatures, clean no-console UI, one main window
+after a second launch, complete app/sidecar cleanup, and silent uninstall that
+preserves app data and external sources. Both isolated workspaces were
+discarded without force and left their base targets stopped. The public
+product page is live at `https://graehlarts.com/doc-evidence/`, but it and the
+updater route intentionally withhold downloads while the release remains a
+draft. Only explicit maintainer publication acceptance remains for Tactical
+003.
+
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
 100% scale, and Large uses 130%. The UI exposes names rather than percentages;
@@ -624,7 +662,7 @@ record is in
 Complete the explicit maintainer interaction acceptance in
 [Tactical 001](../tactical/001-durable-extraction-jobs.md). Continue the locally
 authorized [Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md)
-by producing the synchronized signed GitHub draft and testing its exact assets
-in fresh macOS arm64 and Windows x86_64 workspaces.
-Public release publication still waits for the tactical's complete paired
-acceptance gate. Durable review events remain a separate later tactical.
+with explicit maintainer review of the complete private `0.5.1` candidate and
+the public-publication decision. The synchronized draft and exact paired
+installed-artifact gates pass. Durable review events remain a separate later
+tactical.

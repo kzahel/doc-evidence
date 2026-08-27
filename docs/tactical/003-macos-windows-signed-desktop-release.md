@@ -1106,6 +1106,94 @@ This closes the pre-tag paired CI rehearsal. The synchronized tag/draft,
 finalizer, and exact signed installed-artifact acceptance in fresh Machine
 Control macOS arm64 and native Windows x86_64 workspaces remain open.
 
+The immutable `desktop-v0.5.0` tag then produced the first synchronized private
+draft in GitHub Actions run
+[`33099371892`](https://github.com/kzahel/doc-evidence/actions/runs/33099371892).
+Its paired signed artifacts and finalizer passed after the draft updater
+metadata was normalized to the two canonical platform aliases. Exact macOS
+arm64 installed acceptance passed Gatekeeper, copied-application byte
+comparison, strict deep signature verification, the complete packaged
+workflow, native UI, single-instance behavior, and cleanup. Native Windows
+x86_64 installation and installed-signature review also passed, but the
+complete packaged workflow correctly rejected this version when an attempt
+worker never became ready. The `0.5.0` draft remains private and superseded;
+neither its tag nor its signed bytes was rewritten.
+
+Target-native diagnosis found that the desktop sidecar deliberately blocks on
+its inherited standard input to detect parent EOF, while the Windows attempt
+launcher inherited that same pipe. A nested Python process could load
+`python312.dll` yet stall before entering its module. Commit `16cc407` closes
+the launcher input with `DEVNULL`, adds a regression fixture, and makes the
+signed Windows CI job run the complete packaged workflow before building the
+installer. The already installed diagnostic runtime then passed inventory,
+OCR, rendering, search, normal and forced restart, long-path, and unchanged-
+source checks on native x86_64. Version `0.5.1` records that signed-byte change
+without moving the rejected tag.
+
+The immutable `desktop-v0.5.1` tag at commit `4b5c217` completed in GitHub
+Actions run
+[`33106766732`](https://github.com/kzahel/doc-evidence/actions/runs/33106766732).
+The Windows job passed on its first attempt, including the new full signed-
+runtime workflow gate. The first two macOS attempts passed signing,
+notarization, stapling, and exact artifact audits but failed closed when
+different Homebrew corresponding-source URLs returned transient HTTP 502
+responses. The third attempt retrieved all 43 archives and passed. This is
+evidence that source-offer availability remains a real publication gate rather
+than a warning.
+
+The finalizer produced a private `0.5.1` draft with canonical updater entries
+for exactly `darwin-aarch64` and `windows-x86_64`. The 1,623-byte
+`latest.json` has SHA-256
+`e5f112bb3177452207d7611161b6b3206ed1d88f5c5903e994b392f2590963cb`.
+The 71,298,391-byte notarized/stapled DMG has SHA-256
+`b8448329850420176f90a3f37c06f5730da086064f05f8e619b0ea1473cf24f4`;
+its application tree is
+`c2ce9edc6e81eb50396610241ea68eb8281b47665e50030198688b52fbac45e6`
+and runtime tree is
+`4647d2a4449dc640a6744c7a311c22b3c67887285db3c345fc8f5a2ee61a1329`.
+The 288,278,260-byte compliance archive has SHA-256
+`d2d7fc369c2d677939841bd0f369fe38ee9d3b2e5de3bfc4ffb03a04430da28d`,
+reconciles all 30 nested native dependencies and 43 source archives, reports
+zero missing Rust license texts, and is release-ready with no blockers. The
+76,599,144-byte Authenticode-valid Windows installer has SHA-256
+`a2d3d678015066785d7592ea7e2fdfb35a60adb1fb3870da5643cb1b5a62866a`.
+The final `SHA256SUMS` verified every listed artifact after an independent
+draft download.
+
+Fresh exact-artifact macOS arm64 acceptance verified the transferred DMG hash,
+Gatekeeper `Notarized Developer ID` decisions for both DMG and application,
+byte-identical copy-out, and strict deep code signatures. The packaged
+`0.5.1` runtime then passed two-library inventory, executed OCR, PNG rendering,
+search, normal and forced-sidecar restart, and unchanged source hashes. The
+native window rendered the empty-library product at the expected title; a
+second launch retained one process and one window. Removing the application
+left explicit app-data and external-source markers intact and no product
+descendant. The isolated workspace was discarded, leaving zero workspaces, an
+available claim, and the base VM off.
+
+Fresh native Windows x86_64 acceptance independently matched the installer
+hash and verified a valid Kyle Graehl Authenticode identity and Microsoft
+timestamp. The current-user install reported version `0.5.1`; all 120
+installed EXE, DLL, and PYD files were validly signed: 114 by Kyle Graehl and
+six app-local CRT files by Microsoft. The exact installed runtime passed the
+same complete packaged workflow at `architecture: x86_64`, including the
+worker-start fix and long-path lane. Target-native launch produced one main
+Tauri window plus its expected sidecar-launcher child, no console or Windows
+Terminal window, and one main window after a second launch. Closing the window
+left no application, launcher, or Python-sidecar process. Silent uninstall
+removed all program bytes and the uninstall registry entry while preserving
+explicit app-data and external-source markers. Normal guest shutdown completed
+just after the first bounded release observation; the stopped receipt was then
+discarded without force, leaving zero workspaces, an available claim, and the
+base target off.
+
+The public product page is live at `https://graehlarts.com/doc-evidence/` but
+continues to say that signed builds are in preparation. Its download links and
+the updater route remain unavailable while the paired release is a draft. The
+technical stopping condition below is now satisfied for `0.5.1`; public
+publication still requires the tactical's separate explicit maintainer
+acceptance.
+
 ## Falsifiable Stopping Condition
 
 Implementation stops before public publication unless the maintainer
