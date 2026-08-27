@@ -322,8 +322,10 @@ jobs:
         run: |
           release_dir="$RUNNER_TEMP/desktop-release"
           mkdir -p "$release_dir"
-          gh release view "$GITHUB_REF_NAME" --json tagName,isDraft,assets > "$release_dir/release.json"
           gh release download "$GITHUB_REF_NAME" --pattern latest.json --dir "$release_dir"
+          node .github/scripts/normalize-desktop-latest.mjs "$release_dir/latest.json"
+          gh release upload "$GITHUB_REF_NAME" "$release_dir/latest.json" --clobber
+          gh release view "$GITHUB_REF_NAME" --json tagName,isDraft,assets > "$release_dir/release.json"
           node .github/scripts/validate-desktop-release.mjs \
             --release "$release_dir/release.json" \
             --latest "$release_dir/latest.json" \
