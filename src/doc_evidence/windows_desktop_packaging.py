@@ -446,8 +446,13 @@ def stage_python_dependencies(
         capture_output=True,
     )
     baseline = _baseline_requirements(repository)
-    if sha256_file(baseline) != inputs["baseline_pack"]["requirements_sha256"]:
-        raise RuntimeError("baseline Python requirements identity changed")
+    actual_requirements_hash = sha256_file(baseline)
+    expected_requirements_hash = inputs["baseline_pack"]["requirements_sha256"]
+    if actual_requirements_hash != expected_requirements_hash:
+        raise RuntimeError(
+            "baseline Python requirements identity changed; "
+            f"expected {expected_requirements_hash}, got {actual_requirements_hash}"
+        )
     try:
         for locked in (requirements, baseline):
             _run(
