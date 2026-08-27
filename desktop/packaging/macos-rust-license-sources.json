@@ -144,6 +144,12 @@
       "license_declared": "Zlib OR Apache-2.0 OR MIT",
       "documents": ["objc2-7b1abf-license-notice", "spdx-3.27.0-zlib", "spdx-3.27.0-apache-2.0", "spdx-3.27.0-mit"]
     },
+    "objc2-osa-kit@0.3.2": {
+      "vcs_revision": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
+      "path_in_vcs": "framework-crates/objc2-osa-kit",
+      "license_declared": "Zlib OR Apache-2.0 OR MIT",
+      "documents": ["objc2-7b1abf-license-notice", "spdx-3.27.0-zlib", "spdx-3.27.0-apache-2.0", "spdx-3.27.0-mit"]
+    },
     "objc2-web-kit@0.3.2": {
       "vcs_revision": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b",
       "path_in_vcs": "framework-crates/objc2-web-kit",

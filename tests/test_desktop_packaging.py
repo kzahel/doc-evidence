@@ -8,6 +8,8 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from typing import Self
+from unittest.mock import patch
 
 from doc_evidence.desktop_packaging import (
     BUILD_INPUTS_SCHEMA,
@@ -15,7 +17,9 @@ from doc_evidence.desktop_packaging import (
     _application_build_host_hits,
     _archive_path,
     _audit_symlinks,
+    _cli,
     _dependency_license_files,
+    _download_bounded,
     _excluded_baseline_distributions,
     _files_containing,
     _included_locked_requirements,
@@ -273,6 +277,43 @@ class DesktopPackagingTest(unittest.TestCase):
             _spdx_license("BSD-3-Clause, dependency licenses"),
             ("NOASSERTION", True),
         )
+        with (
+            patch(
+                "doc_evidence.desktop_packaging.generate_compliance_preflight",
+                return_value={"release_ready": False, "status": "blocked"},
+            ),
+            patch("builtins.print"),
+        ):
+            self.assertEqual(_cli(["compliance-preflight"]), 1)
+
+    def test_github_compliance_download_uses_available_actions_token(self) -> None:
+        class Response:
+            def __enter__(self) -> Self:
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                return None
+
+            def read(self, _size: int) -> bytes:
+                return b"bounded"
+
+        with (
+            patch.dict(os.environ, {"GH_TOKEN": "example-token"}),
+            patch(
+                "doc_evidence.desktop_packaging.urllib.request.urlopen",
+                return_value=Response(),
+            ) as urlopen,
+        ):
+            self.assertEqual(
+                _download_bounded(
+                    "https://api.github.com/repos/Homebrew/homebrew-core"
+                ),
+                b"bounded",
+            )
+
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Authorization"), "Bearer example-token")
+        self.assertEqual(request.get_header("X-github-api-version"), "2022-11-28")
 
     def test_homebrew_bottle_requires_exact_version_and_platform(self) -> None:
         info = {
@@ -346,6 +387,15 @@ class DesktopPackagingTest(unittest.TestCase):
         self.assertFalse(_requires_corresponding_source("Apache-2.0 OR MIT"))
 
     def test_rust_license_recovery_binds_package_vcs_and_document_hash(self) -> None:
+        sources = json.loads(
+            (self.root / "desktop/packaging/macos-rust-license-sources.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            sources["packages"]["objc2-osa-kit@0.3.2"]["path_in_vcs"],
+            "framework-crates/objc2-osa-kit",
+        )
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             packaging = root / "desktop" / "packaging"

@@ -2249,9 +2249,15 @@ def _copy_compliance_file(source: Path, destination: Path) -> None:
 
 
 def _download_bounded(url: str, *, maximum_bytes: int = 4 * 1024 * 1024) -> bytes:
+    headers = {"User-Agent": f"doc-evidence/{__version__} compliance-preflight"}
+    if urllib.parse.urlparse(url).hostname == "api.github.com":
+        token = os.environ.get("GH_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+            headers["X-GitHub-Api-Version"] = "2022-11-28"
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": f"doc-evidence/{__version__} compliance-preflight"},
+        headers=headers,
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         content = response.read(maximum_bytes + 1)
@@ -4229,6 +4235,11 @@ def _cli(arguments: Sequence[str] | None = None) -> int:
             signed=bool(args.signed),
         )
     print(json.dumps(result, indent=2, sort_keys=True))
+    if (
+        args.operation == "compliance-preflight"
+        and result.get("release_ready") is not True
+    ):
+        return 1
     return 0
 
 
