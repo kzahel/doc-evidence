@@ -1187,12 +1187,16 @@ just after the first bounded release observation; the stopped receipt was then
 discarded without force, leaving zero workspaces, an available claim, and the
 base target off.
 
-The public product page is live at `https://graehlarts.com/doc-evidence/` but
-continues to say that signed builds are in preparation. Its download links and
-the updater route remain unavailable while the paired release is a draft. The
-technical stopping condition below is now satisfied for `0.5.1`; public
-publication still requires the tactical's separate explicit maintainer
-acceptance.
+On 2026-08-28 the maintainer separately authorized publication with
+`Publish`. The immutable `desktop-v0.5.1` release is now public and GitHub
+reports it as the non-prerelease latest release. Both direct installer URLs
+return HTTP 200. The public Tauri update routes return the correct signed
+macOS arm64 and Windows x86_64 artifacts to `0.5.0` clients and return HTTP
+204 to current `0.5.1` clients. The product page at
+`https://graehlarts.com/doc-evidence/` now exposes direct installer and
+checksum links even when its GitHub release lookup is unavailable. This
+closes Tactical 003's separate publication gate without rewriting either the
+tag or the accepted signed bytes.
 
 ## Falsifiable Stopping Condition
 

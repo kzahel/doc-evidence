@@ -602,8 +602,8 @@ pipe. Commit `16cc407` closes worker input with `DEVNULL`, adds a focused
 regression test, and adds the complete signed Windows runtime workflow to CI.
 The rejected `0.5.0` draft remains private and its tag was not moved.
 
-The replacement immutable tag `desktop-v0.5.1` at `4b5c217` is a complete
-private draft from GitHub Actions run
+The replacement immutable tag `desktop-v0.5.1` at `4b5c217` was produced as a
+complete private draft by GitHub Actions run
 [`33106766732`](https://github.com/kzahel/doc-evidence/actions/runs/33106766732).
 Two macOS retries failed closed on rotating upstream corresponding-source HTTP
 502 responses; the third retrieved all 43 archives and passed. The final
@@ -625,11 +625,14 @@ identity, strict deep signing, native UI, and single-instance checks. Windows
 verifies 120 installed native signatures, clean no-console UI, one main window
 after a second launch, complete app/sidecar cleanup, and silent uninstall that
 preserves app data and external sources. Both isolated workspaces were
-discarded without force and left their base targets stopped. The public
-product page is live at `https://graehlarts.com/doc-evidence/`, but it and the
-updater route intentionally withhold downloads while the release remains a
-draft. Only explicit maintainer publication acceptance remains for Tactical
-003.
+discarded without force and left their base targets stopped. On 2026-08-28 the
+maintainer explicitly authorized publication. GitHub now exposes
+`desktop-v0.5.1` as the public, non-prerelease latest release; both installer
+URLs return HTTP 200. The public updater returns the correct signed platform
+artifacts to `0.5.0` clients and no update to current `0.5.1` clients. The
+product page at `https://graehlarts.com/doc-evidence/` exposes direct macOS,
+Windows, release-note, and checksum links. Tactical 003's paired signed first
+release and separate publication gate are complete.
 
 Maintainer review added session-local Small, Normal, and Large typography
 presets. Normal is the default 120% root scale, Small preserves the original
@@ -660,9 +663,8 @@ record is in
 ## Recommended Next Work
 
 Complete the explicit maintainer interaction acceptance in
-[Tactical 001](../tactical/001-durable-extraction-jobs.md). Continue the locally
-authorized [Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md)
-with explicit maintainer review of the complete private `0.5.1` candidate and
-the public-publication decision. The synchronized draft and exact paired
-installed-artifact gates pass. Durable review events remain a separate later
-tactical.
+[Tactical 001](../tactical/001-durable-extraction-jobs.md). The next desktop
+release slice should prove a real public `N -> N+1` updater round trip on both
+supported platforms, as bounded by completed
+[Tactical 003](../tactical/003-macos-windows-signed-desktop-release.md).
+Durable review events remain a separate later tactical.
